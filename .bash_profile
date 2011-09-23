@@ -4,7 +4,7 @@ export CLICOLOR="yes"
 
 alias ls="ls -G"
 alias jslint="/Users/rdh/node_modules/jslint/bin/jslint.js"
-alais vi="vim"
+alias vi="vim"
 
 function s2d () {
   delete=""
