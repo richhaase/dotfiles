@@ -9,7 +9,6 @@ set softtabstop=4
 set autoindent
 set smarttab
 set expandtab
-set number
 set smartindent
 filetype indent on
 filetype on
