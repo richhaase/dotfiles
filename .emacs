@@ -1,4 +1,4 @@
-(add-to-list 'load-path "~/src/clojure-mode")
+(add-to-list 'load-path "~/.emacs.d/clojure-mode")
 (setq inferior-list-program "clj")
 (require 'clojure-mode)
 (setq auto-mode-alist
