@@ -1,0 +1,54 @@
+#!/bin/bash
+
+HADOOP_DIR=/usr/local/hadoop/
+HADOOP_CONF=${HADOOP_DIR}conf
+
+function usage() {
+	 if [ "$1" != "" ]; then
+ 	    echo $1
+	 fi
+	 echo "usage: hconf [list] [set <config-name>]"
+}
+
+function activeConfig() {
+	 ls -ld $1 | awk -F" -> " '{print $2}' | cut -d"-" -f2 | sed -e "s/\///"
+}
+
+function list() {
+	 for i in `ls -d ${HADOOP_DIR}conf-*`; do
+	     CURRENT=`activeConfig $HADOOP_CONF`
+	     THIS=`basename $i | cut -d"-" -f2`
+             if [[ $CURRENT == $THIS ]]; then
+	     	echo ${THIS}'*'
+	     else
+		echo ${THIS}
+   	     fi
+         done
+}
+
+function set() {
+	 if [ "$1" != "" ]; then
+	        CFG_NAME=`echo $1 | tr '[:lower:]' '[:upper:]'`
+	        if [ -d ${HADOOP_CONF}-${CFG_NAME} ]; then
+		   rm $HADOOP_CONF
+		   ln -s ${HADOOP_CONF}-${CFG_NAME} $HADOOP_CONF
+		else
+		   usage "Error: no such config $i"
+		fi
+	 else
+		usage "Error: missing config-name"
+	 fi
+}
+
+case $1 in 
+     "list" ) 
+     	    list
+	    ;;
+     "set"  )
+     	    set $2
+	    ;;
+     * 	    )
+       	    usage
+	    ;;
+esac
+
