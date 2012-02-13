@@ -47,4 +47,4 @@
 
 (load-theme 'zenburn)
 
-(setq inferior-lisp-program "~/bin/clj")
+(setq inferior-lisp-program "~/.bin/clj")
