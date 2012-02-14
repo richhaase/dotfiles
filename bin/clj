@@ -4,4 +4,4 @@ PROJECT=enrich
 BASE_DIR=~/code/clojure/
 REPL_DIR=${BASE_DIR}/${PROJECT}
 
-cd $REPL_DIR && lein repl
+cd $REPL_DIR && ~/.bin/lein repl
