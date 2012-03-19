@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT=enrich
+PROJECT=little-schemer-in-clj
 BASE_DIR=~/code/clojure/
 REPL_DIR=${BASE_DIR}/${PROJECT}
 
