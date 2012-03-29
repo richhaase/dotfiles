@@ -42,7 +42,7 @@ case $1 in
 	ctl stop
 	ctl start
 	;;
-    "status" )
+    "ls"|"status" )
 	status namenode.NameNode
 	status mapred.JobTracker
 	status namenode.SecondaryNameNode

@@ -41,7 +41,7 @@ function set() {
 }
 
 case $1 in 
-     "list" ) 
+     "list"|"ls" ) 
      	    list
 	    ;;
      "set"  )
