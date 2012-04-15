@@ -3,3 +3,10 @@ export JAVA_HOME=$(/usr/libexec/java_home)
 export JAVA_OPTS=-Xmx768m
 export PATH=$PATH:~/.bin:/usr/local/hadoop/bin
 
+function refresh() {
+	SAVE_DIR=`pwd`
+	cd ~/dotfiles
+	git pull
+	./setup.sh
+	cd SAVE_DIR
+}
