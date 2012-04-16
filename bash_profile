@@ -9,5 +9,6 @@ function refresh() {
 	cd ~/dotfiles
 	git pull
 	./setup.sh
-	cd SAVE_DIR
+	source ~/.bash_profile
+	cd $SAVE_DIR
 }
