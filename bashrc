@@ -1,3 +1,1 @@
-. ~/.bash_profile
-
-PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
+PATH=$HOME/.rvm/bin:$PATH # Add RVM to PATH for scripting
