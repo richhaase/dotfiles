@@ -1,7 +1,7 @@
 export PS1='\t \h:\W>$ '
 export JAVA_HOME=$(/usr/libexec/java_home)
 export JAVA_OPTS=-Xmx768m
-export PATH=$PATH:~/.bin:/usr/local/hadoop/bin:/Library/Ruby/Gems/1.8/gems/wukong-2.0.2/bin
+export PATH=$PATH:~/.bin:/usr/local/hadoop/bin:/Library/Ruby/Gems/1.8/gems/wukong-2.0.2/bin:/Users/rdh/.rvm/gems/ruby-1.9.3-p125/gems/wukong-2.0.2/bin/hdp-ls
 export HADOOP_HOME=/usr/local/hadoop
 
 . ~/.bashrc 
