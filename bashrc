@@ -6,6 +6,8 @@ export PATH=~/.bin:$HADOOP_HOME:~/.rvm/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/lo
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 
+set -o vi
+
 #rvm docs generate 
 
 function refresh() {
