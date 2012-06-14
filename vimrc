@@ -1,5 +1,5 @@
 set lines=45
-set columns=100
+set columns=140
 set smartindent
 set tabstop=4
 set shiftwidth=4
