@@ -1,9 +1,13 @@
-set lines=45
-set columns=140
 set smartindent
 set tabstop=4
 set shiftwidth=4
 set expandtab
+set number
 
-filetype on		" Enable filetype detection
+" Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq
+command! W :w
+command! Wq :wq
+
+filetype on	    	" Enable filetype detection
 compiler ruby		" Ruby compiler support
+syntax on
