@@ -1,6 +1,7 @@
 set smartindent
-set tabstop=4
-set shiftwidth=4
+set autoindent
+set tabstop=2
+set shiftwidth=2
 set expandtab
 set number
 
@@ -10,6 +11,6 @@ command! Wq :wq
 command! Q :q
 
 
-filetype on	    	" Enable filetype detection
-compiler ruby		" Ruby compiler support
+filetype indent on	    	" Enable filetype detection
+compiler ruby		          " Ruby compiler support
 syntax on

@@ -8,6 +8,11 @@ export LSCOLORS=ExFxCxDxBxegedabagacad
 
 set -o vi
 
+function mkproj() {
+  mkdir $1
+  mkdir $1/{lib,spec,features}
+}
+
 function refresh() {
 	SAVE_DIR=`pwd`
 	cd ~/dotfiles
