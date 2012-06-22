@@ -9,24 +9,26 @@ export LSCOLORS=ExFxCxDxBxegedabagacad
 set -o vi
 
 alias spec='rspec spec --color --format doc'
-alias resource='source ~/.bashrc'
+alias r='source ~/.bashrc'
 
 function mkproj() {
   mkdir $1
   mkdir $1/{lib,spec,features}
 }
 
-function redot() {
-	SAVE_DIR=`pwd`
+function pulldot() {
+	SAVE=`pwd`
 	cd ~/dotfiles
 	git pull
 	./setup.sh
 	source ~/.bash_profile
-	cd $SAVE_DIR
+	cd $SAVE
 }
 
 function pushdot() {
-  SAVE_DIR=`pwd`
+  SAVE=`pwd`
   cd ~/dotfiles
   git commit -am $1
+  git push
+  cd $SAVE
 }
