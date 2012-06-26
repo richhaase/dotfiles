@@ -29,10 +29,11 @@ function dot() {
       if [[ "x$1" == "x" ]]; then
         echo "usage: dot pull|push \"comment required for push\""
         return 192
+      else
+        git add *
+        git commit -am $1
+        git push
       fi
-      git add *
-      git commit -am $1
-      git push
       break;;
     "pull" )
 	    git pull
