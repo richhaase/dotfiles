@@ -10,6 +10,7 @@ set -o vi
 
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias r='cd ~/Dropbox/code/ruby'
+alias j='jobs'
 
 function mkproj() {
   mkdir $1
@@ -19,6 +20,7 @@ function mkproj() {
 function dot() {
   if [[ "x$1" == "x" ]]; then
     echo "usage: dot pull|push \"comment required for push\""
+    return 191
   fi
 	SAVE=`pwd`
 	cd ~/dotfiles
@@ -26,6 +28,7 @@ function dot() {
     "push" ) 
       if [[ "x$1" == "x" ]]; then
         echo "usage: dot pull|push \"comment required for push\""
+        return 192
       fi
       git add *
       git commit -am $1
