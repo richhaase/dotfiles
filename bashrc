@@ -8,28 +8,33 @@ export LSCOLORS=ExFxCxDxBxegedabagacad
 
 set -o vi
 
-alias spec='rspec spec --color --format doc'
-alias r='source ~/.bashrc'
+alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
+alias r='cd ~/Dropbox/code/ruby'
 
 function mkproj() {
   mkdir $1
   mkdir $1/{lib,spec,features}
 }
 
-function pulldot() {
+function dot() {
+  if [[ "x$1" == "x" ]]; then
+    echo "usage: dot pull|push \"comment required for push\""
+  fi
 	SAVE=`pwd`
 	cd ~/dotfiles
-	git pull
-	./setup.sh
-	source ~/.bash_profile
+  case $1 in 
+    "push" ) 
+      if [[ "x$1" == "x" ]]; then
+        echo "usage: dot pull|push \"comment required for push\""
+      fi
+      git add *
+      git commit -am $1
+      git push
+      break;;
+    "pull" )
+	    git pull
+	    ./setup.sh
+	    source ~/.bash_profile
+  esac
 	cd $SAVE
-}
-
-function pushdot() {
-  SAVE=`pwd`
-  cd ~/dotfiles
-  git add *
-  git commit -am $1
-  git push
-  cd $SAVE
 }
