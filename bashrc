@@ -21,7 +21,7 @@ function mkproj() {
 function dot() {
 
   if [ -z $1 ]; then
-    echo "usage: dot pull|push \"comment required for push\""
+    echo "usage: dot pull|push"
     return 191
   fi
 
@@ -30,12 +30,10 @@ function dot() {
 
   case $1 in 
     "push" ) 
-      if [ -z $2 ]; then
-        echo "usage: dot pull|push \"comment required for push\""
-        return 192
-      fi
-      git add *
-      git commit -am $2
+      echo -n "comment: "
+      read $comment
+      git add ~/dotfiles/*
+      git commit -am \"$comment\"
       git push
       ;;
     "pull" )
