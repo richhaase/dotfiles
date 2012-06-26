@@ -1,3 +1,4 @@
+#!/bin/bash -w
 export PS1='\t \u@\h \W>$ '
 export JAVA_HOME=$(/usr/libexec/java_home)
 export JAVA_OPTS=-Xmx768m
@@ -14,26 +15,28 @@ alias j='jobs'
 
 function mkproj() {
   mkdir $1
-  mkdir $1/{lib,spec,features}
+  mkdir $1/{bin,lib,spec,features}
 }
 
 function dot() {
-  if [[ "x$1" == "x" ]]; then
+
+  if [ -z $1 ]; then
     echo "usage: dot pull|push \"comment required for push\""
     return 191
   fi
+
 	SAVE=`pwd`
 	cd ~/dotfiles
+
   case $1 in 
     "push" ) 
-      if [[ "x$1" == "x" ]]; then
+      if [ -z $2 ]; then
         echo "usage: dot pull|push \"comment required for push\""
         return 192
-      else
-        git add *
-        git commit -am $1
-        git push
       fi
+      git add *
+      git commit -am $2
+      git push
       ;;
     "pull" )
 	    git pull
@@ -41,5 +44,6 @@ function dot() {
 	    source ~/.bash_profile
       ;;
   esac
+
 	cd $SAVE
 }
