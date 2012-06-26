@@ -10,7 +10,6 @@ command! W :w
 command! Wq :wq
 command! Q :q
 
-
 filetype indent on	    	" Enable filetype detection
 compiler ruby		          " Ruby compiler support
 syntax on

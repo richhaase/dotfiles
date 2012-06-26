@@ -28,6 +28,7 @@ function pulldot() {
 function pushdot() {
   SAVE=`pwd`
   cd ~/dotfiles
+  git add *
   git commit -am $1
   git push
   cd $SAVE
