@@ -34,11 +34,12 @@ function dot() {
         git commit -am $1
         git push
       fi
-      break;;
+      ;;
     "pull" )
 	    git pull
 	    ./setup.sh
 	    source ~/.bash_profile
+      ;;
   esac
 	cd $SAVE
 }
