@@ -3,7 +3,8 @@ export PS1='\t \u@\h \W>$ '
 export JAVA_HOME=$(/usr/libexec/java_home)
 export JAVA_OPTS=-Xmx768m
 export HADOOP_HOME=/usr/local/hadoop
-export PATH=~/.bin:~/.rvm/bin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/opt/local/bin:/opt/local/sbin
+export WUKONG_BIN=/Users/rdh/.rvm/gems/ruby-1.9.3-p194@global/gems/wukong-2.0.2/bin/
+export PATH=~/.bin:~/.rvm/bin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/opt/local/bin:/opt/local/sbin:$WUKONG_BIN
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 
@@ -12,6 +13,7 @@ set -o vi
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias r='cd ~/Dropbox/code/ruby'
 alias j='jobs'
+alias spec='rspec'
 
 function mkproj() {
   mkdir $1
