@@ -15,6 +15,11 @@ alias r='cd ~/Dropbox/code/ruby'
 alias j='jobs'
 alias spec='rspec'
 
+function size() {
+  find . | wc -l | awk '{print $1" files"}'
+  du -sh | awk '{print "Total size: "$1}'
+}
+
 function mkproj() {
   mkdir $1
   mkdir $1/{bin,lib,spec,features}
