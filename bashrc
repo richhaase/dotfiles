@@ -13,7 +13,7 @@ alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias r='cd ~/Dropbox/code/ruby'
 alias j='jobs'
 
-function size() {
+function si() {
   find . | wc -l | awk '{print $1" files"}'
   du -sh | awk '{print "Total size: "$1}'
 }
@@ -50,3 +50,5 @@ function dot() {
 
 	cd $SAVE
 }
+
+source ~/.rvm/scripts/rvm
