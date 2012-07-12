@@ -1,5 +1,5 @@
-#!/bin/bash -w
-export PS1='\t \u@\h \W>$ '
+#!/bin/bash
+export PS1="    \j job(s) [\t] \n`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "(\u@\h) \W>$ "; fi`"
 export JAVA_HOME=$(/usr/libexec/java_home)
 export JAVA_OPTS=-Xmx768m
 export HADOOP_HOME=/usr/local/hadoop

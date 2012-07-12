@@ -1,56 +1,53 @@
 #!/bin/bash
 
 function ctl () {
-    if [ `hconf list | grep "*" | sed -e's/\*//'` != "LOCAL" ]
-    then
 	hconf set local
 	if [ $? != 0 ]
 	then
-	    echo "Error setting confg to local!"
-	fi
-    fi
+    echo "Error setting confg to local!"
+  fi
 
-    case $1 in
-	"start" )
+  case $1 in
+	  "start" )
 	    start-all.sh
 	    ;;
-	"stop" )
+	  "stop" )
 	    stop-all.sh
 	    ;;
     esac
 }
 
 function status () {
-    NAME=$(echo $1 | cut -d"." -f2)
-    ps -ef | grep -v grep | grep $1 >/dev/null 2>&1
-    if [ $? == 0 ]
-    then
-	echo $NAME": OK"
-    else
-	echo $NAME": UNAVAILABLE"
-    fi
+  NAME=$(echo $1 | cut -d"." -f2)
+  ps -ef | grep -v grep | grep $1 >/dev/null 2>&1
+  if [ $? == 0 ]
+  then
+	  echo $NAME": OK"
+  else
+	  echo $NAME": UNAVAILABLE"
+  fi
 }
 
 case $1 in 
-    "start" ) 
-	ctl start
-	;;
-    "stop" )
-	ctl stop
-	;;
-    "restart" )
-	ctl stop
-	ctl start
-	;;
-    "ls"|"status" )
-	status namenode.NameNode
-	status mapred.JobTracker
-	status namenode.SecondaryNameNode
-	status datanode.DataNode
-	status mapred.TaskTracker
-	;;
-    * )
-       	echo "hctl [start|stop|restart|status]"
-	;;
+  "start" ) 
+	  ctl start
+	  ;;
+  "stop" )
+	  ctl stop
+	  ;;
+  "restart" )
+	  ctl stop
+	  ctl start
+	  ;;
+  "ls"|"status" )
+	  status namenode.NameNode
+	  status mapred.JobTracker
+	  status namenode.SecondaryNameNode
+	  status datanode.DataNode
+  	status mapred.TaskTracker
+  	;;
+ * )
+   	echo "hctl [start|stop|restart|status]"
+   	;;
 esac
 
