@@ -8,8 +8,6 @@ export PATH=~/.bin:~/.rvm/bin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbi
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 
-set -o vi
-
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias r='cd ~/Dropbox/code/ruby'
 alias j='jobs'
