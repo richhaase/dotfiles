@@ -20,7 +20,7 @@ function si() {
 
 function mkproj() {
   mkdir $1
-  mkdir $1/{bin,lib,spec,features}
+  mkdir $1/{bin,lib,spec}
 }
 
 function dot() {
