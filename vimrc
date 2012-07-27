@@ -10,6 +10,11 @@ command! W :w
 command! Wq :wq
 command! Q :q
 
+" Pig syntax highlighting ftw!
+augroup filetypedetect 
+    au BufNewFile,BufRead *.pig set filetype=pig syntax=pig 
+  augroup END 
+
 filetype indent on	    	" Enable filetype detection
 compiler ruby		          " Ruby compiler support
 syntax on
