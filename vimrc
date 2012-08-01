@@ -5,6 +5,9 @@ set shiftwidth=2
 set expandtab
 set number
 
+set lines=50 
+set columns=160
+
 " Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq/:Q
 command! W :w
 command! Wq :wq
