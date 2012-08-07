@@ -1,5 +1,8 @@
 let g:netrw_dirhistmax  =10
-let g:netrw_dirhist_cnt =3
-let g:netrw_dirhist_1='/Users/haase.rich/code/scripts/pusher/spec/pusher/pusher_spec.rb'
-let g:netrw_dirhist_2='/Users/haase.rich/code/scripts/pusher/lib/pusher'
-let g:netrw_dirhist_3='/Users/haase.rich/code/scripts/pusher/spec'
+let g:netrw_dirhist_cnt =6
+let g:netrw_dirhist_1='/Users/haase.rich'
+let g:netrw_dirhist_2='/Users/haase.rich/code'
+let g:netrw_dirhist_3='/Users/haase.rich/code/scripts'
+let g:netrw_dirhist_4='/Users/haase.rich/code/scripts/pusher'
+let g:netrw_dirhist_5='/Users/haase.rich/code/scripts/pusher/trunk'
+let g:netrw_dirhist_6='/Users/haase.rich/code/scripts/pusher/trunk/lib'
