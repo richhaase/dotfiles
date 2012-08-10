@@ -8,6 +8,8 @@ set number
 set lines=50 
 set columns=160
 
+autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
+
 " Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq/:Q
 command! W :w
 command! Wq :wq
