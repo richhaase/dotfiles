@@ -5,8 +5,8 @@ set shiftwidth=2
 set expandtab
 set number
 
-set lines=50 
-set columns=160
+" set lines=50 
+" set columns=160
 
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 

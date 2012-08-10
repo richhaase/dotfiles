@@ -1,7 +1,0 @@
-let g:netrw_dirhistmax  =10
-let g:netrw_dirhist_cnt =5
-let g:netrw_dirhist_1='/Users/haase.rich/code/scripts/pusher/spec/pusher/pusher_spec.rb'
-let g:netrw_dirhist_2='/Users/haase.rich/code/scripts/pusher/lib/pusher'
-let g:netrw_dirhist_3='/Users/haase.rich/code/scripts/pusher/spec'
-let g:netrw_dirhist_4='/Users/rdh/code/ruby/readinglist/lib/amazon'
-let g:netrw_dirhist_5='/Users/rdh/code/ruby/readinglist/lib/readinglist'
