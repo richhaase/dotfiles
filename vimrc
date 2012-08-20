@@ -5,7 +5,7 @@ set shiftwidth=2
 set expandtab
 set number
 
-autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
+autocmd FileType ruby setlocal expandtab shiftwidth=2 softtabstop=2
 
 " Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq/:Q
 command! W :w
