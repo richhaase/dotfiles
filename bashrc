@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HADOOP_HOME=/usr/local/hadoop
-export PS1="    \j job(s) [\t] \n`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "(\u@\h) \W>$ "; fi`"
+export PS1="`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "\h:\u \W>$ "; fi`"
 export JAVA_OPTS=-Xmx768m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
