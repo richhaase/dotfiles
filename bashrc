@@ -8,8 +8,7 @@ export LSCOLORS=ExFxCxDxBxegedabagacad
 
 if [[ `uname -s` == "Darwin" ]]; then
   export JAVA_HOME=$(/usr/libexec/java_home)
-  export WUKONG_BIN=/Users/rdh/.rvm/gems/ruby-1.9.3-p194@global/gems/wukong-2.0.2/bin
-  export PATH=~/.bin:~/.rvm/bin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/opt/local/bin:/opt/local/sbin:$WUKONG_BIN
+  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin::$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin
 elif [[ `uname -s` == "Linux" ]]; then
   export PATH=~/.bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 fi

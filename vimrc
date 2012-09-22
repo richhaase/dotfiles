@@ -4,6 +4,7 @@ set tabstop=4
 set shiftwidth=4
 set expandtab
 set number
+set paste
 
 autocmd FileType ruby setlocal expandtab shiftwidth=2 softtabstop=2
 
