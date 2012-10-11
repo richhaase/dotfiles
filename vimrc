@@ -16,7 +16,3 @@ command! Q :q
 filetype indent on
 filetype plugin on
 syntax on
-
-"au BufEnter *.hs compiler ghc
-
-"let g:ghc = "/usr/bin/ghc"
