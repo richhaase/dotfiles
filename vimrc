@@ -20,12 +20,3 @@ syntax on
 "au BufEnter *.hs compiler ghc
 
 "let g:ghc = "/usr/bin/ghc"
-
-
-
-
-
-
-
-
-
