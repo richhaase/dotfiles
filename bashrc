@@ -14,11 +14,10 @@ elif [[ `uname -s` == "Linux" ]]; then
   export PATH=~/.bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 fi
 
-#set -o vi
+set -o vi
 
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
-alias spec='rspec'
 alias msync='rsync -avz ~/Music/ /Volumes/Data/Music/'
 
 function si() {
@@ -58,5 +57,3 @@ function dot() {
 
 	cd $SAVE
 }
-
-source ~/.rvm/scripts/rvm
