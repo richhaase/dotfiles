@@ -1,9 +1,8 @@
 ;; The SBCL binary and command-line arguments
 (setq inferior-lisp-program "/opt/local/bin/clj")
 
-;; Zenburn color theme
-(add-to-list 'custom-theme-load-path "~/.emacs.d/themes/")
-(load-theme 'solarized-light t)
+;; (add-to-list 'custom-theme-load-path "~/.emacs.d/themes/")
+;; (load-theme 'solarized-light t)
 
 ;; Set default window size 
 ;; (set-frame-height (selected-frame) 50)
