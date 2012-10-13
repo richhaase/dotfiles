@@ -1,14 +1,13 @@
-
 ;; The SBCL binary and command-line arguments
-(setq inferior-lisp-program "/usr/local/bin/sbcl --noinform")
+(setq inferior-lisp-program "/opt/local/bin/clj")
 
 ;; Zenburn color theme
 (add-to-list 'custom-theme-load-path "~/.emacs.d/themes/")
-(load-theme 'zenburn t)
+(load-theme 'solarized-light t)
 
-;; Set default window size 140X40
-;; (set-frame-height (selected-frame) 45)
-;; (set-frame-width (selected-frame) 160)
+;; Set default window size 
+;; (set-frame-height (selected-frame) 50)
+;; (set-frame-width (selected-frame) 150)
 
 ;; Haskell mode
 (load "~/.emacs.d/haskell-mode/haskell-site-file")
