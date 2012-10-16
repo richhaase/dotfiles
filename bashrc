@@ -9,7 +9,7 @@ export LSCOLORS=ExFxCxDxBxegedabagacad
 if [[ `uname -s` == "Darwin" ]]; then
   export JAVA_HOME=$(/usr/libexec/java_home)
   export SCALA_BIN=/usr/local/scala/bin
-  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin::$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin:$SCALA_BIN
+  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin:$SCALA_BIN
 elif [[ `uname -s` == "Linux" ]]; then
   export PATH=~/.bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 fi
