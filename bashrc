@@ -5,6 +5,7 @@ export PS1="`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "\h:\u \W>$
 export JAVA_OPTS=-Xmx768m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
+export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
 
 if [[ `uname -s` == "Darwin" ]]; then
   export JAVA_HOME=$(/usr/libexec/java_home)
@@ -21,11 +22,6 @@ alias msync='rsync -avz ~/Music/ /Volumes/Data/Music/'
 function si() {
   find . | wc -l | awk '{print $1" files"}'
   du -sh | awk '{print "Total size: "$1}'
-}
-
-function mkproj() {
-  mkdir $1
-  mkdir $1/{bin,lib,spec}
 }
 
 function dot() {
