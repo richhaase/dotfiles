@@ -3,7 +3,6 @@ set autoindent
 set tabstop=2
 set shiftwidth=2
 set expandtab
-set number
 set paste
 
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
