@@ -51,3 +51,7 @@ function dot() {
 
 	cd $SAVE
 }
+
+if [ -f ~/.local_bashrc ]; then
+  . ~/.local_bashrc
+fi
