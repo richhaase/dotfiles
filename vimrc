@@ -1,13 +1,12 @@
 set smartindent
 set autoindent
-set tabstop=4
-set shiftwidth=4
+set tabstop=2
+set shiftwidth=2
 set expandtab
 set number
 set paste
 
-autocmd FileType ruby setlocal expandtab shiftwidth=2 softtabstop=2
-autocmd FileType scala setlocal expandtab shiftwidth=2 softtabstop=2
+autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 
 " Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq/:Q
 command! W :w
