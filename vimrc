@@ -1,12 +1,13 @@
 set smartindent
 set autoindent
-set tabstop=2
-set shiftwidth=2
+set tabstop=4
+set shiftwidth=4
 set expandtab
 set number
 set paste
 
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
+autocmd FileType shell setlocal expandtab shiftwidth=2 softtabstop=2
 
 " Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq/:Q
 command! W :w
