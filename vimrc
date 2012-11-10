@@ -4,6 +4,8 @@ set tabstop=4
 set shiftwidth=4
 set expandtab
 set paste
+set background=dark
+set number 
 
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 autocmd FileType shell setlocal expandtab shiftwidth=2 softtabstop=2
