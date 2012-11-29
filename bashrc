@@ -18,6 +18,7 @@ fi
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
 alias msync='rsync -avz ~/Music/ /Volumes/Data/Music/'
+alias pypath='export PYTHONPATH=`pwd`'
 
 function si() {
   find . | wc -l | awk '{print $1" files"}'
