@@ -6,7 +6,7 @@ set expandtab
 set paste
 set number 
 
-colorscheme zenburn
+colorscheme desert
 
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 autocmd FileType shell setlocal expandtab shiftwidth=2 softtabstop=2
