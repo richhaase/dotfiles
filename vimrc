@@ -7,6 +7,8 @@ set paste
 set background=dark
 set number 
 
+" colorscheme zenburn
+
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 autocmd FileType shell setlocal expandtab shiftwidth=2 softtabstop=2
 
