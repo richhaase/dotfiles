@@ -6,7 +6,8 @@ export JAVA_OPTS=-Xmx768m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
-export PYTHONPATH=.
+export GOROOT=/usr/local/bin
+export GOPATH=~/src/go
 
 if [[ `uname -s` == "Darwin" ]]; then
   export JAVA_HOME=$(/usr/libexec/java_home)
