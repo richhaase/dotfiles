@@ -18,3 +18,5 @@ command! Q :q
 filetype indent on
 filetype plugin on
 syntax on
+
+let g:haddock_browser = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
