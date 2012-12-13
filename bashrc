@@ -6,13 +6,14 @@ export JAVA_OPTS=-Xmx768m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
-export GOROOT=/usr/local/bin
-export GOPATH=~/src/go
+export GOROOT=/usr/local/Cellar/go/1.0.3
+export GOPATH=/usr/local/go
 
 if [[ `uname -s` == "Darwin" ]]; then
   export JAVA_HOME=$(/usr/libexec/java_home)
   export SCALA_BIN=/usr/local/scala/bin
-  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin:$SCALA_BIN
+  export GOBIN=/usr/local/Cellar/go/1.0.3/bin
+  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin:$SCALA_BIN:$GOBIN
 elif [[ `uname -s` == "Linux" ]]; then
   export PATH=~/.bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 fi
