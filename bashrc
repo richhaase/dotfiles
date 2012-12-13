@@ -6,6 +6,8 @@ export JAVA_OPTS=-Xmx768m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
+export GOROOT=/usr/local/bin
+export GOPATH=~/src/go
 
 if [[ `uname -s` == "Darwin" ]]; then
   export JAVA_HOME=$(/usr/libexec/java_home)
@@ -18,6 +20,9 @@ fi
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
 alias msync='rsync -avz ~/Music/ /Volumes/Data/Music/'
+alias pyset='export PYTHONPATH=`pwd`'
+alias pyunset='unset PYTHONPATH'
+alias pypath='echo $PYTHONPATH'
 
 function si() {
   find . | wc -l | awk '{print $1" files"}'
