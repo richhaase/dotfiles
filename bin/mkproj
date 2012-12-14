@@ -55,7 +55,7 @@ def python(project, ext):
 
     if options.sql is True: os.mkdir('%s/%s/sql' % (project, project))
 
-    mkfile('%s/README' % project, '')
+    mkfile('%s/README.md' % project, '')
     mkfile('%s/setup.py' % project, '')
     mkfile('%s/%s/__init__.py' % (project, project), '')
     mkfile('%s/config/%s.%s' % (project, project, ext), '')

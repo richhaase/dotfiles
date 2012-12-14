@@ -20,7 +20,6 @@ fi
 
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
-alias msync='rsync -avz ~/Music/ /Volumes/Data/Music/'
 alias pyset='export PYTHONPATH=`pwd`'
 alias pyunset='unset PYTHONPATH'
 alias pypath='echo $PYTHONPATH'
