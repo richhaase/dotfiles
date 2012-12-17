@@ -1,8 +1,9 @@
 let g:netrw_dirhistmax  =10
-let g:netrw_dirhist_cnt =6
+let g:netrw_dirhist_cnt =7
 let g:netrw_dirhist_1='/Users/rdh/code/erlang_play/.git'
 let g:netrw_dirhist_2='/Users/rdh/code/project_euler'
 let g:netrw_dirhist_3='/Users/rich.haase/code/python-pentaho/pentaho/PROSales'
 let g:netrw_dirhist_4='/Users/rich.haase/code/python-pentaho/scripts'
 let g:netrw_dirhist_5='/Users/rich.haase/code/python-pentaho/pentaho/PROSales'
 let g:netrw_dirhist_6='/opt/reporting_exports/pro/JASRAC'
+let g:netrw_dirhist_7='/Users/rdh/code/seshat/seshat'

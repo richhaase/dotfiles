@@ -1,3 +1,0 @@
-(defn test [x y]
-  (let [ass 1]
-    
