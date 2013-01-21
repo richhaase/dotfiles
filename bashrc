@@ -1,28 +1,34 @@
 #!/bin/bash
 
-export HADOOP_HOME=/usr/local/hadoop
+export ANDROID=/Users/rdh/src/adt-bundle-mac-x86_64/sdk
+export ANDROID_TOOLS=${ANDROID}/tools
 export PS1="`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "\h:\u \W>$ "; fi`"
 export JAVA_OPTS=-Xmx768m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
-export GOROOT=/usr/local/Cellar/go/1.0.3
-export GOPATH=/usr/local/go
 
 if [[ `uname -s` == "Darwin" ]]; then
   export JAVA_HOME=$(/usr/libexec/java_home)
-  export SCALA_BIN=/usr/local/scala/bin
-  export GOBIN=/usr/local/Cellar/go/1.0.3/bin
-  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin:$HADOOP_HOME/bin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin:$SCALA_BIN:$GOBIN
+  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin:$ANDROID_TOOLS:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin
 elif [[ `uname -s` == "Linux" ]]; then
   export PATH=~/.bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 fi
 
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
-alias pyset='export PYTHONPATH=`pwd`'
 alias pyunset='unset PYTHONPATH'
 alias pypath='echo $PYTHONPATH'
+
+function pyset() {
+    if [ "x$PYTHONPATH" != "x" ]
+    then 
+        PYTHONPATH=$PYTHONPATH:`pwd`
+    else
+        PYTHONPATH=`pwd`
+    fi
+    export PYTHONPATH
+}
 
 function si() {
   find . | wc -l | awk '{print $1" files"}'
