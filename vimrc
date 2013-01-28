@@ -1,3 +1,4 @@
+set nocompatible
 set smartindent
 set autoindent
 set tabstop=4

@@ -15,6 +15,7 @@ elif [[ `uname -s` == "Linux" ]]; then
   export PATH=~/.bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 fi
 
+alias last='cd $OLDPWD'
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
 alias pyunset='unset PYTHONPATH'
