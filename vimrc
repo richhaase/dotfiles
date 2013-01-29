@@ -12,6 +12,9 @@ colorscheme desert
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 autocmd FileType shell setlocal expandtab shiftwidth=2 softtabstop=2
 
+" Removes trailing whitespace on quit.  Saves me form pep8 bitching.
+autocmd BufWritePre *.py :%s/\s\+$//e
+
 " Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq/:Q
 command! W :w
 command! Wq :wq
