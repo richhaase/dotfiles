@@ -17,5 +17,3 @@ for i in `ls $DIR`; do
        	ln -s $DIR/$i ~/.$i
     fi
 done
-
-
