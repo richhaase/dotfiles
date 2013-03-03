@@ -1,3 +1,5 @@
+execute pathogen#infect()
+
 set nocompatible
 set smartindent
 set autoindent
@@ -25,3 +27,4 @@ filetype plugin on
 syntax on
 
 let g:haddock_browser = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
