@@ -3,8 +3,8 @@ execute pathogen#infect()
 set nocompatible
 set smartindent
 set autoindent
-set tabstop=4
-set shiftwidth=4
+set tabstop=2
+set shiftwidth=2
 set expandtab
 set paste
 set number 
@@ -12,7 +12,6 @@ set number
 colorscheme desert
 
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
-autocmd FileType shell setlocal expandtab shiftwidth=2 softtabstop=2
 
 " Removes trailing whitespace on quit.  Saves me form pep8 bitching.
 autocmd BufWritePre *.py :%s/\s\+$//e
