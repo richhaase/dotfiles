@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export PS1="`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "\h:\u \W>$ "; fi`"
-export JAVA_OPTS=-Xmx768m
+export JAVA_OPTS=-Xmx1024m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
@@ -32,34 +32,6 @@ function pyset() {
 function si() {
   find . | wc -l | awk '{print $1" files"}'
   du -sh | awk '{print "Total size: "$1}'
-}
-
-function dot() {
-
-  if [ -z $1 ]; then
-    echo "usage: dot pull|push"
-    return 191
-  fi
-
-	SAVE=`pwd`
-	cd ~/dotfiles
-
-  case $1 in 
-    "push" ) 
-      echo -n "comment: "
-      read $comment
-      git add ~/dotfiles/*
-      git commit -am \"$comment\"
-      git push
-      ;;
-    "pull" )
-	    git pull
-	    ./setup.sh
-	    source ~/.bash_profile
-      ;;
-  esac
-
-	cd $SAVE
 }
 
 if [ -f ~/.local_bashrc ]; then
