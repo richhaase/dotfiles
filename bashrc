@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -w
 
 export PS1="`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "\h:\u \W>$ "; fi`"
 export JAVA_OPTS=-Xmx1024m
@@ -18,6 +18,16 @@ alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
 alias pyunset='unset PYTHONPATH'
 alias pypath='echo $PYTHONPATH'
+
+
+# helper functions for working with solr.  because i'm too lazy to remember the urls.
+function ss() { 
+  curl "http://${1}:8080/solr/dataimport?command=status" | python -mjson.tool 
+}
+
+function sq() { 
+  curl "http://${1}:8080/solr/select?${2}" | python -mjson.tool 
+}
 
 function pyset() {
     if [ "x$PYTHONPATH" != "x" ]
