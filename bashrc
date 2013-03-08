@@ -21,11 +21,11 @@ alias pypath='echo $PYTHONPATH'
 
 
 # helper functions for working with solr.  because i'm too lazy to remember the urls.
-function ss() { 
+function solr-status() { 
   curl "http://${1}:8080/solr/dataimport?command=status" | python -mjson.tool 
 }
 
-function sq() { 
+function solr-query() { 
   curl "http://${1}:8080/solr/select?${2}" | python -mjson.tool 
 }
 
