@@ -18,7 +18,6 @@ alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
 alias j='jobs'
 alias pyunset='unset PYTHONPATH'
 alias pypath='echo $PYTHONPATH'
-alias jedit='open /Applications/jEdit.app'
 
 
 # helper functions for working with solr.  because i'm too lazy to remember the urls.
