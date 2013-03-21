@@ -14,34 +14,6 @@ elif [[ `uname -s` == "Linux" ]]; then
 fi
 
 alias last='cd $OLDPWD'
-alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
-alias j='jobs'
-alias pyunset='unset PYTHONPATH'
-alias pypath='echo $PYTHONPATH'
-
-
-# helper functions for working with solr.  because i'm too lazy to remember the urls.
-function solr-status() { 
-  curl "http://${1}:8080/solr/dataimport?command=status" | python -mjson.tool 
-}
-
-function solr-full-import() { 
-  curl "http://${1}:8080/solr/dataimport?command=full-import" | python -mjson.tool 
-}
-
-function solr-query() { 
-  curl "http://${1}:8080/solr/select?${2}" | python -mjson.tool 
-}
-
-function pyset() {
-    if [ "x$PYTHONPATH" != "x" ]
-    then 
-        PYTHONPATH=$PYTHONPATH:`pwd`
-    else
-        PYTHONPATH=`pwd`
-    fi
-    export PYTHONPATH
-}
 
 function si() {
   find . | wc -l | awk '{print $1" files"}'
