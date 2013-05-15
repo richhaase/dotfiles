@@ -26,3 +26,7 @@ command! Q :q
 filetype indent on
 filetype plugin on
 syntax on
+
+" highlights lines over 80 columns wide
+highlight OverLength ctermbg=darkblue ctermfg=white guibg=#FFD9D9
+match OverLength /\%81v.\+/

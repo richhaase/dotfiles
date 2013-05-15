@@ -1,3 +1,5 @@
 let g:netrw_dirhistmax  =10
-let g:netrw_dirhist_cnt =1
+let g:netrw_dirhist_cnt =3
 let g:netrw_dirhist_1='/Users/rich.haase/tmp/rca-2013-02-21'
+let g:netrw_dirhist_2='/Users/rdh/.vim'
+let g:netrw_dirhist_3='/Users/rdh/code/think_stats/data'

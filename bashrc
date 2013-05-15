@@ -4,18 +4,17 @@ export PS1="`if [[ $USER == \"root\" ]]; then echo "\# #"; else echo "\h:\u \W>$
 export JAVA_OPTS=-Xmx1024m
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
-#export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
+export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/mysql/lib/
 
 if [[ `uname -s` == "Darwin" ]]; then
-  export JAVA_HOME=$(/usr/libexec/java_home)
-  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin:/usr/local/scala/bin
+  export PATH=~/.bin:/opt/local/bin:/opt/local/sbin:/bin:/usr/local/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/mysql/bin
 elif [[ `uname -s` == "Linux" ]]; then
   export PATH=~/.bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 fi
 
 alias last='cd $OLDPWD'
 alias b='echo -n "sourcing .bashrc... " && source ~/.bashrc && echo "done"'
-alias j='jobs'
+alias j='export JAVA_HOME=$(/usr/libexec/java_home)'
 alias pyunset='unset PYTHONPATH'
 alias pypath='echo $PYTHONPATH'
 
