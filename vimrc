@@ -15,6 +15,10 @@ execute pathogen#infect()
 " Python style indent
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 
+" highlights lines over 80 columns wide
+autocmd FileType python highlight OverLength ctermbg=darkblue ctermfg=white guibg=#FFD9D9
+autocmd FileType match OverLength /\%81v.\+/
+
 " Removes trailing whitespace on quit.  Saves me from pep8 bitching.
 autocmd BufWritePre *.py :%s/\s\+$//e
 
@@ -27,6 +31,4 @@ filetype indent on
 filetype plugin on
 syntax on
 
-" highlights lines over 80 columns wide
-highlight OverLength ctermbg=darkblue ctermfg=white guibg=#FFD9D9
-match OverLength /\%81v.\+/
+
