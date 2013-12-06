@@ -28,8 +28,16 @@ filetype plugin on
 syntax enable
 syntax on
 
-map <leader>g :GundoToggle<CR>
+" Gungo
+nmap <silent> <C-G> :GundoToggle<CR>
+
+" NERDTree
 nmap <silent> <C-T> :NERDTreeToggle<CR>
+
+" CtrlP
+let g:ctrlp_map = '<c-p>'
+let g:ctrlp_cmd = 'CtrlP'
+let g:ctrlp_working_path_mode = 'ra'
 
 " syntastic 
 let g:syntastic_python_flake8_args = "--ignore=E501,E1101"
@@ -50,8 +58,7 @@ let g:airline#extensions#whitespace#checks = [ 'indent', 'trailing' ]
 let g:airline#extensions#whitespace#show_message = 1
 let g:airline#extensions#whitespace#trailing_format = 'trailing[%s]'
 let g:airline#extensions#whitespace#mixed_indent_format = 'mixed-indent[%s]'
-let g:airline#extensions#tabline#enabled = 0
-" let g:airline_theme=luna
+let g:airline#extensions#tabline#enabled = 1
 let g:airline_left_sep = '▶'
 let g:airline_right_sep = '◀'
 let g:airline_detect_modified=1
