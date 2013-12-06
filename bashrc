@@ -12,6 +12,7 @@ fi
 
 alias last='cd $OLDPWD'
 alias j='jobs'
+alias pg='pg_ctl -D /usr/local/pgsql/data -l /usr/local/pgsql/data/logfile $1'
 
 function si() {
   find . | wc -l | awk '{print $1" files"}'
@@ -25,3 +26,7 @@ fi
 # virtualenv wrapper
 export WORKON_HOME=~/src/python
 source /usr/local/bin/virtualenvwrapper.sh
+
+set -o emacs
+
+export JAVA_HOME="$(/usr/libexec/java_home)"
