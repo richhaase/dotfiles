@@ -27,6 +27,7 @@ fi
 export WORKON_HOME=~/src/python
 source /usr/local/bin/virtualenvwrapper.sh
 
-set -o emacs
+set -o vi
+export EDITOR=/usr/local/bin/vim
 
 export JAVA_HOME="$(/usr/libexec/java_home)"

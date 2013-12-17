@@ -28,6 +28,13 @@ filetype plugin on
 syntax enable
 syntax on
 
+" Tab shortcuts
+nnoremap th :tabprev<CR>
+nnoremap tl :tabnext<CR>
+nnoremap tt :tabedit<Space>
+nnoremap tn :tabnew<Space>
+nnoremap td :tabclose<CR>
+
 " Gungo
 nmap <silent> <C-G> :GundoToggle<CR>
 
@@ -66,4 +73,3 @@ let g:airline_detect_paste=1
 let g:airline_powerline_fonts=0
 set laststatus=2
 set t_Co=256
-
