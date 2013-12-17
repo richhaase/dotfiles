@@ -14,6 +14,7 @@ set number
 set background=dark
 set foldmethod=indent
 set foldlevel=99
+set hidden
 
 " Python style indent
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
@@ -28,12 +29,18 @@ filetype plugin on
 syntax enable
 syntax on
 
+" buffer shortcuts
+nnoremap th :bp<CR>
+nnoremap tl :bn<CR>
+nnoremap te :e<Space>
+nnoremap td :bd<CR>
+
 " Tab shortcuts
-nnoremap th :tabprev<CR>
-nnoremap tl :tabnext<CR>
-nnoremap tt :tabedit<Space>
-nnoremap tn :tabnew<Space>
-nnoremap td :tabclose<CR>
+" nnoremap th :tabprev<CR>
+" nnoremap tl :tabnext<CR>
+" nnoremap tt :tabedit<Space>
+" nnoremap tn :tabnew<Space>
+" nnoremap td :tabclose<CR>
 
 " Gungo
 nmap <silent> <C-G> :GundoToggle<CR>
