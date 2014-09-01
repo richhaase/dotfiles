@@ -15,6 +15,8 @@ set background=dark
 set foldmethod=indent
 set foldlevel=99
 set hidden
+set laststatus=2
+set t_Co=256
 
 " Python style indent
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
@@ -35,15 +37,12 @@ nnoremap tl :bn<CR>
 nnoremap te :e<Space>
 nnoremap td :bd<CR>
 
-" Tab shortcuts
-" nnoremap th :tabprev<CR>
-" nnoremap tl :tabnext<CR>
-" nnoremap tt :tabedit<Space>
-" nnoremap tn :tabnew<Space>
-" nnoremap td :tabclose<CR>
-
-" Gungo
-nmap <silent> <C-G> :GundoToggle<CR>
+" Rainbow Parentheses
+" Always on:
+au VimEnter * RainbowParenthesesToggle
+au Syntax * RainbowParenthesesLoadRound
+au Syntax * RainbowParenthesesLoadSquare
+au Syntax * RainbowParenthesesLoadBraces
 
 " NERDTree
 nmap <silent> <C-T> :NERDTreeToggle<CR>
@@ -52,10 +51,6 @@ nmap <silent> <C-T> :NERDTreeToggle<CR>
 let g:ctrlp_map = '<c-p>'
 let g:ctrlp_cmd = 'CtrlP'
 let g:ctrlp_working_path_mode = 'ra'
-
-" syntastic 
-let g:syntastic_python_flake8_args = "--ignore=E501,E1101"
-let g:syntastic_python_flake8_args = "--max-line-length=160"
 
 " airline config
 let g:airline#extensions#tabline#enabled = 1
@@ -78,5 +73,4 @@ let g:airline_right_sep = '◀'
 let g:airline_detect_modified=1
 let g:airline_detect_paste=1
 let g:airline_powerline_fonts=0
-set laststatus=2
-set t_Co=256
+
