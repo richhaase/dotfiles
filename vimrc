@@ -37,13 +37,6 @@ nnoremap tl :bn<CR>
 nnoremap te :e<Space>
 nnoremap td :bd<CR>
 
-" Rainbow Parentheses
-" Always on:
-au VimEnter * RainbowParenthesesToggle
-au Syntax * RainbowParenthesesLoadRound
-au Syntax * RainbowParenthesesLoadSquare
-au Syntax * RainbowParenthesesLoadBraces
-
 " NERDTree
 nmap <silent> <C-T> :NERDTreeToggle<CR>
 
