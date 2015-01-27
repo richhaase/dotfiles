@@ -45,7 +45,7 @@ alias ohmyzsh="vim ~/.oh-my-zsh"
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
-plugins=(brew docker git mvn osx tmux tmuxinator vi-mode wd)
+plugins=(brew docker git mvn osx tmux tmuxinator)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -81,7 +81,8 @@ fi
 
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
 
-export EDITOR=/usr/local/bin/vim
+export EDITOR=/usr/bin/vim
 
 export JAVA_HOME="$(/usr/libexec/java_home)"
 export PATH=~/.bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+export GOPATH=/usr/local/Cellar/go/1.4
