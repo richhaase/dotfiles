@@ -1,8 +1,8 @@
 #!/bin/bash
 
 BASE=$(dirname $0)
-CLEAN_PATHS=( .zshrc .oh-my-zsh .tmux.conf .vimrc .vim )
-CONFIG_FILES=( zshrc tmux.conf vimrc ) 
+CLEAN_PATHS=( .pylintrc .zshrc .oh-my-zsh .tmux.conf .vimrc .vim )
+CONFIG_FILES=( pylintrc zshrc tmux.conf vimrc ) 
 PATHOGEN_BUNDLES=( https://github.com/vim-airline/vim-airline.git \
   https://github.com/scrooloose/nerdtree.git
 )
