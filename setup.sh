@@ -5,8 +5,7 @@ CLEAN_PATHS=( .zshrc .oh-my-zsh .tmux.conf .vimrc .vim )
 PATHOGEN_BUNDLES=( https://github.com/Valloric/YouCompleteMe.git \
   https://github.com/vim-airline/vim-airline.git \
   https://github.com/scrooloose/nerdtree.git \
-  https://github.com/vim-syntastic/syntastic.git \
-  https://github.com/fatih/vim-go.git
+  https://github.com/vim-syntastic/syntastic.git
 )
 
 function setup_homebrew() {
@@ -29,7 +28,7 @@ function setup_zsh() {
   # Install oh-my-zsh
   if [ ! -d ~/.oh-my-zsh ]
   then
-    sh -c "wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh -O -"
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
   fi
 
   cp $BASE/zshrc ~/.zshrc

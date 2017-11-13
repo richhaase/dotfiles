@@ -9,7 +9,7 @@ set autoindent
 set tabstop=2
 set shiftwidth=2
 set expandtab
-set number 
+set number
 set background=dark
 set foldmethod=indent
 set foldlevel=99
@@ -17,11 +17,17 @@ set hidden
 set laststatus=2
 set t_Co=256
 
+" JavaScript style indent
+autocmd FileType javascript setlocal expandtab shiftwidth=2 softtabstop=2
+
 " Python style indent
 autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
 
-filetype indent on 
-filetype plugin on 
+" Strip trailing whitespace on save
+" autocmd BufWritePre * %s/\s\+$//e
+
+filetype indent on
+filetype plugin on
 syntax enable
 syntax on
 
