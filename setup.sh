@@ -2,18 +2,21 @@
 
 BASE=$(dirname $0)
 CLEAN_PATHS=( .zshrc .oh-my-zsh .tmux.conf .vimrc .vim )
-PATHOGEN_BUNDLES=( https://github.com/Valloric/YouCompleteMe.git \
-  https://github.com/vim-airline/vim-airline.git \
-  https://github.com/scrooloose/nerdtree.git \
-  https://github.com/vim-syntastic/syntastic.git
+CONFIG_FILES=( zshrc tmux.conf vimrc ) 
+PATHOGEN_BUNDLES=( https://github.com/vim-airline/vim-airline.git \
+  https://github.com/scrooloose/nerdtree.git
 )
+
+function sync_cfg_file() {
+  echo "Synchronizing $1"
+  cp ${BASE}/$1 ~/.$1
+}
 
 function setup_homebrew() {
   echo "Install Homebrew"
   if ! which brew
   then
-    /usr/bin/ruby -e \
-      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
   fi
 }
 
@@ -31,24 +34,35 @@ function setup_zsh() {
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
   fi
 
-  cp $BASE/zshrc ~/.zshrc
+  sync_cfg_file zshrc
 }
 
 function setup_tmux() {
   echo "Install and configure tmux"
-  brew install tmux
-  gem install tmuxinator
 
-  cp $BASE/tmux.conf ~/.tmux.conf
+  if ! which tmux
+  then
+    brew install tmux
+  fi 
+  if ! which tmuxinator
+  then
+    sudo gem install tmuxinator
+  fi
+
+  sync_cfg_file tmux.conf
 }
     
 function setup_vim() {
   echo "Configure vim"
-  brew install macvim
-  ln -s /usr/local/bin/mvim /usr/local/bin/vim
 
-  cp $BASE/vimrc ~/.vimrc
-  mkdir ~/.vim
+  if [ ! -f ~/.vimrc ]
+  then
+    sync_cfg_file vimrc
+  fi
+  if [ ! -d ~/.vim ]
+  then
+    mkdir ~/.vim
+  fi
 
   # install pathogen
   if [ ! -f ~/.vim/autoload/pathogen.vim ]
@@ -58,7 +72,6 @@ function setup_vim() {
   fi
 
   update_pathogen_bundles
-
 }
 
 function update_pathogen_bundles() {
@@ -71,14 +84,6 @@ function update_pathogen_bundles() {
     else
       pushd $path
       git pull
-      popd
-    fi
-
-    if [ $name == 'YouCompleteMe' ]; then
-      # YouCompleteMe requires some extra setup
-      pushd ~/.vim/bundle/YouCompleteMe
-      git submodule update --init --recursive
-      ./install.py --clang-completer
       popd
     fi
   done
@@ -102,6 +107,17 @@ function update() {
   brew upgrade
   update_pathogen_bundles
   upgrade_oh_my_zsh
+  sync_cfgs
+}
+
+function sync_cfgs() {
+  echo "Synchronize Config Files"
+  echo "========================"
+  echo
+  for cfg_file in ${CONFIG_FILES[@]}
+  do 
+    sync_cfg_file ${cfg_file}
+  done
 }
 
 function clean() {
@@ -135,6 +151,9 @@ case $1 in
     ;;
   '-c')
     clean
+    ;;
+  '-s')
+    sync_cfgs
     ;;
   *)
     help

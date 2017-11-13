@@ -36,12 +36,12 @@ DISABLE_UNTRACKED_FILES_DIRTY="true"
 # Uncomment following line if you want to  shown in the command execution time stamp
 # in the history command output. The optional three formats: "mm/dd/yyyy"|"dd.mm.yyyy"|
 # yyyy-mm-dd
-# HIST_STAMPS="mm/dd/yyyy"
+HIST_STAMPS="yyyy-mm-dd"
 
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
-plugins=(brew git mvn tmux tmuxinator)
+plugins=(brew git tmux tmuxinator)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -62,15 +62,6 @@ export EDITOR='vim'
 setopt histignorespace
 
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:~/bin:~/.bin
-export JAVA_HOME="$(/usr/libexec/java_home -v 1.7)"
-export HOMEBREW_GITHUB_API_TOKEN=`cat ~/.config/homebrew_github_api_token`
-
-function setJava() {
-  export JAVA_HOME="$(/usr/libexec/java_home -v $1)"
-}
-if [ -f ~/.local_zshrc ]; then
-  . ~/.local_zshrc
-fi
 
 alias zshcfg="vim ~/.zshrc"
 
