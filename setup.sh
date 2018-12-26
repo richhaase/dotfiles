@@ -1,8 +1,9 @@
-#!/bin/bash
+#!/bin/bash -x
 
 BASE=$(dirname $0)
-CLEAN_PATHS=( .pylintrc .zshrc .oh-my-zsh .tmux.conf .vimrc .vim )
-CONFIG_FILES=( pylintrc zshrc tmux.conf vimrc ) 
+CLEAN_PATHS=( pylintrc zshrc oh-my-zsh tmux.conf vimrc vim )
+MACOS_CONFIG_FILES=( pylintrc zshrc tmux.conf vimrc ) 
+LINUX_CONFIG_FILES=( bashrc tmux.conf vimrc ) 
 PATHOGEN_BUNDLES=( https://github.com/vim-airline/vim-airline.git \
   https://github.com/scrooloose/nerdtree.git
 )
@@ -37,16 +38,20 @@ function setup_zsh() {
   sync_cfg_file zshrc
 }
 
+function setup_bash() {
+  echo "do nothing"
+}
+
 function setup_tmux() {
   echo "Install and configure tmux"
 
   if ! which tmux
   then
-    brew install tmux
+    [[ $(uname -s) == "Darwin" ]] && brew install tmux || sudo apt install tmux
   fi 
   if ! which tmuxinator
   then
-    sudo gem install tmuxinator
+    [[ $(uname -s) == "Darwin" ]] && sudo gem install tmuxinator || sudo apt install tmuxinator
   fi
 
   sync_cfg_file tmux.conf
@@ -55,14 +60,8 @@ function setup_tmux() {
 function setup_vim() {
   echo "Configure vim"
 
-  if [ ! -f ~/.vimrc ]
-  then
-    sync_cfg_file vimrc
-  fi
-  if [ ! -d ~/.vim ]
-  then
-    mkdir ~/.vim
-  fi
+  [[ ! -f ~/.vimrc ]] && sync_cfg_file vimrc
+  [[ ! -d ~/.vim ]] && mkdir ~/.vim
 
   # install pathogen
   if [ ! -f ~/.vim/autoload/pathogen.vim ]
@@ -91,28 +90,30 @@ function update_pathogen_bundles() {
 
 function init() {
   echo "Init"
-  echo "===="
+  echo "----"
   echo
-  setup_homebrew
-  setup_zsh
+  [[ $(uname -s) == "Darwin" ]] && setup_homebrew
+  [[ $(uname -s) == "Darwin" ]] && setup_zsh
+  if ! which curl
+  then 
+    [[ $(uname -s) == "Darwin" ]] && sudo brew install curl || sudo apt install curl
+  fi
   setup_tmux
   setup_vim
 }
 
 function update() {
   echo "Update"
-  echo "======"
+  echo "------"
   echo
-  brew update
-  brew upgrade
+  [[ $(uname -s) == "Darwin" ]] && brew update && brew upgrade && upgrade_oh_my_zsh
   update_pathogen_bundles
-  upgrade_oh_my_zsh
   sync_cfgs
 }
 
 function sync_cfgs() {
   echo "Synchronize Config Files"
-  echo "========================"
+  echo "------------------------"
   echo
   for cfg_file in ${CONFIG_FILES[@]}
   do 
@@ -122,15 +123,18 @@ function sync_cfgs() {
 
 function clean() {
   echo "Clean"
-  echo "====="
+  echo "-----"
   echo
   echo "Are you sure you want to remove all dotfiles? (Y|n): "
   read continue
 
   if [ $continue == "Y" ]; then
     for path in ${CLEAN_PATHS[@]}; do
-      echo "Removing: ~/$path"
-      rm -rf ~/$path
+      path="$HOME/.$path"
+      if [ -f $path ]; then
+        echo "Removing: $path"
+        rm -rf $path
+      fi
     done
   fi
 }
