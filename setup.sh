@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 BASE=$(dirname $0)
 CLEAN_PATHS=( pylintrc zshrc oh-my-zsh tmux.conf vimrc vim )
