@@ -3,9 +3,13 @@
 BASE=$(dirname $0)
 CLEAN_PATHS=( pylintrc zshrc oh-my-zsh tmux.conf vimrc vim )
 MACOS_CONFIG_FILES=( pylintrc zshrc tmux.conf vimrc ) 
-LINUX_CONFIG_FILES=( bashrc tmux.conf vimrc ) 
+LINUX_CONFIG_FILES=( zshrc tmux.conf vimrc ) 
 PATHOGEN_BUNDLES=( https://github.com/vim-airline/vim-airline.git \
-  https://github.com/scrooloose/nerdtree.git
+  https://github.com/scrooloose/nerdtree.git \
+  https://github.com/tpope/vim-fugitive.git \
+  https://github.com/tpope/vim-eunuch.git \
+  https://github.com/tpope/vim-endwise.git \
+  https://github.com/tpope/vim-markdown.git
 )
 
 function sync_cfg_file() {
@@ -36,10 +40,6 @@ function setup_zsh() {
   fi
 
   sync_cfg_file zshrc
-}
-
-function setup_bash() {
-  echo "do nothing"
 }
 
 function setup_tmux() {
@@ -93,7 +93,7 @@ function init() {
   echo "----"
   echo
   [[ $(uname -s) == "Darwin" ]] && setup_homebrew
-  [[ $(uname -s) == "Darwin" ]] && setup_zsh
+  setup_zsh
   if ! which curl
   then 
     [[ $(uname -s) == "Darwin" ]] && sudo brew install curl || sudo apt install curl
