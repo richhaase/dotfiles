@@ -1,14 +1,11 @@
 #!/bin/bash
 
 BASE=$(dirname $0)
-CLEAN_PATHS=( pylintrc zshrc oh-my-zsh tmux.conf vimrc vim )
-MACOS_CONFIG_FILES=( pylintrc zshrc tmux.conf vimrc ) 
-LINUX_CONFIG_FILES=( zshrc tmux.conf vimrc ) 
+CLEAN_PATHS=( zshrc oh-my-zsh tmux.conf vimrc vim )
+MACOS_CONFIG_FILES=( zshrc tmux.conf vimrc ) 
 PATHOGEN_BUNDLES=( https://github.com/vim-airline/vim-airline.git \
   https://github.com/scrooloose/nerdtree.git \
   https://github.com/tpope/vim-fugitive.git \
-  https://github.com/tpope/vim-eunuch.git \
-  https://github.com/tpope/vim-endwise.git \
   https://github.com/tpope/vim-markdown.git
 )
 
@@ -18,24 +15,25 @@ function sync_cfg_file() {
 }
 
 function setup_homebrew() {
-  echo "Install Homebrew"
   if ! which brew
   then
-     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+    echo "Install Homebrew"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
   fi
 }
 
 function setup_zsh() {
-  echo "Configure zsh"
   # Set zsh as default shell
   if [ $(basename $SHELL) != "zsh" ]
   then
+    echo "Setting zsh as default shell"
     chsh -S /bin/zsh
   fi
 
   # Install oh-my-zsh
   if [ ! -d ~/.oh-my-zsh ]
   then
+    echo "Installing oh-my-zsh"
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" & 
   fi
 
@@ -43,16 +41,12 @@ function setup_zsh() {
 }
 
 function setup_tmux() {
-  echo "Install and configure tmux"
 
   if ! which tmux
   then
-    [[ $(uname -s) == "Darwin" ]] && brew install tmux || sudo apt install tmux
+    echo "Installing tmux"
+    brew install tmux
   fi 
-  if ! which tmuxinator
-  then
-    [[ $(uname -s) == "Darwin" ]] && sudo gem install tmuxinator || sudo apt install tmuxinator
-  fi
 
   sync_cfg_file tmux.conf
 }
@@ -92,14 +86,11 @@ function init() {
   echo "Init"
   echo "----"
   echo
-  [[ $(uname -s) == "Darwin" ]] && setup_homebrew
+  setup_homebrew
   setup_zsh
-  if ! which curl
-  then 
-    [[ $(uname -s) == "Darwin" ]] && sudo brew install curl || sudo apt install curl
-  fi
+  brew install curl
   setup_tmux
-  setup_vim
+  #setup_vim
 }
 
 function update() {
