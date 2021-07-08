@@ -1,7 +1,3 @@
-filetype off
-call pathogen#infect()
-call pathogen#helptags()
-
 filetype on
 set nocompatible
 set smartindent
@@ -17,24 +13,10 @@ set hidden
 set laststatus=2
 set t_Co=256
 
-" JavaScript style indent
-autocmd FileType javascript setlocal expandtab shiftwidth=2 softtabstop=2
-
-" Python style indent
-autocmd FileType python setlocal expandtab shiftwidth=4 softtabstop=4
-
-" Strip trailing whitespace on save
-" autocmd BufWritePre * %s/\s\+$//e
-
 filetype indent on
 filetype plugin on
 syntax enable
 syntax on
-
-" Saw this in a peepcode screencast.  great to be able to fat finger :W/:Wq/:Q
-command! W :w
-command! Wq :wq
-command! Q :q
 
 "split navigations
 nnoremap <C-J> <C-W><C-J>
