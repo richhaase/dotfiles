@@ -20,7 +20,7 @@ Plugin 'vim-airline/vim-airline-themes'
 
 Plugin 'jelera/vim-javascript-syntax'
 
-call vundle#ena()
+call vundle#end()
 filetype plugin indent on 
 
 set smartindent
