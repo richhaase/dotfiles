@@ -15,21 +15,19 @@ Plugin 'tpope/vim-fugitive'
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
 
+" NerdTREE
+Plugin 'preservim/nerdtree'
+
 call vundle#end()
 filetype plugin indent on 
 
 set smartindent
 set autoindent
 set tabstop=2
+set softtabstop=2
 set shiftwidth=2
 set expandtab
 set number
-set background=dark
-set foldmethod=indent
-set foldlevel=99
-set hidden
-set laststatus=2
-set t_Co=256
 
 filetype indent on
 filetype plugin on
@@ -51,7 +49,6 @@ nnoremap td :bd<CR>
 """ Plugins
 "" NERDTree
 nmap <silent> <C-T> :NERDTreeToggle<CR>
-let NERDTreeIgnore=['\.pyc$', '\~$']
 
 " airline config
 let g:airline#extensions#tabline#enabled = 1
