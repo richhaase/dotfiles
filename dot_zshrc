@@ -89,3 +89,5 @@ export EDITOR='vim'
 setopt histignorespace
 
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
