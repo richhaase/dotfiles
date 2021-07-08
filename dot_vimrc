@@ -1,6 +1,9 @@
 set nocompatible
 filetype off
 
+"add fzf to runtime path
+set rtp+=/usr/local/opt/fzf
+
 " set the runtime path for Vundle
 set rtp +=~/.vim/bundle/Vundle.vim
 call vundle#begin()
@@ -15,10 +18,9 @@ Plugin 'tpope/vim-fugitive'
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
 
-" NerdTREE
-Plugin 'preservim/nerdtree'
+Plugin 'jelera/vim-javascript-syntax'
 
-call vundle#end()
+call vundle#ena()
 filetype plugin indent on 
 
 set smartindent
@@ -29,8 +31,6 @@ set shiftwidth=2
 set expandtab
 set number
 
-filetype indent on
-filetype plugin on
 syntax enable
 syntax on
 
