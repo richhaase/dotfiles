@@ -20,6 +20,10 @@ Plugin 'vim-airline/vim-airline-themes'
 
 Plugin 'jelera/vim-javascript-syntax'
 
+Plugin 'junegunn/fzf.vim'
+
+Plugin 'JuliaEditorSupport/julia-vim'
+
 call vundle#end()
 filetype plugin indent on 
 
