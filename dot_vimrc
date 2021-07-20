@@ -24,6 +24,9 @@ Plugin 'junegunn/fzf.vim'
 
 Plugin 'JuliaEditorSupport/julia-vim'
 
+"NERDTree
+Plugin 'preservim/nerdtree'
+
 call vundle#end()
 filetype plugin indent on 
 
