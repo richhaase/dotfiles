@@ -88,7 +88,8 @@ setopt histignorespace
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
 
 # Sublime Text
-export PATH="/Applications/Sublime Text.app/Contents/SharedSupport/bin":$PATH
+SUBL_PATH="/Applications/Sublime Text.app/Contents/SharedSupport/bin"
+[ -d $SUBL_PATH ] && export PATH=$SUBL_PATH:$PATH && export EDITOR=subl
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
