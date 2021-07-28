@@ -85,7 +85,7 @@ export EDITOR='vim'
 # skip history for commands prefixed with space
 setopt histignorespace
 
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
+export PATH=/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
 
 # Sublime Text
 export PATH="/Applications/Sublime Text.app/Contents/SharedSupport/bin":$PATH
