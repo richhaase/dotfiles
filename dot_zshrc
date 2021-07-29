@@ -87,8 +87,6 @@ setopt histignorespace
 
 export PATH=/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
 # nvm
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/local/share/nvm/init-nvm.sh" ] && source /opt/local/share/nvm/init-nvm.sh
