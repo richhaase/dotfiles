@@ -1,9 +1,6 @@
 set nocompatible
 filetype off
 
-"add fzf to runtime path
-set rtp+=/usr/local/opt/fzf
-
 " set the runtime path for Vundle
 set rtp +=~/.vim/bundle/Vundle.vim
 call vundle#begin()
@@ -18,14 +15,15 @@ Plugin 'tpope/vim-fugitive'
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
 
+" NERDTree
+Plugin 'preservim/nerdtree'
+
+" JavaScript
 Plugin 'jelera/vim-javascript-syntax'
 
-Plugin 'junegunn/fzf.vim'
-
-Plugin 'JuliaEditorSupport/julia-vim'
-
-"NERDTree
-Plugin 'preservim/nerdtree'
+" Markdown
+Plugin 'godlygeek/tabular'
+Plugin 'plasticboy/vim-markdown'
 
 call vundle#end()
 filetype plugin indent on 
