@@ -71,7 +71,7 @@ DISABLE_AUTO_TITLE="true"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(brew deno git node tmux)
+plugins=(git tmux)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -85,15 +85,8 @@ export EDITOR='vim'
 # skip history for commands prefixed with space
 setopt histignorespace
 
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
-
-# Sublime Text
-SUBL_PATH="/Applications/Sublime Text.app/Contents/SharedSupport/bin"
-[ -d $SUBL_PATH ] && export PATH=$SUBL_PATH:$PATH && export EDITOR=subl
-
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+export PATH=/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
 
 # nvm
 export NVM_DIR="$HOME/.nvm"
-[ -s "/usr/local/opt/nvm/nvm.sh" ] && . "/usr/local/opt/nvm/nvm.sh"  # This loads nvm
-[ -s "/usr/local/opt/nvm/etc/bash_completion.d/nvm" ] && . "/usr/local/opt/nvm/etc/bash_completion.d/nvm"
+[ -s "/opt/local/share/nvm/init-nvm.sh" ] && source /opt/local/share/nvm/init-nvm.sh
