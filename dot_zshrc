@@ -85,8 +85,13 @@ export EDITOR='vim'
 # skip history for commands prefixed with space
 setopt histignorespace
 
-export PATH=/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
+export PATH=/opt/local/bin:/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
 
 # nvm
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/local/share/nvm/init-nvm.sh" ] && source /opt/local/share/nvm/init-nvm.sh
+
+# pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
