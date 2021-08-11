@@ -90,3 +90,7 @@ export PATH=/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbi
 # nvm
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/local/share/nvm/init-nvm.sh" ] && source /opt/local/share/nvm/init-nvm.sh
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
