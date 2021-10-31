@@ -85,4 +85,6 @@ export EDITOR='vim'
 # skip history for commands prefixed with space
 setopt histignorespace
 
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
+export DENO_INSTALL=$HOME/.deno
+
+export PATH=$DENO_INSTALL:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
