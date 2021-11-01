@@ -10,6 +10,9 @@ Plug 'vim-airline/vim-airline-themes'
 " NERDTree
 Plug 'preservim/nerdtree', { 'on': 'NERDTreeToggle' }
 
+" ctrl+p
+Plug 'kien/ctrlp.vim'
+
 " golang
 Plug 'fatih/vim-go'
 
