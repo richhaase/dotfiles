@@ -86,9 +86,11 @@ export EDITOR='nvim'
 # skip history for commands prefixed with space
 setopt histignorespace
 
-# golang
-export GOPATH=$HOME/go
-export GOBIN=$GOPATH/bin
-
 # command path
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:/usr/local/go/bin:$GOBIN
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
+
+# pyenv
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv virtualenv-init -)"
+
