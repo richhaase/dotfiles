@@ -86,5 +86,8 @@ export EDITOR='nvim'
 # skip history for commands prefixed with space
 setopt histignorespace
 
+# golang
+export GOPATH=$HOME/go
+
 # command path
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:/usr/local/go/bin
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:/usr/local/go/bin:$GOPATH/bin
