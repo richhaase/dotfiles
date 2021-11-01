@@ -88,6 +88,7 @@ setopt histignorespace
 
 # golang
 export GOPATH=$HOME/go
+export GOBIN=$GOPATH/bin
 
 # command path
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:/usr/local/go/bin:$GOPATH/bin
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:/usr/local/go/bin:$GOBIN
