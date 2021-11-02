@@ -13,9 +13,6 @@ Plug 'preservim/nerdtree', { 'on': 'NERDTreeToggle' }
 " ctrl+p
 Plug 'kien/ctrlp.vim'
 
-" golang
-Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
-
 call plug#end()
 
 syntax on 
