@@ -13,6 +13,10 @@ Plug 'preservim/nerdtree', { 'on': 'NERDTreeToggle' }
 " ctrl+p
 Plug 'kien/ctrlp.vim'
 
+" Python
+Plug 'vim-syntastic/syntastic'
+Plug 'nvie/vim-flake8'
+
 call plug#end()
 
 syntax on 
