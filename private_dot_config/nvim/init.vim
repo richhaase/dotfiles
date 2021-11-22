@@ -1,43 +1,53 @@
-set nocompatible
-filetype off
+call plug#begin()
 
-" set the runtime path for Vundle
-set rtp +=~/.vim/bundle/Vundle.vim
-call vundle#begin()
-
-" manage Vundle with Vundle
-Plugin 'VundleVim/Vundle.vim'
-
-" plugin on GitHub repo
-Plugin 'tpope/vim-fugitive'
+" Git
+Plug 'tpope/vim-fugitive'
 
 " Airline
-Plugin 'vim-airline/vim-airline'
-Plugin 'vim-airline/vim-airline-themes'
+Plug 'vim-airline/vim-airline'
+Plug 'vim-airline/vim-airline-themes'
 
 " NERDTree
-Plugin 'preservim/nerdtree'
+Plug 'preservim/nerdtree', { 'on': 'NERDTreeToggle' }
 
-" JavaScript
-Plugin 'jelera/vim-javascript-syntax'
+" ctrl+p
+Plug 'kien/ctrlp.vim'
 
-" Markdown
-Plugin 'godlygeek/tabular'
-Plugin 'plasticboy/vim-markdown'
+" Python
+Plug 'vim-syntastic/syntastic'
+Plug 'nvie/vim-flake8'
 
-call vundle#end()
-filetype plugin indent on 
+call plug#end()
 
-set smartindent
-set autoindent
-set tabstop=2
-set softtabstop=2
-set shiftwidth=2
-set expandtab
-set number
+syntax on 
 
-syntax enable
-syntax on
+" Change how vim represents characters on the screen
+set encoding=utf-8
+
+" Set the encoding of files written
+set fileencoding=utf-8
+
+autocmd Filetype python setlocal expandtab tabstop=4 shiftwidth=4 softtabstop=4
+autocmd BufWritePre *.py :%s/\s\+$//e
+
+" Control all other files
+set shiftwidth=4
+
+" Hardcore mode, disable arrow keys.
+noremap <Up> <NOP>
+noremap <Down> <NOP>
+noremap <Left> <NOP>
+noremap <Right> <NOP>
+
+filetype plugin indent on
+
+" Allow backspace to delete indentation and inserted text
+" i.e. how it works in most programs
+set backspace=indent,eol,start
+" indent  allow backspacing over autoindent
+" eol     allow backspacing over line breaks (join lines)
+" start   allow backspacing over the start of insert; CTRL-W and CTRL-U
+"        stop once at the start of insert.
 
 "split navigations
 nnoremap <C-J> <C-W><C-J>
@@ -45,17 +55,10 @@ nnoremap <C-K> <C-W><C-K>
 nnoremap <C-L> <C-W><C-L>
 nnoremap <C-H> <C-W><C-H>
 
-" buffer shortcuts
-nnoremap th :bp<CR>
-nnoremap tl :bn<CR>
-nnoremap te :e<Space>
-nnoremap td :bd<CR>
-
-""" Plugins
-"" NERDTree
+"" NERDTree config
 nmap <silent> <C-T> :NERDTreeToggle<CR>
 
-" airline config
+"" airline config
 let g:airline#extensions#tabline#enabled = 1
 let g:airline#extensions#branch#enabled = 1
 let g:airline#extensions#syntastic#enabled = 1
