@@ -87,7 +87,10 @@ export EDITOR='vim'
 setopt histignorespace
 
 # command path
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:/usr/local/go/bin
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
+
+# enable setup rust environment
+[ -e $HOME/.cargo/env ] && source $HOME/.cargo/env
 
 # pyenv
 export PATH="$HOME/.pyenv/bin:$PATH"
