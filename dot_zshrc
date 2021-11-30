@@ -87,7 +87,7 @@ export EDITOR='emacs'
 setopt histignorespace
 
 # command path
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:/usr/local/go/bin
 
 # pyenv
 export PATH="$HOME/.pyenv/bin:$PATH"
