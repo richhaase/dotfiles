@@ -1,15 +1,23 @@
 #!/bin/bash
 
-REQUIRED_FILES='required'
-INSTALLED_PACKAGES_FILE='packages'
-DOTFILES_PREFIX='dot_'
+DOTFILES_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+REQUIRED_FILES="$DOTFILES_DIR/required"
+INSTALLED_PACKAGES_FILE="$DOTFILES_DIR/.packages"
+DOTFILES_PREFIX="$DOTFILES_DIR/dot_"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OPTIONS='deFiIuzh'
+OPTIONS='AdeFGiIuzh'
 
 touch -a $INSTALLED_PACKAGES_FILE
 
 IFS=$'\r\n' GLOBIGNORE='*' command eval 'REQUIRED=($(cat ${REQUIRED_FILES}))'
 IFS=$'\r\n' GLOBIGNORE='*' command eval 'INSTALLED=($(cat ${INSTALLED_PACKAGES_FILE}))'
+
+setup_all() {
+  upgrade_os_packages
+  install_all
+  updated_dot_files
+  configure_zsh
+}
 
 upgrade_os_packages() {
   sudo apt-get update
@@ -28,6 +36,7 @@ configure_dart_repository() {
 install_all() {
   install_os_packages ${REQUIRED[@]}
   install_neovim_plug
+  install_github_cli
   install_flutter
 }
 
@@ -52,12 +61,31 @@ install_neovim_plug() {
     https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 }
 
+install_github_cli() {
+    test -f /etc/apt/sources.list.d/github-cli.list && return
+    echo Installing GitHub CLI
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && sudo apt update \
+    && sudo apt install gh -y
+}
+
 install_flutter() {
     flutter_path=$HOME/flutter
-    test -d $flutter_path && return
-    echo Installing Flutter
+    chrome_pkg_name=google-chrome-stable_current_amd64.deb
+    chrome_pkg=$DOTFILES_DIR/$chrome_pkg_name
+
     install_os_packages clang cmake ninja-build pkg-config libgtk-3-dev    
-    git clone https://github.com/flutter/flutter.git -b stable $flutter_path
+
+    ! test $flutter_path && echo Installing Flutter && \
+        git clone https://github.com/flutter/flutter.git -b stable $flutter_path
+    if [ ! -f $chrome_pkg ]
+    then
+        echo Downloading $chrome_pkg_name
+        wget -P $DOTFILES_DIR https://dl.google.com/linux/direct/$chrome_pkg_name
+        apt_install_package $chrome_pkg
+    fi
 }
 
 updated_dot_files() {
@@ -84,7 +112,6 @@ configure_zsh() {
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --keep-zshrc
     sudo chsh -s /usr/bin/zsh $USER
   fi
-
 }
 
 usage() { echo "usage: $(basename $0) [-$OPTIONS]" 1>&2; exit 1; }
@@ -94,6 +121,9 @@ usage() { echo "usage: $(basename $0) [-$OPTIONS]" 1>&2; exit 1; }
 
 while getopts $OPTIONS o; do
   case "${o}" in 
+    A)
+      setup_all
+      ;;
     d) 
       updated_dot_files
       ;;
@@ -102,6 +132,9 @@ while getopts $OPTIONS o; do
       ;;
     F)
       install_flutter
+      ;;
+    G) 
+      install_github_cli
       ;;
     i)
       install_os_packages

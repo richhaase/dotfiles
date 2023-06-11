@@ -79,7 +79,7 @@ source $ZSH/oh-my-zsh.sh
 
 # Aliases
 alias ddu="du -d 1 -h | sort -h"
-which nvim && alias vim=nvim
+which nvim &>/dev/null && alias vim=nvim
 
 # Preferred editor for local and remote sessions
 export EDITOR='vim'
@@ -88,5 +88,5 @@ export EDITOR='vim'
 setopt histignorespace
 
 # command path
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/games:/usr/sbin:/usr/bin:/usr/games:/sbin:/bin
+export PATH=$HOME/flutter/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
