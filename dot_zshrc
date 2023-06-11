@@ -79,6 +79,7 @@ source $ZSH/oh-my-zsh.sh
 
 # Aliases
 alias ddu="du -d 1 -h | sort -h"
+which nvim && alias vim=nvim
 
 # Preferred editor for local and remote sessions
 export EDITOR='vim'
@@ -87,20 +88,5 @@ export EDITOR='vim'
 setopt histignorespace
 
 # command path
-export PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/local/games:/usr/sbin:/usr/bin:/usr/games:/sbin:/bin
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/games:/usr/sbin:/usr/bin:/usr/games:/sbin:/bin
 
-# enable setup rust environment
-[ -e $HOME/.cargo/env ] && source $HOME/.cargo/env
-
-# enable nvm 
-# # enable nvm 
-# # enable nvm 
-# # enable nvm 
-# # enable nvm 
-# # enable nvm 
-# # enable nvm 
-# # enable nvm 
-# # enable nvm 
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion

@@ -17,6 +17,9 @@ Plug 'kien/ctrlp.vim'
 Plug 'vim-syntastic/syntastic'
 Plug 'nvie/vim-flake8'
 
+" Dart
+Plug 'dart-lang/dart-vim-plugin'
+
 " Code Completion
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
@@ -36,6 +39,9 @@ set encoding=utf-8
 
 " Set the encoding of files written
 set fileencoding=utf-8
+
+" default tab settings
+set expandtab tabstop=2 shiftwidth=2 softtabstop=2
 
 autocmd Filetype python setlocal expandtab tabstop=4 shiftwidth=4 softtabstop=4
 autocmd BufWritePre *.py :%s/\s\+$//e
