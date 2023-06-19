@@ -49,6 +49,8 @@ install_os_packages() {
 
 apt_install_package() {
     package=$1
+    # always make sure we have the latest list of installed packages.
+    IFS=$'\r\n' GLOBIGNORE='*' command eval 'INSTALLED=($(cat ${INSTALLED_PACKAGES_FILE}))'
     [[ ${INSTALLED[@]} == *"$package"* ]] && return
     echo Installing $package...
     sudo apt-get install -y $package  
