@@ -2,15 +2,11 @@
 
 DOTFILES_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 REQUIRED_FILES="$DOTFILES_DIR/required"
-INSTALLED_PACKAGES_FILE="$DOTFILES_DIR/.packages"
 DOTFILES_PREFIX="$DOTFILES_DIR/dot_"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 OPTIONS='AdeFGiIuzh'
 
-touch -a $INSTALLED_PACKAGES_FILE
-
 IFS=$'\r\n' GLOBIGNORE='*' command eval 'REQUIRED=($(cat ${REQUIRED_FILES}))'
-IFS=$'\r\n' GLOBIGNORE='*' command eval 'INSTALLED=($(cat ${INSTALLED_PACKAGES_FILE}))'
 
 setup_all() {
   upgrade_os_packages
@@ -49,12 +45,8 @@ install_os_packages() {
 
 apt_install_package() {
     package=$1
-    # always make sure we have the latest list of installed packages.
-    IFS=$'\r\n' GLOBIGNORE='*' command eval 'INSTALLED=($(cat ${INSTALLED_PACKAGES_FILE}))'
-    [[ ${INSTALLED[@]} == *"$package"* ]] && return
     echo Installing $package...
     sudo apt-get install -y $package  
-    echo $package >> $INSTALLED_PACKAGES_FILE
 }
 
 install_neovim_plug() {
@@ -110,7 +102,6 @@ configure_zsh() {
   if [ ! -d $HOME/.oh-my-zsh ]
   then
     echo Setup zsh...
-    apt_install_package zsh
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --keep-zshrc
     sudo chsh -s /usr/bin/zsh $USER
   fi
