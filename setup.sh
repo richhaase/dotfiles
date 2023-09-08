@@ -117,7 +117,7 @@ backup_dot_files() {
             cp $install_name $file
         fi
     done
-    echo git commit -am "$TIMESTAMP: backing up ${saved_files[@]}"
+    git commit -am "$TIMESTAMP: backing up ${saved_files[@]}"
 }
 
 updated_dot_files() {
