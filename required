@@ -1,4 +1,10 @@
+apt-transport-https
+gpg
+wget
 zsh
 tmux
+tmuxinator
 neovim
 dart
+postgresql
+
