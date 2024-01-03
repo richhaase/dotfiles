@@ -17,18 +17,6 @@ Plug 'kien/ctrlp.vim'
 Plug 'vim-syntastic/syntastic'
 Plug 'nvie/vim-flake8'
 
-" Dart
-Plug 'dart-lang/dart-vim-plugin'
-
-" Code Completion
-if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-else
-  Plug 'Shougo/deoplete.nvim'
-  Plug 'roxma/nvim-yarp'
-  Plug 'roxma/vim-hug-neovim-rpc'
-endif
-let g:deoplete#enable_at_startup = 1
 
 call plug#end()
 
@@ -41,13 +29,20 @@ set encoding=utf-8
 set fileencoding=utf-8
 
 " default tab settings
-set expandtab tabstop=2 shiftwidth=2 softtabstop=2
+set expandtab tabstop=2 shiftwidth=2 softtabstop=2 textwidth=79
 
-autocmd Filetype python setlocal expandtab tabstop=4 shiftwidth=4 softtabstop=4
+autocmd Filetype python setlocal expandtab tabstop=4 shiftwidth=4 softtabstop=4 textwidth=79 autoindent fileformat=unix
 autocmd BufWritePre *.py :%s/\s\+$//e
 
-" Control all other files
-set shiftwidth=4
+filetype plugin indent on
+
+" Allow backspace to delete indentation and inserted text
+" i.e. how it works in most programs
+" indent  allow backspacing over autoindent
+" eol     allow backspacing over line breaks (join lines)
+" start   allow backspacing over the start of insert; CTRL-W and CTRL-U
+"        stop once at the start of insert.
+set backspace=indent,eol,start
 
 " Hardcore mode, disable arrow keys.
 noremap <Up> <NOP>
@@ -55,21 +50,20 @@ noremap <Down> <NOP>
 noremap <Left> <NOP>
 noremap <Right> <NOP>
 
-filetype plugin indent on
-
-" Allow backspace to delete indentation and inserted text
-" i.e. how it works in most programs
-set backspace=indent,eol,start
-" indent  allow backspacing over autoindent
-" eol     allow backspacing over line breaks (join lines)
-" start   allow backspacing over the start of insert; CTRL-W and CTRL-U
-"        stop once at the start of insert.
-
 "split navigations
 nnoremap <C-J> <C-W><C-J>
 nnoremap <C-K> <C-W><C-K>
 nnoremap <C-L> <C-W><C-L>
 nnoremap <C-H> <C-W><C-H>
+nnoremap re :resize 10<CR>
+
+" tab shortcuts
+nnoremap tr :split term://zsh<CR>
+nnoremap rz :resize 10<CR>
+nnoremap th :tabp<CR>
+nnoremap tl :tabn<CR>
+nnoremap te :tabedit<Space>
+nnoremap td :tabc<CR>
 
 "" NERDTree config
 nmap <silent> <C-T> :NERDTreeToggle<CR>

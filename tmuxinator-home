@@ -1,7 +1,7 @@
-# /home/haaserdh/.config/tmuxinator/dotfiles.yml
+# /Users/rdh/.config/tmuxinator/home.yml
 
-name: dotfiles
-root: ~/dotfiles
+name: home
+root: ~/
 
 # Optional tmux socket
 # socket_name: foo
@@ -32,8 +32,7 @@ root: ~/dotfiles
 # Pass command line options to tmux. Useful for specifying a different tmux.conf.
 # tmux_options: -f ~/.tmux.mac.conf
 
-# Change the command to call tmux.  This can be used by derivatives/wrappers like byobu.
-# tmux_command: byobu
+# Change the command to call tmux.  This can be used by derivatives/wrappers like byobu. tmux_command: byobu
 
 # Specifies (by name or index) which window will be selected on project startup. If not set, the first window is used.
 # startup_window: editor
@@ -45,9 +44,10 @@ root: ~/dotfiles
 # attach: false
 
 windows:
-  - nvim:
-      layout: even-horizontal
-      panes:
-        - 
-        - nvim setup.sh
-  - cli: 
+  - root:
+  - repos:
+      root: ~/Code
+  - journal:
+      root: ~/Journal
+  - scratch:
+      root: ~/scratch

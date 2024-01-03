@@ -1,0 +1,48 @@
+[user]
+	name = Rich Haase
+	email = haaserdh@gmail.com
+[includeIf "gitdir:~/Work/repos/"]
+	path = .gitconfig.work
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[alias]
+	amend = commit --amend --no-edit
+	authors = !git log --format='%aN <%aE>' | grep -v 'users.noreply.github.com' | sort -u --ignore-case
+	co = checkout
+	cob = checkout -b
+	conflicts = diff --name-only --diff-filter=U
+	count-lines = "! git log --author=\"$1\" --pretty=tformat: --numstat | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf \"added lines: %s, removed lines: %s, total lines: %s\\n\", add, subs, loc }' #"
+	lg = log --date=short --graph --format=\"%C(bold cyan)%h%C(reset) %C(red)%ad%C(auto)%d %C(reset)%s %C(cyan)(%an)\"
+	ll = log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate --numstat
+	ls = log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate
+	local-branches = !git branch -vv | cut -c 3- | awk '$3 !~/\\[/ { print $1 }'
+	recent-branches = !git branch --sort=-committerdate | head
+	rv = remote --verbose
+	sb = status -sb
+	st = status
+	sup = submodule update
+	undo = reset HEAD~1 --mixed
+[color]
+	ui = auto
+	branch = auto
+	diff = auto
+	status = auto
+[core]
+	pager = less -SE
+[fetch]
+	prune = true
+	recurseSubmodules = on-demand
+[pull]
+	rebase = merges
+[status]
+	submoduleSummary = true
+	showUntrackedFiles = all
+	short = false
+[diff]
+	submodule = log
+	colorMoved = zebra
+[log]
+	abbrevCommit = true

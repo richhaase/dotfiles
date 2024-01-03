@@ -1,0 +1,20 @@
+[helpers]
+
+[default]
+depends = []
+
+[shell.files]
+gitconfig = "~/.gitconfig"
+gitconfig-work = "~/.gitconfig.work"
+tmux = "~/.tmux.conf"
+tmuxinator-home = "~/.config/tmuxinator/home.yml"
+
+[vim.files]
+vimrc = "~/.config/nvim/init.vim"
+
+[zsh]
+depends = ["shell"]
+
+[zsh.files]
+zshrc = "~/.zshrc"
+

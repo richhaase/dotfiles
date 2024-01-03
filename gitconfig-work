@@ -1,0 +1,5 @@
+[user]
+	email = rhaase@paragonsginc.com
+[protocol "codecommit"]
+	allow = always
+
