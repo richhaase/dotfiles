@@ -1,5 +1,5 @@
 [user]
-	email = rhaase@paragonsginc.com
+	email = {{ work_email }}
 [protocol "codecommit"]
 	allow = always
 

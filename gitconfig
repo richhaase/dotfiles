@@ -1,13 +1,16 @@
 [user]
 	name = Rich Haase
 	email = haaserdh@gmail.com
+
 [includeIf "gitdir:~/Work/repos/"]
 	path = .gitconfig.work
+
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+
 [alias]
 	amend = commit --amend --no-edit
 	authors = !git log --format='%aN <%aE>' | grep -v 'users.noreply.github.com' | sort -u --ignore-case
@@ -25,24 +28,31 @@
 	st = status
 	sup = submodule update
 	undo = reset HEAD~1 --mixed
+
 [color]
 	ui = auto
 	branch = auto
 	diff = auto
 	status = auto
+
 [core]
 	pager = less -SE
+
 [fetch]
 	prune = true
 	recurseSubmodules = on-demand
+
 [pull]
 	rebase = merges
+
 [status]
 	submoduleSummary = true
 	showUntrackedFiles = all
 	short = false
+
 [diff]
 	submodule = log
 	colorMoved = zebra
+
 [log]
 	abbrevCommit = true
