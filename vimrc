@@ -17,7 +17,6 @@ Plug 'kien/ctrlp.vim'
 Plug 'vim-syntastic/syntastic'
 Plug 'nvie/vim-flake8'
 
-
 call plug#end()
 
 syntax on 
@@ -55,15 +54,13 @@ nnoremap <C-J> <C-W><C-J>
 nnoremap <C-K> <C-W><C-K>
 nnoremap <C-L> <C-W><C-L>
 nnoremap <C-H> <C-W><C-H>
-nnoremap re :resize 10<CR>
 
 " tab shortcuts
-nnoremap tr :split term://zsh<CR>
-nnoremap rz :resize 10<CR>
-nnoremap th :tabp<CR>
-nnoremap tl :tabn<CR>
-nnoremap te :tabedit<Space>
-nnoremap td :tabc<CR>
+nnoremap th :bp<CR>
+nnoremap tl :bn<CR>
+nnoremap te :e<Space>
+nnoremap tb :buffers<CR>
+nnoremap tg :buffer<Space>
 
 "" NERDTree config
 nmap <silent> <C-T> :NERDTreeToggle<CR>
