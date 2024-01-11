@@ -1,5 +1,12 @@
 [helpers]
 
+[atuin.files]
+atuin = "~/.config/atuin/config.toml"
+
+[atuin.variables]
+filter_mode = "global"
+style = "full"
+
 [git.files]
 gitconfig = "~/.gitconfig"
 gitconfig-work = "~/.gitconfig.work"
@@ -10,6 +17,9 @@ work_email = ""
 [tmux.files]
 tmux = "~/.tmux.conf"
 tmuxinator-home = "~/.config/tmuxinator/home.yml"
+
+[nvim.files]
+nvim = "~/.config/nvim"
 
 [vim.files]
 vimrc = "~/.config/nvim/init.vim"
