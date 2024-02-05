@@ -45,8 +45,8 @@ root: ~/
 
 windows:
   - root:
-  - repos:
-      root: ~/Code
+  - src:
+      root: ~/src
   - journal:
       root: ~/Journal
   - scratch:
