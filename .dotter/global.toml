@@ -8,11 +8,13 @@ gitconfig-work = "~/.gitconfig.work"
 tmux = "~/.tmux.conf"
 tmuxinator-home = "~/.config/tmuxinator/home.yml"
 zshrc = "~/.zshrc"
+zshenv = "~/.zshenv"
 
 [shell.variables]
 filter_mode = "global"
 style = "full"
 work_email = ""
+homebrew_path = ""
 
 [nvim.files]
 nvim = "~/.config/nvim"
