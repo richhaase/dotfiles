@@ -35,9 +35,6 @@
 	diff = auto
 	status = auto
 
-[core]
-	pager = less -SE
-
 [fetch]
 	prune = true
 	recurseSubmodules = on-demand
