@@ -1,15 +1,17 @@
-### OMZ - start ###
-export ZSH="$HOME/.oh-my-zsh"
+# .zshrc
+# 
+ZPLUGINDIR="$HOME/.config/zsh/plugins"
 
-# See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="daveverwer"
-zstyle ':omz:update' mode reminder  # just remind me to update when it's time
-zstyle ':omz:update' frequency 13
+source ~/.plugins.zsh
 
-plugins=(git tmux tmuxinator)
+plugins=(
+  sindresorhus/pure
+  
+  zsh-users/zsh-syntax-highlighting
+  zsh-users/zsh-autosuggestions
+)
 
-source $ZSH/oh-my-zsh.sh
-### OMZ - end ###
+plugin-load $plugins
 
 
 # Variables
@@ -17,11 +19,12 @@ export EDITOR=nvim
 
 # Aliases
 alias ddu="du -d 1 -h | sort -h"
-alias psg="tmuxinator start paragon"
-alias nv=nvim
+## tmux
+alias txs="tmuxinator start"
+alias txl="tmuxinator list"
 
 # neovim
-which nvim &>/dev/null && alias vim=nvim
+which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
 
 # atuin
 eval "$(atuin init zsh)"
@@ -35,3 +38,6 @@ eval "$(pyenv init -)"
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+#fzf
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
