@@ -1,7 +1,5 @@
 vim.g.mapleader = ','
 
-vim.keymap.set("n", "<leader>a", function() print "hi" end)
-
 -- define common options
 local opts = {
     noremap = true,      -- non-recursive
