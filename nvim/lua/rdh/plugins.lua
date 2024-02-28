@@ -27,8 +27,17 @@ return require('packer').startup(function(use)
     ---------------------------------------
     -- NOTE: PUT YOUR THIRD PLUGIN HERE --
     ---------------------------------------
-    use { 'ibhagwan/fzf-lua',
-      requires = { 'nvim-tree/nvim-web-devicons' }
+    use {
+        'akinsho/toggleterm.nvim',
+        tag = '*',
+        config = function()
+            require('toggleterm').setup()
+        end
+    }
+    
+    use {
+        'ibhagwan/fzf-lua',
+        requires = { 'nvim-tree/nvim-web-devicons' }
     }
 
     use {
@@ -38,7 +47,8 @@ return require('packer').startup(function(use)
 
     use 'tpope/vim-fugitive'
 
-    use { 'numToStr/Comment.nvim',
+    use {
+        'numToStr/Comment.nvim',
         config = function()
             require('Comment').setup()
         end
