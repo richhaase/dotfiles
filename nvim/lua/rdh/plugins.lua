@@ -24,10 +24,19 @@ vim.cmd([[
 return require('packer').startup(function(use)
     use 'wbthomason/packer.nvim'
 
+    use {
+        'nvim-tree/nvim-tree.lua',
+        config = function()
+            require('nvim-tree').setup()
+        end,
+        requires = {
+            'nvim-tree/nvim-web-devicons',
+        },
+    }
     use { 'akinsho/toggleterm.nvim', tag = '*',
         config = function()
             require('toggleterm').setup {
-                open_mapping = [[<c-t>]],
+                open_mapping = [[<c-s>]],
                 insert_mappings = true,
                 terminal_mappings = true,
                 direction = 'float',
