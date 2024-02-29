@@ -1,4 +1,4 @@
-t aqqqqrequire('lualine').setup {
+require('lualine').setup {
     options = {
         theme = 'wombat'
     },
