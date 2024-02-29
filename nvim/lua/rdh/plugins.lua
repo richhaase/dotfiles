@@ -24,43 +24,31 @@ vim.cmd([[
 return require('packer').startup(function(use)
     use 'wbthomason/packer.nvim'
 
-    ---------------------------------------
-    -- NOTE: PUT YOUR THIRD PLUGIN HERE --
-    ---------------------------------------
-    use {
-        'akinsho/toggleterm.nvim',
-        tag = '*',
+    use { 'akinsho/toggleterm.nvim', tag = '*',
         config = function()
-            require('toggleterm').setup()
+            require('toggleterm').setup {
+                open_mapping = [[<c-t>]],
+                insert_mappings = true,
+                terminal_mappings = true,
+                direction = 'float',
+                auto_scroll = true,
+            }
         end
     }
-    
-    use {
-        'ibhagwan/fzf-lua',
+    use { 'ibhagwan/fzf-lua',
         requires = { 'nvim-tree/nvim-web-devicons' }
     }
-
-    use {
-        'nvim-lualine/lualine.nvim',
+    use { 'nvim-lualine/lualine.nvim',
         requires = { 'nvim-tree/nvim-web-devicons', opt = true }
     }  
-
     use 'tpope/vim-fugitive'
-
-    use {
-        'numToStr/Comment.nvim',
+    use { 'numToStr/Comment.nvim',
         config = function()
             require('Comment').setup()
         end
     }
+    use { 'nvim-treesitter/nvim-treesitter', {run = ':TSUpdate'} }
 
-    use {
-        'nvim-treesitter/nvim-treesitter', 
-        {run = ':TSUpdate'}
-    }
-    
-    -- Automatically set up your configuration after cloning packer.nvim
-    -- Put this at the end after all plugins
     if packer_bootstrap then
         require('packer').sync()
     end
