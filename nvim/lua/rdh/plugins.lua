@@ -24,6 +24,7 @@ vim.cmd([[
 return require('packer').startup(function(use)
     use 'wbthomason/packer.nvim'
 
+    use 'chentoast/marks.nvim'
     use {
         'nvim-tree/nvim-tree.lua',
         config = function()
