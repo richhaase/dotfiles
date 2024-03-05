@@ -3,6 +3,7 @@
 [shell.files]
 atuin = "~/.config/atuin/config.toml"
 bat = "~/.config/bat/config"
+editorconfig = "~/.editorconfig"
 gitconfig = "~/.gitconfig"
 gitconfig-work = "~/.gitconfig.work"
 plugins = "~/.plugins.zsh"
