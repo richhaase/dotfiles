@@ -1,4 +1,7 @@
 -- Hint: use `:h <option>` to figure out the meaning if needed
+
+vim.cmd[[colorscheme tokyonight]]
+
 vim.opt.clipboard = 'unnamedplus'   -- use system clipboard 
 vim.opt.completeopt = {'menu', 'menuone', 'noselect'}
 vim.opt.mouse = 'a'                 -- allow the mouse to be used in Nvim
@@ -7,11 +10,8 @@ vim.opt.mouse = 'a'                 -- allow the mouse to be used in Nvim
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
--- Tab
-vim.opt.tabstop = 4                 -- number of visual spaces per TAB
-vim.opt.softtabstop = 4             -- number of spacesin tab when editing
-vim.opt.shiftwidth = 4              -- insert 4 spaces on a tab
-vim.opt.expandtab = true            -- tabs are spaces, mainly because of python
+-- Tab Config
+vim.g.editorconfig = true 	    -- EditorConfig is enabled by default
 
 -- UI config
 vim.opt.number = true               -- show absolute number
