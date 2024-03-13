@@ -2,17 +2,15 @@
 root = true
 
 [*]
+charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 
-[*.{json,js,py}]
-charset = utf-8
-
-[*.py]
+[*.{py,lua}]
 indent_style = space
 indent_size = 4
 
-[*.{json,js,ts}]
+[*.{json,js,ts,sh,bash,zsh}]
 indent_style = space
 indent_size = 2
 
