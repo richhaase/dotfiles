@@ -6,14 +6,15 @@ export PATH="${HOMEBREW_PREFIX}/opt/openssl/bin:$PATH"
 source ~/.plugins.zsh
 
 plugins=(
+  sindresorhus/pure
   supercrabtree/k
   zsh-users/zsh-syntax-highlighting
   zsh-users/zsh-autosuggestions
 )
 
 plugin-load $plugins
-
-eval "$(starship init zsh)"
+autoload -U promptinit; promptinit
+prompt pure
 
 
 # Variables
