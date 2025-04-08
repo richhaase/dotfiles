@@ -1,6 +1,6 @@
 [user]
 	name = Rich Haase
-	email = rich.haase@foresight-dx.com
+	email = {{ .chezmoi.config.data.email }}
 
 [filter "lfs"]
 	clean = git-lfs clean -- %f
