@@ -1,5 +1,5 @@
 # .zshrc
-# 
+
 ZPLUGINDIR="$HOME/.config/zsh/plugins"
 export PATH="${HOMEBREW_PREFIX}/opt/openssl/bin:$PATH"
 
@@ -16,7 +16,6 @@ plugin-load $plugins
 autoload -U promptinit; promptinit
 prompt pure
 
-
 # Variables
 export EDITOR=nvim
 export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
@@ -25,18 +24,7 @@ export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
 alias ddu="du -d 1 -h | sort -h"
 alias lg="lazygit"
 alias refresh=". ~/.zshrc"
-## Git helpers - cause I'm a super lazy typist
-alias gco="git co"
-alias gsb="git sb"
-alias gst="git st"
-## tmux/tmuxinator
-alias ta="tmux attach -t"
-alias ts="tmux new-session -s"
-alias tl="tmux list-sessions"
-alias tksv="tmux kill-server"
-alias tkss="tmux kill-session -t"
-alias txs="tmuxinator start"
-alias txl="tmuxinator list"
+alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 
 # neovim
 which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
@@ -47,7 +35,10 @@ eval "$(atuin init zsh)"
 # fzf
 source <(fzf --zsh)
 
-[[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
-
 # asdf 
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+
+# wezterm
+export PATH=$PATH:/Applications/WezTerm.app/Contents/MacOS
+
+[[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
