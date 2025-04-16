@@ -6,11 +6,11 @@ charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 
-[*.{py,lua,go}]
+[*.{py,go}]
 indent_style = space
 indent_size = 4
 
-[*.{json,js,ts,sh,bash,zsh,tf,hcl}]
+[*.{json,js,ts,sh,bash,zsh,tf,hcl,lua}]
 indent_style = space
 indent_size = 2
 
