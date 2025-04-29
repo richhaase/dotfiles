@@ -1,7 +1,7 @@
 # .zshrc
 
 ZPLUGINDIR="$HOME/.config/zsh/plugins"
-export PATH="${HOMEBREW_PREFIX}/opt/openssl/bin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/bin:${HOMEBREW_PREFIX}/opt/openssl/bin:$PATH"
 
 source ~/.plugins.zsh
 
@@ -37,10 +37,23 @@ eval "$(atuin init zsh)"
 # fzf
 source <(fzf --zsh)
 
-# asdf 
+# asdf
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 
 # wezterm
 export PATH=$PATH:/Applications/WezTerm.app/Contents/MacOS
+
+# yazi
+function y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+		builtin cd -- "$cwd"
+	fi
+	rm -f -- "$tmp"
+}
+
+# zk
+export ZK_NOTEBOOK_DIR="$HOME/notebook"
 
 [[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
