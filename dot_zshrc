@@ -7,7 +7,6 @@ source ~/.plugins.zsh
 
 plugins=(
   sindresorhus/pure
-  supercrabtree/k
   zsh-users/zsh-syntax-highlighting
   zsh-users/zsh-autosuggestions
 )
@@ -27,6 +26,7 @@ alias du="erd -c du"
 alias refresh=". ~/.zshrc"
 alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
+alias k="kubectl"
 
 # neovim
 which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
@@ -42,6 +42,15 @@ export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 
 # wezterm
 export PATH=$PATH:/Applications/WezTerm.app/Contents/MacOS
+
+# Set AWS profile
+function aws-profile() {
+  if [ -z "$1" ]; then
+    echo $AWS_PROFILE
+  else
+    export AWS_PROFILE=$1
+  fi
+}
 
 # yazi
 function y() {

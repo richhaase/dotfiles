@@ -32,11 +32,11 @@ function plugin-update {
 }
 
 function plugin-rm {
-  if [[ ! -d $1 ]]; then 
+  if [[ ! -d $ZPLUGINDIR/$1 ]]; then
     echo "No such plugin installed: $1".
     exit 1
   fi
-  rm -rfi $ZPLUGINDIR/$1
+  rm -rf $ZPLUGINDIR/$1
 }
 
-alias plugin-ls="ls $ZPLUGINDIR"  
+alias plugin-ls="ls $ZPLUGINDIR"

@@ -168,7 +168,7 @@ dead-link = "error"
 # Here are a few aliases to get you started.
 
 # Shortcut to a command.
-#ls = "zk list $@"
+ls = "zk list $@"
 
 # Default flags for an existing command.
 #list = "zk list --quiet $@"
