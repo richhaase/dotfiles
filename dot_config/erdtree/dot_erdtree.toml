@@ -1,5 +1,7 @@
 icons = true
 human = true
+layout = "inverted"
+sort = "name"
 
 # Compute file sizes like `du`
 # e.g. `erd --config du`
@@ -18,5 +20,7 @@ level = 1
 icons = true
 human = true
 level = 1
+layout = "inverted"
 suppress-size = true
 long = true
+dir-order = "last"
