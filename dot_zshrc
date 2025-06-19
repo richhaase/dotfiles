@@ -14,50 +14,24 @@ plugins=(
 plugin-load $plugins
 autoload -U promptinit; promptinit
 prompt pure
-
 # Brewfile
-export EDITOR=nvim
 export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
 
-# kind
-export KIND_EXPERIMENTAL_PROVIDER=podman
-
 # neovim
-which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
+export EDITOR=nvim
 
 # Aliases
-alias lg="lazygit"
-alias ll="erd -c ls"
-alias du="erd -c du"
-alias refresh=". ~/.zshrc"
+which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
 alias be="vim ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
-alias k="kubectl"
-alias docker="podman"
-
-# atuin
-eval "$(atuin init zsh)"
-
-# fzf
-source <(fzf --zsh)
-
-# asdf
-export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
-
-# wezterm
-export PATH=$PATH:/Applications/WezTerm.app/Contents/MacOS
-
-# Set AWS profile
-function aws-profile() {
-  if [ -z "$1" ]; then
-    echo $AWS_PROFILE
-  else
-    export AWS_PROFILE=$1
-  fi
-}
+alias che="chezmoi"
+alias lg="lazygit"
+alias ll="eza -la --icons --group-directories-first"
+alias tm="terramate"
+alias tf="tofu"
 
 # yazi
-function y() {
+y() {
 	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
 	yazi "$@" --cwd-file="$tmp"
 	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
@@ -66,7 +40,14 @@ function y() {
 	rm -f -- "$tmp"
 }
 
-# zk
-export ZK_NOTEBOOK_DIR="$HOME/notebook"
+# fzf
+source <(fzf --zsh)
 
-[[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
+# asdf
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+
+#zoxide
+eval "$(zoxide init zsh)"
+
+# mcfly
+eval "$(mcfly init zsh)"
