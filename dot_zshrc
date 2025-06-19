@@ -1,5 +1,6 @@
 export EDITOR=nvim
 export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
+export LANG=en_US.UTF-8
 export PATH="${HOMEBREW_PREFIX}/bin:${HOMEBREW_PREFIX}/opt/openssl/bin:$PATH"
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 
@@ -38,6 +39,7 @@ alias b="bat"
 alias branches='git branch --sort=-committerdate | head -10'
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias che="chezmoi"
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
 alias du="dust"
 alias files='fd --type f | fzf --preview "bat --color=always {}"'
 alias lg="lazygit"
@@ -54,11 +56,13 @@ alias refresh="source ~/.zshrc"
 alias sed="sd"      # modern sed
 alias tm="terramate"
 alias tf="tofu"
+alias tfplan='tf fmt && tf validate && tf plan'
 alias stats="tokei"
 alias weather='curl wttr.in'
 alias vi=nvim
 alias vim=nvim
-
+alias zshrc='chezmoi edit --apply ~/.zshrc'
+alias vimrc='chezmoi edit --apply ~/.config/nvim/init.lua'
 
 # Functions
 # File management
