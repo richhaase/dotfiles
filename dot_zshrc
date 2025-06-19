@@ -6,14 +6,14 @@ export PATH="${HOMEBREW_PREFIX}/bin:${HOMEBREW_PREFIX}/opt/openssl/bin:$PATH"
 source ~/.plugins.zsh
 
 plugins=(
-  sindresorhus/pure
   zsh-users/zsh-syntax-highlighting
   zsh-users/zsh-autosuggestions
 )
 
 plugin-load $plugins
-autoload -U promptinit; promptinit
-prompt pure
+
+# starship
+eval "$(starship init zsh)"
 # Brewfile
 export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
 
@@ -29,6 +29,9 @@ alias lg="lazygit"
 alias ll="eza -la --icons --group-directories-first"
 alias tm="terramate"
 alias tf="tofu"
+alias weather='curl wttr.in'
+alias myip='curl ifconfig.me'
+alias ports='netstat -tuln'
 
 # yazi
 y() {
@@ -38,6 +41,16 @@ y() {
 		builtin cd -- "$cwd"
 	fi
 	rm -f -- "$tmp"
+}
+
+# Kubernetes context switching
+kctx() {
+  kubectl config use-context $(kubectl config get-contexts -o name | fzf)
+}
+
+# AWS profile switching with fzf
+awsp() {
+  export AWS_PROFILE=$(aws configure list-profiles | fzf)
 }
 
 # fzf
