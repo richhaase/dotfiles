@@ -1,8 +1,14 @@
-# .zshrc
-
-ZPLUGINDIR="$HOME/.config/zsh/plugins"
+export EDITOR=nvim
+export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
 export PATH="${HOMEBREW_PREFIX}/bin:${HOMEBREW_PREFIX}/opt/openssl/bin:$PATH"
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 
+# Shell Options
+setopt AUTO_MENU
+setopt COMPLETE_IN_WORD
+
+# Plugin Setup
+ZPLUGINDIR="$HOME/.config/zsh/plugins"
 source ~/.plugins.zsh
 
 plugins=(
@@ -12,28 +18,47 @@ plugins=(
 
 plugin-load $plugins
 
-# starship
+# Tool Initialization
 eval "$(starship init zsh)"
-# Brewfile
-export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
+eval "$(zoxide init zsh)"
+eval "$(mcfly init zsh)"
 
-# neovim
-export EDITOR=nvim
+# FZF Configuration
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
+export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=header,grid --line-range :300 {}'"
+export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
+
+source <(fzf --zsh)
 
 # Aliases
-which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
-alias be="vim ~/.brewfile && brew bundle --cleanup"
+alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
+alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias che="chezmoi"
+alias du="dust"
+alias files='fd --type f | fzf --preview "bat --color=always {}"'
 alias lg="lazygit"
 alias ll="eza -la --icons --group-directories-first"
-alias tm="terramate"
-alias tf="tofu"
-alias weather='curl wttr.in'
+alias k="kubectl"
+# alias kctx="kubectx $(kubectx | fzf)"  # Using function below instead
+alias logs="stern"  # instead of kubectl logs
 alias myip='curl ifconfig.me'
 alias ports='netstat -tuln'
+alias ps="procs"    # modern ps
+alias refresh="source ~/.zshrc"
+alias sed="sd"      # modern sed
+alias tm="terramate"
+alias tf="tofu"
+alias stats="tokei"
+alias weather='curl wttr.in'
+alias vi=nvim
+alias vim=nvim
 
-# yazi
+
+# Functions
+# File management
 y() {
 	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
 	yazi "$@" --cwd-file="$tmp"
@@ -43,24 +68,26 @@ y() {
 	rm -f -- "$tmp"
 }
 
-# Kubernetes context switching
+vf() {
+  local file
+  file=$(fd --type f | fzf --preview 'bat --color=always {}') && nvim "$file"
+}
+
+# Search file contents with ripgrep + fzf
+search() {
+  rg --line-number --color=always "$1" | fzf --delimiter=: --preview 'bat --color=always --highlight-line {2} {1}'
+}
+
+# Cloud/K8s
 kctx() {
   kubectl config use-context $(kubectl config get-contexts -o name | fzf)
 }
 
-# AWS profile switching with fzf
 awsp() {
   export AWS_PROFILE=$(aws configure list-profiles | fzf)
 }
 
-# fzf
-source <(fzf --zsh)
-
-# asdf
-export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
-
-#zoxide
-eval "$(zoxide init zsh)"
-
-# mcfly
-eval "$(mcfly init zsh)"
+# System
+fkill() {
+  procs | fzf | awk '{print $1}' | xargs kill
+}
