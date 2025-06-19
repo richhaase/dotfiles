@@ -1,0 +1,34 @@
+#!/bin/bash
+# Complete machine setup: Install tools and global packages
+
+echo "=== Setting up new machine ==="
+
+# Install Homebrew packages
+echo "Installing Homebrew packages..."
+if command -v brew >/dev/null 2>&1; then
+    brew bundle --global
+else
+    echo "Homebrew not found, skipping brew bundle"
+fi
+
+# Install asdf language versions
+echo "Installing asdf language versions..."
+if command -v asdf >/dev/null 2>&1; then
+    asdf install
+else
+    echo "asdf not found, skipping language installation"
+fi
+
+# Install global npm packages (now that Node.js is installed)
+echo "Installing global npm packages..."
+if command -v npm >/dev/null 2>&1; then
+    npm install -g @anthropics/claude-code
+    npm install -g typescript
+    npm install -g eslint
+    npm install -g prettier
+    echo "Global npm packages installed successfully"
+else
+    echo "npm not found, skipping npm packages"
+fi
+
+echo "=== Machine setup complete! ==="
