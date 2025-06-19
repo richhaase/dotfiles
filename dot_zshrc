@@ -19,17 +19,21 @@ prompt pure
 export EDITOR=nvim
 export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
 
+# kind
+export KIND_EXPERIMENTAL_PROVIDER=podman
+
+# neovim
+which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
+
 # Aliases
 alias lg="lazygit"
 alias ll="erd -c ls"
 alias du="erd -c du"
 alias refresh=". ~/.zshrc"
-alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
+alias be="vim ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
 alias k="kubectl"
-
-# neovim
-which nvim &>/dev/null && alias vim=nvim && alias vi=nvim
+alias docker="podman"
 
 # atuin
 eval "$(atuin init zsh)"

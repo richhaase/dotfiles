@@ -20,7 +20,6 @@
   "mason-lspconfig.nvim": { "branch": "main", "commit": "1a31f824b9cd5bc6f342fc29e9a53b60d74af245" },
   "mason.nvim": { "branch": "main", "commit": "fc98833b6da5de5a9c5b1446ac541577059555be" },
   "mini.ai": { "branch": "main", "commit": "e139eb1101beb0250fea322f8c07a42f0f175688" },
-  "mini.files": { "branch": "main", "commit": "49c855977e9f4821d1ed8179ed44fe098b93ea2a" },
   "mini.icons": { "branch": "main", "commit": "397ed3807e96b59709ef3292f0a3e253d5c1dc0a" },
   "mini.pairs": { "branch": "main", "commit": "69864a2efb36c030877421634487fd90db1e4298" },
   "noice.nvim": { "branch": "main", "commit": "0427460c2d7f673ad60eb02b35f5e9926cf67c59" },
@@ -46,5 +45,5 @@
   "vim-helm": { "branch": "master", "commit": "ae1ebc160d2b9b90108477ab10df7a4fc501e358" },
   "which-key.nvim": { "branch": "main", "commit": "370ec46f710e058c9c1646273e6b225acf47cbed" },
   "yanky.nvim": { "branch": "main", "commit": "04775cc6e10ef038c397c407bc17f00a2f52b378" },
-  "zk-nvim": { "branch": "main", "commit": "08f3591d55cc73828a99019ef6545b939a88cc13" }
+  "zk-nvim": { "branch": "main", "commit": "4607d3b26b6be9897c9558c78c3cefd2f77c86ab" }
 }
