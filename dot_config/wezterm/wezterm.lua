@@ -46,6 +46,11 @@ config.window_padding = {
 
 config.hide_tab_bar_if_only_one_tab = true
 
+-- Performance settings
+config.scrollback_lines = 10000  -- More history
+config.enable_wayland = false    -- Better compatibility on macOS
+config.front_end = "WebGpu"      -- Faster rendering
+
 config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
 config.keys = {
     -- splitting
