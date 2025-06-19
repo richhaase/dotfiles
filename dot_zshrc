@@ -48,6 +48,11 @@ alias gl='git pull'
 alias ga='git add'
 alias gc='git commit'
 alias gca='git commit --amend --no-edit'
+
+# Git workflow automation
+alias gclean='git branch --merged | grep -v "\*\|main\|trunk" | xargs git branch -d'
+alias gfix='git add -A && git commit --fixup=HEAD'
+alias gwip='git add -A && git commit -m "WIP"'
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias che="chezmoi"
 alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
