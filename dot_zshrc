@@ -36,9 +36,9 @@ source <(fzf --zsh)
 # Aliases
 alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
-alias branches='git branch --sort=-committerdate | head -10'
 
 # Git workflow aliases
+alias branches='git branch --sort=-committerdate | head -10'
 alias gst='git status'
 alias gco='git checkout'
 alias gcob='git checkout -b'
@@ -48,13 +48,13 @@ alias gl='git pull'
 alias ga='git add'
 alias gc='git commit'
 alias gca='git commit --amend --no-edit'
-
-# Git workflow automation
 alias gclean='git branch --merged | grep -v "\*\|main\|trunk" | xargs git branch -d'
 alias gfix='git add -A && git commit --fixup=HEAD'
 alias gwip='git add -A && git commit -m "WIP"'
-alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
+
+alias claude="/Users/rdh/.claude/local/claude"
 alias che="chezmoi"
+alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
 alias du="dust"
 alias files='fd --type f | fzf --preview "bat --color=always {}"'
@@ -107,8 +107,8 @@ awsp() {
 }
 
 # GitHub
-prs() { 
-  gh pr list | fzf | choose 0 | xargs gh pr checkout 
+prs() {
+  gh pr list | fzf | choose 0 | xargs gh pr checkout
 }
 
 # System
