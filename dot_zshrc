@@ -35,6 +35,7 @@ source <(fzf --zsh)
 # Aliases
 alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
+alias branches='git branch --sort=-committerdate | head -10'
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias che="chezmoi"
 alias du="dust"
@@ -46,6 +47,7 @@ alias kctx='kubectx $(kubectx | fzf)'
 alias kns='kubens $(kubens | fzf)'
 alias logs="stern"  # instead of kubectl logs
 alias myip='curl ifconfig.me'
+alias netcheck='procs | choose 0,10 | sort -nr'
 alias ports='netstat -tuln'
 alias ps="procs"    # modern ps
 alias refresh="source ~/.zshrc"
@@ -86,10 +88,13 @@ awsp() {
 
 # GitHub
 prs() { 
-  gh pr list | fzf | awk '{print $1}' | xargs gh pr checkout 
+  gh pr list | fzf | choose 0 | xargs gh pr checkout 
 }
 
 # System
 fkill() {
-  procs | fzf | awk '{print $1}' | xargs kill
+  procs | fzf | choose 0 | xargs kill
 }
+
+# Local overrides
+[[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
