@@ -42,7 +42,8 @@ alias files='fd --type f | fzf --preview "bat --color=always {}"'
 alias lg="lazygit"
 alias ll="eza -la --icons --group-directories-first"
 alias k="kubectl"
-# alias kctx="kubectx $(kubectx | fzf)"  # Using function below instead
+alias kctx='kubectx $(kubectx | fzf)'
+alias kns='kubens $(kubens | fzf)'
 alias logs="stern"  # instead of kubectl logs
 alias myip='curl ifconfig.me'
 alias ports='netstat -tuln'
@@ -79,12 +80,13 @@ search() {
 }
 
 # Cloud/K8s
-kctx() {
-  kubectl config use-context $(kubectl config get-contexts -o name | fzf)
-}
-
 awsp() {
   export AWS_PROFILE=$(aws configure list-profiles | fzf)
+}
+
+# GitHub
+prs() { 
+  gh pr list | fzf | awk '{print $1}' | xargs gh pr checkout 
 }
 
 # System

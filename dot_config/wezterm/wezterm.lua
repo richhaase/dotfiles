@@ -35,7 +35,7 @@ local function split_nav(resize_or_move, key)
 end
 
 config.color_scheme = "Solarized Darcula"
-config.font = wezterm.font("JetBrains Mono")
+config.font = wezterm.font("Hack Nerd Font")
 config.font_size = 14
 config.window_padding = {
     left = 0,
