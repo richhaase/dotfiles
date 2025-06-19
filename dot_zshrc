@@ -34,24 +34,11 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 source <(fzf --zsh)
 
 # Aliases
+alias '..'='cd ..'
+alias '...'='cd ../..'
+alias '....'='cd ../../..'
 alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
-
-# Git workflow aliases
-alias branches='git branch --sort=-committerdate | head -10'
-alias gst='git status'
-alias gco='git checkout'
-alias gcob='git checkout -b'
-alias glog='git log --date=short --graph --format="%C(bold cyan)%h%C(reset) %C(red)%ad%C(auto)%d %C(reset)%s %C(cyan)(%an)"'
-alias gp='git push'
-alias gl='git pull'
-alias ga='git add'
-alias gc='git commit'
-alias gca='git commit --amend --no-edit'
-alias gclean='git branch --merged | grep -v "\*\|main\|trunk" | xargs git branch -d'
-alias gfix='git add -A && git commit --fixup=HEAD'
-alias gwip='git add -A && git commit -m "WIP"'
-
 alias claude="/Users/rdh/.claude/local/claude"
 alias che="chezmoi"
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
@@ -80,6 +67,21 @@ alias vim=nvim
 alias zshrc='chezmoi edit --apply ~/.zshrc'
 alias vimrc='chezmoi edit --apply ~/.config/nvim/init.lua'
 
+# Git workflow aliases
+alias branches='git branch --sort=-committerdate | head -10'
+alias gst='git status'
+alias gco='git checkout'
+alias gcob='git checkout -b'
+alias glog='git log --date=short --graph --format="%C(bold cyan)%h%C(reset) %C(red)%ad%C(auto)%d %C(reset)%s %C(cyan)(%an)"'
+alias gp='git push'
+alias gl='git pull'
+alias ga='git add'
+alias gc='git commit'
+alias gca='git commit --amend --no-edit'
+alias gclean='git branch --merged | grep -v "\*\|main\|trunk" | xargs git branch -d'
+alias gfix='git add -A && git commit --fixup=HEAD'
+alias gwip='git add -A && git commit -m "WIP"'
+
 # Functions
 # File management
 y() {
@@ -101,7 +103,7 @@ search() {
   rg --line-number --color=always "$1" | fzf --delimiter=: --preview 'bat --color=always --highlight-line {2} {1}'
 }
 
-# Cloud/K8s
+# Cloud
 awsp() {
   export AWS_PROFILE=$(aws configure list-profiles | fzf)
 }
