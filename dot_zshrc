@@ -37,6 +37,17 @@ source <(fzf --zsh)
 alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
 alias branches='git branch --sort=-committerdate | head -10'
+
+# Git workflow aliases
+alias gst='git status'
+alias gco='git checkout'
+alias gcob='git checkout -b'
+alias glog='git log --date=short --graph --format="%C(bold cyan)%h%C(reset) %C(red)%ad%C(auto)%d %C(reset)%s %C(cyan)(%an)"'
+alias gp='git push'
+alias gl='git pull'
+alias ga='git add'
+alias gc='git commit'
+alias gca='git commit --amend --no-edit'
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias che="chezmoi"
 alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
