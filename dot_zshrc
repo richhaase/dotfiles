@@ -42,6 +42,7 @@ alias b="bat"
 alias claude="/Users/rdh/.claude/local/claude"
 alias che="chezmoi"
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
+alias df='duf'
 alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
 alias du="dust"
 alias files='fd --type f | fzf --preview "bat --color=always {}"'
