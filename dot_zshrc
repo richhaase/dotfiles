@@ -119,5 +119,14 @@ fkill() {
   procs | fzf | choose 0 | xargs kill
 }
 
+# zellij
+function zrf () {
+  zellij run --name "$*" --floating -- zsh -ic "$*";
+}
+
+function zef () {
+  zellij edit --floating "$1";
+}
+
 # Local overrides
 [[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
