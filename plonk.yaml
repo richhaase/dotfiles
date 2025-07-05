@@ -1,0 +1,130 @@
+settings:
+  default_manager: homebrew
+
+# Standalone config files (no package install needed)
+dotfiles:
+  - zshrc                    # -> ~/.zshrc
+  - zshenv                   # -> ~/.zshenv
+  - plugins.zsh              # -> ~/.plugins.zsh
+  - gitconfig                # -> ~/.gitconfig
+
+homebrew:
+  brews:
+    # AI and Development Tools
+    - aichat
+    - aider
+    
+    # Infrastructure and DevOps
+    - ansible
+    - ansible-lint
+    - asdf
+    - awscli
+    - k9s
+    - kind
+    - kubectx
+    - kubernetes-cli
+    - stern
+    
+    # Container and Virtualization
+    - colima
+    - docker
+    - docker-completion
+    
+    # File and Text Processing
+    - name: bat
+      config: config/bat/
+    - choose
+    - fd
+    - fzf
+    - jq
+    - just
+    - name: ripgrep
+      config: config/ripgrep/
+    - sd
+    
+    # System Utilities
+    - bandwhich
+    - btop
+    - coreutils
+    - duf
+    - dust
+    - eza
+    - procs
+    - tldr
+    - tokei
+    - wget
+    - xh
+    - yazi
+    
+    # Version Control and Git
+    - gh
+    - git
+    - git-delta
+    - lazygit
+    
+    # Shell and Terminal
+    - name: mcfly
+      config: config/mcfly/
+    - starship
+    - zellij
+    - zoxide
+    
+    # Development Tools
+    - cask
+    - curl
+    - name: editorconfig
+      config: editorconfig
+    - markdown
+    - md5sha1sum
+    - name: neovim
+      config: config/nvim/
+    - pre-commit
+    - xz
+    
+    # Programming Languages and Runtimes
+    - lua
+    - luarocks
+    
+    # AI and ML
+    - ollama
+  
+  casks:
+    # Fonts
+    - font-hack-nerd-font
+    - font-mononoki-nerd-font
+    - font-space-mono-nerd-font
+    - font-ubuntu-mono-nerd-font
+    
+    # Terminal
+    - ghostty
+    - wezterm
+    - name: wezterm
+      config: config/wezterm/
+    
+    # Cloud Tools
+    - google-cloud-sdk
+
+asdf:
+  - name: golang
+    version: "1.24.4"
+  
+  - name: nodejs
+    version: "24.2.0"
+  
+  - name: opentofu
+    version: "1.9.1"
+  
+  - name: python
+    version: "3.13.2"
+  
+  - name: terramate
+    version: "0.13.2"
+  
+  - name: uv
+    version: "0.7.13"
+
+npm:
+  - "@anthropic-ai/claude-code"
+  - eslint
+  - prettier
+  - typescript
