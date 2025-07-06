@@ -1,5 +1,0 @@
-# homebrew
-{{- if .homebrew_prefix }}
-eval "$({{ .homebrew_prefix }}/bin/brew shellenv)"
-{{- end }}
-. "$HOME/.cargo/env"
