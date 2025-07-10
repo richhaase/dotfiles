@@ -1,0 +1,5 @@
+--smart-case
+--follow
+--hidden
+--glob=!.git/*
+--glob=!node_modules/*
