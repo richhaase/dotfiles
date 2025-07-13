@@ -1,0 +1,73 @@
+[user]
+	name = "Rich Haase"
+	email = "haaserdh@gmail.com"
+	username = "richhaase"
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+
+[core]
+  pager = delta
+  excludesfile = ~/.gitignore_global
+
+[delta]
+  navigate = true
+  side-by-side = true
+
+[alias]
+	conflicts = diff --name-only --diff-filter=U
+	loglist = log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate --numstat
+	ls = log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate
+	local-branches = !git branch -vv | cut -c 3- | awk '$3 !~/\\[/ { print $1 }'
+	rv = remote --verbose
+	sb = status -sb
+	sup = submodule update
+	undo = reset HEAD~1 --mixed
+
+[color]
+	ui = auto
+	branch = auto
+	diff = auto
+	status = auto
+
+[fetch]
+	prune = true
+	recurseSubmodules = on-demand
+
+[pull]
+	rebase = merges
+
+[status]
+	submoduleSummary = true
+	showUntrackedFiles = all
+	short = false
+
+[diff]
+	submodule = log
+	colorMoved = zebra
+
+[log]
+	abbrevCommit = true
+
+[init]
+	defaultBranch = trunk
+
+[push]
+	default = current
+	autoSetupRemote = true
+	followTags = true
+
+[rerere]
+	enabled = true
+
+[branch]
+	sort = -committerdate
+
+[rebase]
+	autosquash = true
+
+[merge]
+	conflictstyle = diff3

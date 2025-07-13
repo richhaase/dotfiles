@@ -1,0 +1,138 @@
+version: 1
+packages:
+    homebrew:
+        - name: zoxide
+          installed_at: 2025-07-12T18:56:23.231604-06:00
+          version: 0.9.8
+        - name: zellij
+          installed_at: 2025-07-12T18:56:25.102846-06:00
+          version: 0.42.2
+        - name: xh
+          installed_at: 2025-07-12T18:56:26.968439-06:00
+          version: 0.24.1
+        - name: wget
+          installed_at: 2025-07-12T18:56:28.867082-06:00
+          version: 1.25.0
+        - name: tokei
+          installed_at: 2025-07-12T18:56:30.727953-06:00
+          version: 12.1.2
+        - name: tldr
+          installed_at: 2025-07-12T18:56:32.63582-06:00
+          version: 1.6.1
+        - name: starship
+          installed_at: 2025-07-12T18:56:34.566735-06:00
+          version: 1.23.0
+        - name: sd
+          installed_at: 2025-07-12T18:56:36.435152-06:00
+          version: 1.0.0
+        - name: procs
+          installed_at: 2025-07-12T18:56:38.35075-06:00
+          version: 0.14.10
+        - name: pre-commit
+          installed_at: 2025-07-12T18:56:40.316109-06:00
+          version: 4.2.0
+        - name: ollama
+          installed_at: 2025-07-12T18:56:42.184145-06:00
+          version: 0.9.5
+        - name: neovim
+          installed_at: 2025-07-12T18:56:44.358039-06:00
+          version: 0.11.2
+        - name: mcfly
+          installed_at: 2025-07-12T18:56:46.216298-06:00
+          version: 0.9.3
+        - name: yazi
+          installed_at: 2025-07-12T18:58:10.962857-06:00
+          version: 25.5.31
+        - name: ripgrep
+          installed_at: 2025-07-12T18:58:12.85314-06:00
+          version: 14.1.1
+        - name: lazygit
+          installed_at: 2025-07-12T18:58:14.716066-06:00
+          version: 0.53.0
+        - name: just
+          installed_at: 2025-07-12T18:58:16.622116-06:00
+          version: 1.41.0
+        - name: jq
+          installed_at: 2025-07-12T18:58:18.510979-06:00
+          version: 1.8.1
+        - name: helix
+          installed_at: 2025-07-12T18:58:20.518923-06:00
+          version: 25.01.1
+        - name: aichat
+          installed_at: 2025-07-12T18:59:50.504746-06:00
+          version: 0.30.0
+        - name: aider
+          installed_at: 2025-07-12T18:59:53.806962-06:00
+          version: 0.85.1
+        - name: asdf
+          installed_at: 2025-07-12T18:59:55.670382-06:00
+          version: 0.18.0
+        - name: awscli
+          installed_at: 2025-07-12T19:00:01.005592-06:00
+          version: 2.27.49
+        - name: bandwhich
+          installed_at: 2025-07-12T19:00:02.887527-06:00
+          version: 0.23.1
+        - name: bat
+          installed_at: 2025-07-12T19:00:04.783486-06:00
+          version: 0.25.0_1
+        - name: btop
+          installed_at: 2025-07-12T19:00:06.629629-06:00
+          version: 1.4.4
+        - name: choose
+          installed_at: 2025-07-12T19:00:08.533142-06:00
+          version: 0.1.0_4
+        - name: colima
+          installed_at: 2025-07-12T19:00:10.413955-06:00
+          version: 0.8.1
+        - name: curl
+          installed_at: 2025-07-12T19:00:12.334615-06:00
+          version: 8.14.1
+        - name: docker
+          installed_at: 2025-07-12T19:00:14.251753-06:00
+          version: 28.3.0
+        - name: duf
+          installed_at: 2025-07-12T19:00:16.136286-06:00
+          version: 0.8.1
+        - name: dust
+          installed_at: 2025-07-12T19:00:18.045805-06:00
+          version: 1.2.2
+        - name: editorconfig
+          installed_at: 2025-07-12T19:00:19.922235-06:00
+          version: 0.12.9
+        - name: eza
+          installed_at: 2025-07-12T19:00:21.790083-06:00
+          version: 0.22.0
+        - name: fd
+          installed_at: 2025-07-12T19:00:23.700066-06:00
+          version: 10.2.0
+        - name: fzf
+          installed_at: 2025-07-12T19:00:25.5621-06:00
+          version: 0.64.0
+        - name: gh
+          installed_at: 2025-07-12T19:00:27.45127-06:00
+          version: 2.74.2
+        - name: ghostty
+          installed_at: 2025-07-12T19:00:30.607397-06:00
+          version: unknown
+        - name: coreutils
+          installed_at: 2025-07-12T19:02:29.047569-06:00
+          version: "9.7"
+        - name: gcc
+          installed_at: 2025-07-12T19:02:31.169587-06:00
+          version: 15.1.0
+        - name: git
+          installed_at: 2025-07-12T19:02:33.278859-06:00
+          version: 2.50.0
+        - name: git-delta
+          installed_at: 2025-07-12T19:02:35.182216-06:00
+          version: 0.18.2_3
+        - name: google-cloud-sdk
+          installed_at: 2025-07-12T19:02:37.720816-06:00
+          version: unknown
+        - name: goreleaser
+          installed_at: 2025-07-12T19:02:39.593085-06:00
+          version: 2.11.0
+        - name: fish
+          installed_at: 2025-07-12T19:12:12.221008-06:00
+          version: 4.0.2

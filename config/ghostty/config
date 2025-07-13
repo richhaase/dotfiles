@@ -1,0 +1,4 @@
+font-family = "Hack Nerd Font"
+font-size = 14
+theme = "Solarized Darcula"
+keybind = shift+enter=text:\n
