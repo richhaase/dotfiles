@@ -10,9 +10,6 @@ packages:
         - name: xh
           installed_at: 2025-07-12T18:56:26.968439-06:00
           version: 0.24.1
-        - name: wget
-          installed_at: 2025-07-12T18:56:28.867082-06:00
-          version: 1.25.0
         - name: tokei
           installed_at: 2025-07-12T18:56:30.727953-06:00
           version: 12.1.2
@@ -58,9 +55,6 @@ packages:
         - name: helix
           installed_at: 2025-07-12T18:58:20.518923-06:00
           version: 25.01.1
-        - name: aichat
-          installed_at: 2025-07-12T18:59:50.504746-06:00
-          version: 0.30.0
         - name: aider
           installed_at: 2025-07-12T18:59:53.806962-06:00
           version: 0.85.1
@@ -85,9 +79,6 @@ packages:
         - name: colima
           installed_at: 2025-07-12T19:00:10.413955-06:00
           version: 0.8.1
-        - name: curl
-          installed_at: 2025-07-12T19:00:12.334615-06:00
-          version: 8.14.1
         - name: docker
           installed_at: 2025-07-12T19:00:14.251753-06:00
           version: 28.3.0
@@ -106,9 +97,6 @@ packages:
         - name: fd
           installed_at: 2025-07-12T19:00:23.700066-06:00
           version: 10.2.0
-        - name: fzf
-          installed_at: 2025-07-12T19:00:25.5621-06:00
-          version: 0.64.0
         - name: gh
           installed_at: 2025-07-12T19:00:27.45127-06:00
           version: 2.74.2
@@ -121,9 +109,6 @@ packages:
         - name: gcc
           installed_at: 2025-07-12T19:02:31.169587-06:00
           version: 15.1.0
-        - name: git
-          installed_at: 2025-07-12T19:02:33.278859-06:00
-          version: 2.50.0
         - name: git-delta
           installed_at: 2025-07-12T19:02:35.182216-06:00
           version: 0.18.2_3
@@ -136,3 +121,18 @@ packages:
         - name: fish
           installed_at: 2025-07-12T19:12:12.221008-06:00
           version: 4.0.2
+        - name: aichat
+          installed_at: 2025-07-12T22:00:21.75411-06:00
+          version: 0.30.0
+        - name: lima
+          installed_at: 2025-07-12T22:04:23.394576-06:00
+          version: 1.1.1
+        - name: git
+          installed_at: 2025-07-12T22:04:58.935444-06:00
+          version: 2.50.0
+        - name: fzf
+          installed_at: 2025-07-12T23:11:25.158422-06:00
+          version: 0.64.0
+        - name: curl
+          installed_at: 2025-07-13T07:19:08.59852-06:00
+          version: 8.14.1
