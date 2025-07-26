@@ -1,5 +1,32 @@
 version: 1
 packages:
+    cargo:
+        - name: ripgrep
+          installed_at: 2025-07-15T17:30:04.818452-06:00
+          version: ""
+        - name: exa
+          installed_at: 2025-07-15T17:56:11.610187-06:00
+          version: 0.10.1
+    gem:
+        - name: pry
+          installed_at: 2025-07-14T21:11:05.757531-06:00
+          version: 0.15.2
+        - name: rake
+          installed_at: 2025-07-21T15:53:22.965449-06:00
+          version: 13.3.0
+    go:
+        - name: golang.org/x/tools/gopls@latest
+          installed_at: 2025-07-14T21:44:31.573579-06:00
+          version: v0.19.1
+        - name: gopls
+          installed_at: 2025-07-14T21:47:00.658861-06:00
+          version: v0.19.1
+        - name: goreleaser
+          installed_at: 2025-07-14T21:52:17.540435-06:00
+          version: v1.26.2
+        - name: gofumpt
+          installed_at: 2025-07-14T21:53:19.011309-06:00
+          version: v0.8.0
     homebrew:
         - name: zoxide
           installed_at: 2025-07-12T18:56:23.231604-06:00
@@ -40,9 +67,6 @@ packages:
         - name: yazi
           installed_at: 2025-07-12T18:58:10.962857-06:00
           version: 25.5.31
-        - name: ripgrep
-          installed_at: 2025-07-12T18:58:12.85314-06:00
-          version: 14.1.1
         - name: lazygit
           installed_at: 2025-07-12T18:58:14.716066-06:00
           version: 0.53.0
@@ -67,9 +91,6 @@ packages:
         - name: bandwhich
           installed_at: 2025-07-12T19:00:02.887527-06:00
           version: 0.23.1
-        - name: bat
-          installed_at: 2025-07-12T19:00:04.783486-06:00
-          version: 0.25.0_1
         - name: btop
           installed_at: 2025-07-12T19:00:06.629629-06:00
           version: 1.4.4
@@ -136,3 +157,29 @@ packages:
         - name: curl
           installed_at: 2025-07-13T07:19:08.59852-06:00
           version: 8.14.1
+        - name: wget
+          installed_at: 2025-07-14T13:41:02.357498-06:00
+          version: 1.25.0
+        - name: font-hack-nerd-font
+          installed_at: 2025-07-14T13:41:05.250119-06:00
+          version: ""
+        - name: postgresql
+          installed_at: 2025-07-15T16:45:03.657674-06:00
+          version: ""
+    npm:
+        - name: '@angular/cli'
+          installed_at: 2025-07-15T17:08:34.868387-06:00
+          version: 20.1.0
+    pip:
+        - name: black
+          installed_at: 2025-07-14T17:40:13.244985-06:00
+          version: 25.1.0
+        - name: flake8
+          installed_at: 2025-07-14T17:42:36.481494-06:00
+          version: 7.3.0
+        - name: numpy
+          installed_at: 2025-07-16T09:17:39.350594-06:00
+          version: 2.3.1
+        - name: django
+          installed_at: 2025-07-16T09:21:18.496242-06:00
+          version: 5.2.4

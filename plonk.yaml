@@ -7,7 +7,7 @@
 
 # Default package manager to use when installing packages
 # Options: homebrew, npm, cargo
-default_manager: homebrew
+default_manager: cargo
 
 # Timeout settings (in seconds)
 # Set to 0 for unlimited timeout (not recommended)

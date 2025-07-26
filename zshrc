@@ -33,13 +33,7 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 source <(fzf --zsh)
 
 # Aliases
-alias '..'='cd ..'
-alias '...'='cd ../..'
-alias '....'='cd ../../..'
-alias be="chezmoi edit --apply ~/.brewfile && brew bundle --cleanup"
 alias b="bat"
-alias claude="/Users/rdh/.claude/local/claude"
-alias che="chezmoi"
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias df='duf'
 alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
@@ -47,23 +41,14 @@ alias du="dust"
 alias files='fd --type f | fzf --preview "bat --color=always {}"'
 alias lg="lazygit"
 alias ll="eza -la --icons --group-directories-first"
-alias k="kubectl"
-alias kctx='kubectx $(kubectx | fzf)'
-alias kns='kubens $(kubens | fzf)'
-alias logs="stern"  # instead of kubectl logs
 alias myip='curl ifconfig.me'
 alias netcheck='procs | choose 0,10 | sort -nr'
 alias ports='netstat -tuln'
 alias ps="procs"    # modern ps
 alias refresh="source ~/.zshrc"
 alias sed="sd"      # modern sed
-alias tm="terramate"
-alias tf="tofu"
-alias tfplan='tf fmt && tf validate && tf plan'
 alias stats="tokei"
 alias weather='curl wttr.in'
-alias vi=hx
-alias vim=hx
 
 # Git workflow aliases
 alias branches='git branch --sort=-committerdate | head -10'
@@ -91,26 +76,10 @@ y() {
 	rm -f -- "$tmp"
 }
 
-vf() {
-  local file
-  file=$(fd --type f | fzf --preview 'bat --color=always {}') && hx"$file"
-}
-
-# Search file contents with ripgrep + fzf
-search() {
-  rg --line-number --color=always "$1" | fzf --delimiter=: --preview 'bat --color=always --highlight-line {2} {1}'
-}
-
 # Cloud
 awsp() {
   export AWS_PROFILE=$(aws configure list-profiles | fzf)
 }
-
-# GitHub
-prs() {
-  gh pr list | fzf | choose 0 | xargs gh pr checkout
-}
-
 # System
 fkill() {
   procs | fzf | choose 0 | xargs kill
