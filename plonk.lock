@@ -1,185 +1,276 @@
-version: 1
-packages:
-    cargo:
-        - name: ripgrep
-          installed_at: 2025-07-15T17:30:04.818452-06:00
-          version: ""
-        - name: exa
-          installed_at: 2025-07-15T17:56:11.610187-06:00
-          version: 0.10.1
-    gem:
-        - name: pry
-          installed_at: 2025-07-14T21:11:05.757531-06:00
-          version: 0.15.2
-        - name: rake
-          installed_at: 2025-07-21T15:53:22.965449-06:00
-          version: 13.3.0
-    go:
-        - name: golang.org/x/tools/gopls@latest
-          installed_at: 2025-07-14T21:44:31.573579-06:00
-          version: v0.19.1
-        - name: gopls
-          installed_at: 2025-07-14T21:47:00.658861-06:00
-          version: v0.19.1
-        - name: goreleaser
-          installed_at: 2025-07-14T21:52:17.540435-06:00
-          version: v1.26.2
-        - name: gofumpt
-          installed_at: 2025-07-14T21:53:19.011309-06:00
-          version: v0.8.0
-    homebrew:
-        - name: zoxide
-          installed_at: 2025-07-12T18:56:23.231604-06:00
-          version: 0.9.8
-        - name: zellij
-          installed_at: 2025-07-12T18:56:25.102846-06:00
-          version: 0.42.2
-        - name: xh
-          installed_at: 2025-07-12T18:56:26.968439-06:00
-          version: 0.24.1
-        - name: tokei
-          installed_at: 2025-07-12T18:56:30.727953-06:00
-          version: 12.1.2
-        - name: tldr
-          installed_at: 2025-07-12T18:56:32.63582-06:00
-          version: 1.6.1
-        - name: starship
-          installed_at: 2025-07-12T18:56:34.566735-06:00
-          version: 1.23.0
-        - name: sd
-          installed_at: 2025-07-12T18:56:36.435152-06:00
-          version: 1.0.0
-        - name: procs
-          installed_at: 2025-07-12T18:56:38.35075-06:00
-          version: 0.14.10
-        - name: pre-commit
-          installed_at: 2025-07-12T18:56:40.316109-06:00
-          version: 4.2.0
-        - name: ollama
-          installed_at: 2025-07-12T18:56:42.184145-06:00
-          version: 0.9.5
-        - name: neovim
-          installed_at: 2025-07-12T18:56:44.358039-06:00
-          version: 0.11.2
-        - name: mcfly
-          installed_at: 2025-07-12T18:56:46.216298-06:00
-          version: 0.9.3
-        - name: yazi
-          installed_at: 2025-07-12T18:58:10.962857-06:00
-          version: 25.5.31
-        - name: lazygit
-          installed_at: 2025-07-12T18:58:14.716066-06:00
-          version: 0.53.0
-        - name: just
-          installed_at: 2025-07-12T18:58:16.622116-06:00
-          version: 1.41.0
-        - name: jq
-          installed_at: 2025-07-12T18:58:18.510979-06:00
-          version: 1.8.1
-        - name: helix
-          installed_at: 2025-07-12T18:58:20.518923-06:00
-          version: 25.01.1
-        - name: aider
-          installed_at: 2025-07-12T18:59:53.806962-06:00
-          version: 0.85.1
-        - name: asdf
-          installed_at: 2025-07-12T18:59:55.670382-06:00
-          version: 0.18.0
-        - name: awscli
-          installed_at: 2025-07-12T19:00:01.005592-06:00
-          version: 2.27.49
-        - name: bandwhich
-          installed_at: 2025-07-12T19:00:02.887527-06:00
-          version: 0.23.1
-        - name: btop
-          installed_at: 2025-07-12T19:00:06.629629-06:00
-          version: 1.4.4
-        - name: choose
-          installed_at: 2025-07-12T19:00:08.533142-06:00
-          version: 0.1.0_4
-        - name: colima
-          installed_at: 2025-07-12T19:00:10.413955-06:00
-          version: 0.8.1
-        - name: docker
-          installed_at: 2025-07-12T19:00:14.251753-06:00
-          version: 28.3.0
-        - name: duf
-          installed_at: 2025-07-12T19:00:16.136286-06:00
-          version: 0.8.1
-        - name: dust
-          installed_at: 2025-07-12T19:00:18.045805-06:00
-          version: 1.2.2
-        - name: editorconfig
-          installed_at: 2025-07-12T19:00:19.922235-06:00
-          version: 0.12.9
-        - name: eza
-          installed_at: 2025-07-12T19:00:21.790083-06:00
-          version: 0.22.0
-        - name: fd
-          installed_at: 2025-07-12T19:00:23.700066-06:00
-          version: 10.2.0
-        - name: gh
-          installed_at: 2025-07-12T19:00:27.45127-06:00
-          version: 2.74.2
-        - name: ghostty
-          installed_at: 2025-07-12T19:00:30.607397-06:00
-          version: unknown
-        - name: coreutils
-          installed_at: 2025-07-12T19:02:29.047569-06:00
-          version: "9.7"
-        - name: gcc
-          installed_at: 2025-07-12T19:02:31.169587-06:00
-          version: 15.1.0
-        - name: git-delta
-          installed_at: 2025-07-12T19:02:35.182216-06:00
-          version: 0.18.2_3
-        - name: google-cloud-sdk
-          installed_at: 2025-07-12T19:02:37.720816-06:00
-          version: unknown
-        - name: goreleaser
-          installed_at: 2025-07-12T19:02:39.593085-06:00
-          version: 2.11.0
-        - name: fish
-          installed_at: 2025-07-12T19:12:12.221008-06:00
-          version: 4.0.2
-        - name: aichat
-          installed_at: 2025-07-12T22:00:21.75411-06:00
-          version: 0.30.0
-        - name: lima
-          installed_at: 2025-07-12T22:04:23.394576-06:00
-          version: 1.1.1
-        - name: git
-          installed_at: 2025-07-12T22:04:58.935444-06:00
-          version: 2.50.0
-        - name: fzf
-          installed_at: 2025-07-12T23:11:25.158422-06:00
-          version: 0.64.0
-        - name: curl
-          installed_at: 2025-07-13T07:19:08.59852-06:00
-          version: 8.14.1
-        - name: wget
-          installed_at: 2025-07-14T13:41:02.357498-06:00
-          version: 1.25.0
-        - name: font-hack-nerd-font
-          installed_at: 2025-07-14T13:41:05.250119-06:00
-          version: ""
-        - name: postgresql
-          installed_at: 2025-07-15T16:45:03.657674-06:00
-          version: ""
-    npm:
-        - name: '@angular/cli'
-          installed_at: 2025-07-15T17:08:34.868387-06:00
-          version: 20.1.0
-    pip:
-        - name: black
-          installed_at: 2025-07-14T17:40:13.244985-06:00
-          version: 25.1.0
-        - name: flake8
-          installed_at: 2025-07-14T17:42:36.481494-06:00
-          version: 7.3.0
-        - name: numpy
-          installed_at: 2025-07-16T09:17:39.350594-06:00
-          version: 2.3.1
-        - name: django
-          installed_at: 2025-07-16T09:21:18.496242-06:00
-          version: 5.2.4
+version: 2
+resources:
+    - type: package
+      id: brew:bat
+      metadata:
+        manager: brew
+        name: bat
+        version: 0.25.0_1
+      installed_at: "2025-07-29T16:51:33-06:00"
+    - type: package
+      id: brew:fd
+      metadata:
+        manager: brew
+        name: fd
+        version: 10.2.0
+      installed_at: "2025-07-29T16:51:35-06:00"
+    - type: package
+      id: brew:ripgrep
+      metadata:
+        manager: brew
+        name: ripgrep
+        version: 14.1.1
+      installed_at: "2025-07-29T16:51:37-06:00"
+    - type: package
+      id: npm:prettier
+      metadata:
+        manager: npm
+        name: prettier
+        version: 3.6.2
+      installed_at: "2025-07-29T16:51:38-06:00"
+    - type: package
+      id: npm:eslint
+      metadata:
+        manager: npm
+        name: eslint
+        version: 9.32.0
+      installed_at: "2025-07-29T16:51:41-06:00"
+    - type: package
+      id: brew:aichat
+      metadata:
+        manager: brew
+        name: aichat
+        version: 0.30.0
+      installed_at: "2025-07-30T06:23:34-06:00"
+    - type: package
+      id: brew:aider
+      metadata:
+        manager: brew
+        name: aider
+        version: 0.85.2
+      installed_at: "2025-07-30T06:23:36-06:00"
+    - type: package
+      id: brew:bats-core
+      metadata:
+        manager: brew
+        name: bats-core
+        version: 1.12.0
+      installed_at: "2025-07-30T06:23:38-06:00"
+    - type: package
+      id: brew:btop
+      metadata:
+        manager: brew
+        name: btop
+        version: 1.4.4
+      installed_at: "2025-07-30T06:23:40-06:00"
+    - type: package
+      id: brew:colima
+      metadata:
+        manager: brew
+        name: colima
+        version: 0.8.1
+      installed_at: "2025-07-30T06:23:42-06:00"
+    - type: package
+      id: brew:coreutils
+      metadata:
+        manager: brew
+        name: coreutils
+        version: "9.7"
+      installed_at: "2025-07-30T06:23:44-06:00"
+    - type: package
+      id: brew:curl
+      metadata:
+        manager: brew
+        name: curl
+        version: 8.15.0
+      installed_at: "2025-07-30T06:23:46-06:00"
+    - type: package
+      id: brew:docker
+      metadata:
+        manager: brew
+        name: docker
+        version: 28.3.3
+      installed_at: "2025-07-30T06:23:53-06:00"
+    - type: package
+      id: brew:editorconfig
+      metadata:
+        manager: brew
+        name: editorconfig
+        version: 0.12.9
+      installed_at: "2025-07-30T06:23:55-06:00"
+    - type: package
+      id: brew:eza
+      metadata:
+        manager: brew
+        name: eza
+        version: 0.23.0
+      installed_at: "2025-07-30T06:23:57-06:00"
+    - type: package
+      id: brew:fzf
+      metadata:
+        manager: brew
+        name: fzf
+        version: 0.65.0
+      installed_at: "2025-07-30T06:24:00-06:00"
+    - type: package
+      id: brew:gcc
+      metadata:
+        manager: brew
+        name: gcc
+        version: 15.1.0
+      installed_at: "2025-07-30T06:24:02-06:00"
+    - type: package
+      id: brew:gh
+      metadata:
+        manager: brew
+        name: gh
+        version: 2.76.1
+      installed_at: "2025-07-30T06:24:04-06:00"
+    - type: package
+      id: brew:go
+      metadata:
+        manager: brew
+        name: go
+        version: 1.24.5
+      installed_at: "2025-07-30T06:24:06-06:00"
+    - type: package
+      id: brew:jq
+      metadata:
+        manager: brew
+        name: jq
+        version: 1.8.1
+      installed_at: "2025-07-30T06:24:08-06:00"
+    - type: package
+      id: brew:lazygit
+      metadata:
+        manager: brew
+        name: lazygit
+        version: 0.53.0
+      installed_at: "2025-07-30T06:24:10-06:00"
+    - type: package
+      id: brew:mcfly
+      metadata:
+        manager: brew
+        name: mcfly
+        version: 0.9.3
+      installed_at: "2025-07-30T06:24:12-06:00"
+    - type: package
+      id: go:deadcode
+      metadata:
+        manager: go
+        name: deadcode
+        source_path: golang.org/x/tools/cmd/deadcode@latest
+        version: v0.35.0
+      installed_at: "2025-07-30T16:37:25-06:00"
+    - type: package
+      id: brew:helix
+      metadata:
+        manager: brew
+        name: helix
+        version: 25.07.1
+      installed_at: "2025-07-30T21:33:22-06:00"
+    - type: package
+      id: brew:neovim
+      metadata:
+        manager: brew
+        name: neovim
+        version: 0.11.3
+      installed_at: "2025-07-30T21:33:24-06:00"
+    - type: package
+      id: brew:node
+      metadata:
+        manager: brew
+        name: node
+        version: 24.4.1
+      installed_at: "2025-07-30T21:33:26-06:00"
+    - type: package
+      id: brew:ollama
+      metadata:
+        manager: brew
+        name: ollama
+        version: 0.9.6
+      installed_at: "2025-07-30T21:33:28-06:00"
+    - type: package
+      id: brew:procs
+      metadata:
+        manager: brew
+        name: procs
+        version: 0.14.10
+      installed_at: "2025-07-30T21:33:30-06:00"
+    - type: package
+      id: brew:python3
+      metadata:
+        manager: brew
+        name: python3
+        version: 3.13.5
+      installed_at: "2025-07-30T21:33:32-06:00"
+    - type: package
+      id: brew:scc
+      metadata:
+        manager: brew
+        name: scc
+        version: 3.5.0
+      installed_at: "2025-07-30T21:33:35-06:00"
+    - type: package
+      id: brew:sd
+      metadata:
+        manager: brew
+        name: sd
+        version: 1.0.0
+      installed_at: "2025-07-30T21:33:37-06:00"
+    - type: package
+      id: brew:starship
+      metadata:
+        manager: brew
+        name: starship
+        version: 1.23.0
+      installed_at: "2025-07-30T21:33:39-06:00"
+    - type: package
+      id: brew:tldr
+      metadata:
+        manager: brew
+        name: tldr
+        version: 1.6.1
+      installed_at: "2025-07-30T21:33:42-06:00"
+    - type: package
+      id: brew:tokei
+      metadata:
+        manager: brew
+        name: tokei
+        version: 12.1.2
+      installed_at: "2025-07-30T21:33:44-06:00"
+    - type: package
+      id: brew:wget
+      metadata:
+        manager: brew
+        name: wget
+        version: 1.25.0
+      installed_at: "2025-07-30T21:33:46-06:00"
+    - type: package
+      id: brew:xh
+      metadata:
+        manager: brew
+        name: xh
+        version: 0.24.1
+      installed_at: "2025-07-30T21:33:48-06:00"
+    - type: package
+      id: brew:yazi
+      metadata:
+        manager: brew
+        name: yazi
+        version: 25.5.31
+      installed_at: "2025-07-30T21:33:50-06:00"
+    - type: package
+      id: brew:zellij
+      metadata:
+        manager: brew
+        name: zellij
+        version: 0.42.2
+      installed_at: "2025-07-30T21:33:52-06:00"
+    - type: package
+      id: brew:zoxide
+      metadata:
+        manager: brew
+        name: zoxide
+        version: 0.9.8
+      installed_at: "2025-07-30T21:33:55-06:00"
