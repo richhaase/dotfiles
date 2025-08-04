@@ -1,7 +1,12 @@
+# homebrew
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
 export EDITOR=hx
-export HOMEBREW_BUNDLE_FILE="$HOME/.brewfile"
 export LANG=en_US.UTF-8
-export PATH="${HOMEBREW_PREFIX}/bin:${HOMEBREW_PREFIX}/opt/openssl/bin:${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$(go env GOBIN):$PATH"
+
+. "$HOME/.cargo/env"
+export PATH="$(go env GOBIN):$PATH"
+export PATH="${HOME}/.pixi/bin:$PATH"
 
 # Shell Options
 setopt AUTO_MENU
@@ -44,9 +49,7 @@ alias ll="eza -la --icons --group-directories-first"
 alias myip='curl ifconfig.me'
 alias netcheck='procs | choose 0,10 | sort -nr'
 alias ports='netstat -tuln'
-alias ps="procs"    # modern ps
 alias refresh="source ~/.zshrc"
-alias sed="sd"      # modern sed
 alias stats="tokei"
 alias weather='curl wttr.in'
 
