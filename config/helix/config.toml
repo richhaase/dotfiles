@@ -1,4 +1,4 @@
-theme = "catppuccin_machiato"
+theme = "catppuccin_macchiato"
 
 [editor]
 scroll-lines = 1
@@ -23,6 +23,9 @@ character = "|"
 [editor.lsp]
 display-messages = true
 display-inlay-hints = true
+
+[editor.soft-wrap]
+enabled = true
 
 [editor.statusline]
 left = [
