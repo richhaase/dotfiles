@@ -5,7 +5,7 @@ export EDITOR=hx
 export LANG=en_US.UTF-8
 
 . "$HOME/.cargo/env"
-export PATH="$(go env GOBIN):$PATH"
+export PATH="$(go env GOPATH)/bin:$PATH"
 export PATH="${HOME}/.pixi/bin:$PATH"
 
 # Shell Options
@@ -39,6 +39,7 @@ source <(fzf --zsh)
 
 # Aliases
 alias b="bat"
+alias claude="$HOME/.claude/local/claude"
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias df='duf'
 alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
@@ -99,3 +100,4 @@ function zef () {
 
 # Local overrides
 [[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
+
