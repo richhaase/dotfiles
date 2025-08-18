@@ -373,3 +373,10 @@ resources:
         name: raycast
         version: ""
       installed_at: "2025-08-18T07:27:53-06:00"
+    - type: package
+      id: brew:ghostty
+      metadata:
+        manager: brew
+        name: ghostty
+        version: ""
+      installed_at: "2025-08-18T08:31:40-06:00"
