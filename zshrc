@@ -7,6 +7,14 @@ export LANG=en_US.UTF-8
 . "$HOME/.cargo/env"
 export PATH="$(go env GOPATH)/bin:$PATH"
 export PATH="${HOME}/.pixi/bin:$PATH"
+# pnpm
+export PNPM_HOME="/Users/rdh/Library/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+export PATH="${HOME}/.local/bin:$PATH"
 
 # Shell Options
 setopt AUTO_MENU
@@ -39,7 +47,6 @@ source <(fzf --zsh)
 
 # Aliases
 alias b="bat"
-alias claude="$HOME/.claude/local/claude"
 alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias df='duf'
 alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
@@ -100,4 +107,6 @@ function zef () {
 
 # Local overrides
 [[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
+
+
 
