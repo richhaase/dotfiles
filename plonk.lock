@@ -36,20 +36,6 @@ resources:
         version: 9.32.0
       installed_at: "2025-07-29T16:51:41-06:00"
     - type: package
-      id: brew:aichat
-      metadata:
-        manager: brew
-        name: aichat
-        version: 0.30.0
-      installed_at: "2025-07-30T06:23:34-06:00"
-    - type: package
-      id: brew:aider
-      metadata:
-        manager: brew
-        name: aider
-        version: 0.85.2
-      installed_at: "2025-07-30T06:23:36-06:00"
-    - type: package
       id: brew:bats-core
       metadata:
         manager: brew
@@ -68,8 +54,8 @@ resources:
       metadata:
         manager: brew
         name: colima
-        version: 0.8.1
-      installed_at: "2025-07-30T06:23:42-06:00"
+        version: 0.8.4
+      installed_at: "2025-08-07T22:07:53-06:00"
     - type: package
       id: brew:coreutils
       metadata:
@@ -131,8 +117,8 @@ resources:
       metadata:
         manager: brew
         name: go
-        version: 1.24.5
-      installed_at: "2025-07-30T06:24:06-06:00"
+        version: 1.24.6
+      installed_at: "2025-08-07T22:08:01-06:00"
     - type: package
       id: brew:jq
       metadata:
@@ -145,8 +131,8 @@ resources:
       metadata:
         manager: brew
         name: lazygit
-        version: 0.53.0
-      installed_at: "2025-07-30T06:24:10-06:00"
+        version: 0.54.1
+      installed_at: "2025-08-07T22:08:03-06:00"
     - type: package
       id: brew:mcfly
       metadata:
@@ -154,14 +140,6 @@ resources:
         name: mcfly
         version: 0.9.3
       installed_at: "2025-07-30T06:24:12-06:00"
-    - type: package
-      id: go:deadcode
-      metadata:
-        manager: go
-        name: deadcode
-        source_path: golang.org/x/tools/cmd/deadcode@latest
-        version: v0.35.0
-      installed_at: "2025-07-30T16:37:25-06:00"
     - type: package
       id: brew:helix
       metadata:
@@ -188,8 +166,8 @@ resources:
       metadata:
         manager: brew
         name: ollama
-        version: 0.9.6
-      installed_at: "2025-07-30T21:33:28-06:00"
+        version: 0.11.3
+      installed_at: "2025-08-07T22:08:07-06:00"
     - type: package
       id: brew:procs
       metadata:
@@ -265,8 +243,8 @@ resources:
       metadata:
         manager: brew
         name: zellij
-        version: 0.42.2
-      installed_at: "2025-07-30T21:33:52-06:00"
+        version: 0.43.0
+      installed_at: "2025-08-07T22:08:17-06:00"
     - type: package
       id: brew:zoxide
       metadata:
@@ -279,8 +257,8 @@ resources:
       metadata:
         manager: brew
         name: awscli
-        version: 2.28.0
-      installed_at: "2025-08-01T07:21:04-06:00"
+        version: 2.28.5
+      installed_at: "2025-08-07T22:08:19-06:00"
     - type: package
       id: brew:delta
       metadata:
@@ -314,8 +292,8 @@ resources:
       metadata:
         manager: brew
         name: golang
-        version: 1.24.5
-      installed_at: "2025-08-01T07:21:16-06:00"
+        version: 1.24.6
+      installed_at: "2025-08-07T22:08:24-06:00"
     - type: package
       id: brew:just
       metadata:
@@ -323,13 +301,6 @@ resources:
         name: just
         version: 1.42.4
       installed_at: "2025-08-01T07:21:19-06:00"
-    - type: package
-      id: brew:lima
-      metadata:
-        manager: brew
-        name: lima
-        version: 1.2.1
-      installed_at: "2025-08-01T07:21:30-06:00"
     - type: package
       id: brew:markdown
       metadata:
@@ -342,8 +313,8 @@ resources:
       metadata:
         manager: brew
         name: goimports
-        version: 0.35.0
-      installed_at: "2025-08-01T16:50:22-06:00"
+        version: 0.36.0
+      installed_at: "2025-08-07T22:08:27-06:00"
     - type: package
       id: brew:goreleaser
       metadata:
@@ -356,5 +327,49 @@ resources:
       metadata:
         manager: brew
         name: ccusage
-        version: 15.7.1
-      installed_at: "2025-08-04T15:17:05-06:00"
+        version: 15.8.0
+      installed_at: "2025-08-07T22:08:29-06:00"
+    - type: package
+      id: brew:codex
+      metadata:
+        manager: brew
+        name: codex
+        version: 0.20.0
+      installed_at: "2025-08-08T22:40:27-06:00"
+    - type: package
+      id: brew:uv
+      metadata:
+        manager: brew
+        name: uv
+        version: 0.8.5
+      installed_at: "2025-08-06T19:38:47-06:00"
+    - type: package
+      id: pnpm:@anthropic-ai/claude-code
+      metadata:
+        manager: pnpm
+        name: '@anthropic-ai/claude-code'
+        version: ""
+      installed_at: "2025-08-09T08:51:32-06:00"
+    - type: package
+      id: pnpm:@google/gemini-cli
+      metadata:
+        manager: pnpm
+        name: '@google/gemini-cli'
+        version: ""
+      installed_at: "2025-08-09T14:38:09-06:00"
+    - type: package
+      id: npm:@kayvan/markdown-tree-parser
+      metadata:
+        full_name: '@kayvan/markdown-tree-parser'
+        manager: npm
+        name: '@kayvan/markdown-tree-parser'
+        scope: '@kayvan'
+        version: 1.6.0
+      installed_at: "2025-08-10T17:48:21-06:00"
+    - type: package
+      id: brew:raycast
+      metadata:
+        manager: brew
+        name: raycast
+        version: ""
+      installed_at: "2025-08-18T07:27:53-06:00"

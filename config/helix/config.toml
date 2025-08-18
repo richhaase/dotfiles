@@ -25,7 +25,7 @@ display-messages = true
 display-inlay-hints = true
 
 [editor.soft-wrap]
-enabled = true
+enable = true
 
 [editor.statusline]
 left = [
