@@ -56,6 +56,7 @@ alias lg="lazygit"
 alias ll="eza -la --icons --group-directories-first"
 alias myip='curl ifconfig.me'
 alias netcheck='procs | choose 0,10 | sort -nr'
+alias nv='nvim'
 alias ports='netstat -tuln'
 alias refresh="source ~/.zshrc"
 alias stats="tokei"
@@ -105,8 +106,5 @@ function zef () {
   zellij edit --floating "$1";
 }
 
-# Local overrides
-[[ -f $HOME/.zshrc.local ]] && . $HOME/.zshrc.local
-
-
-
+# Load direnv
+eval "$(direnv hook zsh)"
