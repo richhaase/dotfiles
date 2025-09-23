@@ -1,18 +1,31 @@
-# Plonk Configuration File
-
-default_manager: brew
-
-# Timeout settings (in seconds)
-# Set to 0 for unlimited timeout (not recommended)
-
-# Overall operation timeout - maximum time for any single command
-operation_timeout: 300   # 300 seconds = 5 minutes
-
-# Individual package operation timeout - time limit for package install/uninstall
-package_timeout: 180     # 180 seconds = 3 minutes
-
-# Dotfile operation timeout - time limit for file copy/link operations
-dotfile_timeout: 60      # 60 seconds = 1 minute
-
-# Directories to expand when listing dotfiles with 'plonk dot list'
-# These directories will show individual files instead of just the directory name
+ignore_patterns:
+    - README.md
+    - .DS_Store
+    - .Trash
+    - .CFUserTextEncoding
+    - .cups
+    - .git
+    - '*.backup'
+    - '*.tmp'
+    - '*.swp'
+    - plonk.lock
+    - .cache
+    - .npm
+    - .gem
+    - .cargo
+    - .rustup
+    - .bundle
+    - .local
+    - .ollama
+    - '*_history'
+    - '*.lesshst'
+    - .cursor
+    - .lima
+    - .colima
+    - .cdk
+    - .magefile
+    - .ssh
+    - .gnupg
+    - '*_token'
+    - '*.pem'
+    - '*.key'
