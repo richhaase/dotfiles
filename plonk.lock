@@ -358,15 +358,6 @@ resources:
         version: 0.1.22
       installed_at: "2025-09-21T11:58:36-06:00"
     - type: package
-      id: npm:@kayvan/markdown-tree-parser
-      metadata:
-        full_name: '@kayvan/markdown-tree-parser'
-        manager: npm
-        name: '@kayvan/markdown-tree-parser'
-        scope: '@kayvan'
-        version: 1.6.1
-      installed_at: "2025-09-21T11:58:29-06:00"
-    - type: package
       id: brew:raycast
       metadata:
         manager: brew
