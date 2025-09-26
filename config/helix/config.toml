@@ -12,6 +12,7 @@ rulers = [80]
 idle-timeout = 50
 auto-format = true
 trim-trailing-whitespace = true
+insert-final-newline = true
 
 [editor.cursor-shape]
 insert = "bar"
