@@ -74,7 +74,6 @@ setopt HIST_VERIFY          # Expand history but do not execute immediately
 
 plugins=(
   zsh-users/zsh-autosuggestions
-  zsh-users/zsh-syntax-highlighting
 )
 
 plugin-load $plugins
@@ -137,3 +136,6 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 
 # Load direnv
 (( $+commands[direnv] )) && eval "$(direnv hook zsh)"
+
+# Load syntax highlighting last, per plugin guidance
+plugin-load zsh-users/zsh-syntax-highlighting
