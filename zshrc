@@ -59,11 +59,11 @@ setopt COMPLETE_IN_WORD
 # Plugin System
 # ============================================================================
 
-source ~/.plugins.zsh
+[ -r "$HOME/.config/zsh/lib/plugin_loader.sh" ] && source "$HOME/.config/zsh/lib/plugin_loader.sh"
 
 plugins=(
-  zsh-users/zsh-syntax-highlighting
   zsh-users/zsh-autosuggestions
+  zsh-users/zsh-syntax-highlighting
 )
 
 plugin-load $plugins
@@ -93,13 +93,13 @@ source <(fzf --zsh)
 # Custom Configurations
 # ============================================================================
 
-# Load functional modules (aliases, functions, env vars by domain)
-ZLIBDIR="$HOME/.config/zsh/lib"
-if [[ -d "$ZLIBDIR" ]]; then
-  for lib in "$ZLIBDIR"/*.sh; do
-    [[ -f "$lib" ]] && source "$lib"
-  done
-fi
+# Load functional modules explicitly (clear order, no wildcard loops)
+[ -r "$HOME/.config/zsh/lib/system.sh" ] && source "$HOME/.config/zsh/lib/system.sh"
+[ -r "$HOME/.config/zsh/lib/files.sh" ] && source "$HOME/.config/zsh/lib/files.sh"
+[ -r "$HOME/.config/zsh/lib/tools.sh" ] && source "$HOME/.config/zsh/lib/tools.sh"
+[ -r "$HOME/.config/zsh/lib/git.sh" ] && source "$HOME/.config/zsh/lib/git.sh"
+[ -r "$HOME/.config/zsh/lib/zellij.sh" ] && source "$HOME/.config/zsh/lib/zellij.sh"
+[ -r "$HOME/.config/zsh/lib/aws.sh" ] && source "$HOME/.config/zsh/lib/aws.sh"
 
 # ============================================================================
 # Final Hooks

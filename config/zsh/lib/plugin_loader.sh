@@ -34,7 +34,7 @@ function plugin-update {
 function plugin-rm {
   if [[ ! -d $ZPLUGINDIR/$1 ]]; then
     echo "No such plugin installed: $1".
-    exit 1
+    return 1
   fi
   rm -rf $ZPLUGINDIR/$1
 }
