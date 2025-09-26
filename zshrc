@@ -20,7 +20,7 @@ ZPLUGINDIR="$HOME/.config/zsh/plugins"
 # ============================================================================
 
 export PATH="${HOME}/bin:$PATH"
-export PATH="$(go env GOPATH)/bin:$PATH"
+(( $+commands[go] )) && export PATH="$(go env GOPATH 2>/dev/null)/bin:$PATH"
 export PATH="${HOME}/.pixi/bin:$PATH"
 export PATH="${HOME}/.local/bin:$PATH"
 
@@ -29,7 +29,7 @@ export PATH="${HOME}/.local/bin:$PATH"
 # ============================================================================
 
 # Cargo (Rust)
-. "$HOME/.cargo/env"
+[ -r "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
 # pnpm
 export PNPM_HOME="$HOME/Library/pnpm"
@@ -46,7 +46,7 @@ export NVM_DIR="$HOME/.nvm"
 # Bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-[ -s "/Users/rdh/.bun/_bun" ] && source "/Users/rdh/.bun/_bun"
+[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
 # ============================================================================
 # Shell Options
@@ -85,9 +85,9 @@ compinit -C
 # Tool Initializations
 # ============================================================================
 
-eval "$(starship init zsh)"
-eval "$(zoxide init zsh)"
-eval "$(mcfly init zsh)"
+(( $+commands[starship] )) && eval "$(starship init zsh)"
+(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
+(( $+commands[mcfly] )) && eval "$(mcfly init zsh)"
 
 # ============================================================================
 # FZF Configuration
@@ -99,7 +99,7 @@ export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
 export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=header,grid --line-range :300 {}'"
 export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 
-source <(fzf --zsh)
+(( $+commands[fzf] )) && source <(fzf --zsh)
 
 
 # ============================================================================
@@ -119,4 +119,4 @@ source <(fzf --zsh)
 # ============================================================================
 
 # Load direnv
-eval "$(direnv hook zsh)"
+(( $+commands[direnv] )) && eval "$(direnv hook zsh)"
