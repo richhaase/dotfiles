@@ -19,10 +19,10 @@ ZPLUGINDIR="$HOME/.config/zsh/plugins"
 # PATH Configuration
 # ============================================================================
 
-export PATH="${HOME}/bin:$PATH"
-(( $+commands[go] )) && export PATH="$(go env GOPATH 2>/dev/null)/bin:$PATH"
-export PATH="${HOME}/.pixi/bin:$PATH"
-export PATH="${HOME}/.local/bin:$PATH"
+# Use zsh-native path array with deduplication
+typeset -U path PATH
+path=("${HOME}/bin" "${HOME}/.pixi/bin" "${HOME}/.local/bin" $path)
+(( $+commands[go] )) && path+=("$(go env GOPATH 2>/dev/null)/bin")
 
 # ============================================================================
 # Package Managers
@@ -33,10 +33,7 @@ export PATH="${HOME}/.local/bin:$PATH"
 
 # pnpm
 export PNPM_HOME="$HOME/Library/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
+[[ -d "$PNPM_HOME" ]] && path+=("$PNPM_HOME")
 
 # Node Version Manager
 export NVM_DIR="$HOME/.nvm"
@@ -45,7 +42,7 @@ export NVM_DIR="$HOME/.nvm"
 
 # Bun
 export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+path+=("$BUN_INSTALL/bin")
 [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
 # ============================================================================
