@@ -92,6 +92,12 @@ autoload -Uz compinit
 zmodload -i zsh/complist 2>/dev/null
 compinit -C
 
+# Completion UI tweaks
+zstyle ':completion:*' menu select
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*:descriptions' format '%F{yellow}%d%f'
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' 'r:|[._-]=** r:|=**'
+
 # ============================================================================
 # Tool Initializations
 # ============================================================================
