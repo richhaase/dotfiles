@@ -1,39 +1,64 @@
-# homebrew
+# ============================================================================
+# Core Setup
+# ============================================================================
+
+# Homebrew
 eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# ============================================================================
+# Environment Variables
+# ============================================================================
 
 export EDITOR=hx
 export LANG=en_US.UTF-8
 
-export PATH="${HOME}/bin:$PATH"
+# Plugin directory
+ZPLUGINDIR="$HOME/.config/zsh/plugins"
 
-. "$HOME/.cargo/env"
+# ============================================================================
+# PATH Configuration
+# ============================================================================
+
+export PATH="${HOME}/bin:$PATH"
 export PATH="$(go env GOPATH)/bin:$PATH"
 export PATH="${HOME}/.pixi/bin:$PATH"
+export PATH="${HOME}/.local/bin:$PATH"
+
+# ============================================================================
+# Package Managers
+# ============================================================================
+
+# Cargo (Rust)
+. "$HOME/.cargo/env"
+
 # pnpm
 export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
+
+# Node Version Manager
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-# pnpm end
-export PATH="${HOME}/.local/bin:$PATH"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# bun completions
-[ -s "/Users/rdh/.bun/_bun" ] && source "/Users/rdh/.bun/_bun"
-
-# bun
+# Bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+[ -s "/Users/rdh/.bun/_bun" ] && source "/Users/rdh/.bun/_bun"
 
+# ============================================================================
 # Shell Options
+# ============================================================================
+
 setopt AUTO_MENU
 setopt COMPLETE_IN_WORD
 
-# Plugin Setup
-ZPLUGINDIR="$HOME/.config/zsh/plugins"
+# ============================================================================
+# Plugin System
+# ============================================================================
+
 source ~/.plugins.zsh
 
 plugins=(
@@ -43,12 +68,18 @@ plugins=(
 
 plugin-load $plugins
 
-# Tool Initialization
+# ============================================================================
+# Tool Initializations
+# ============================================================================
+
 eval "$(starship init zsh)"
 eval "$(zoxide init zsh)"
 eval "$(mcfly init zsh)"
 
+# ============================================================================
 # FZF Configuration
+# ============================================================================
+
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
@@ -57,24 +88,35 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 
 source <(fzf --zsh)
 
-# Aliases
+# ============================================================================
+# System Aliases
+# ============================================================================
+
 alias b="bat"
-alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
 alias df='duf'
-alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
 alias du="dust"
-alias files='fd --type f | fzf --preview "bat --color=always {}"'
-alias lg="lazygit"
 alias ll="eza -la --icons --group-directories-first"
 alias myip='curl ifconfig.me'
 alias netcheck='procs | choose 0,10 | sort -nr'
-alias nv='nvim'
 alias ports='netstat -tuln'
 alias refresh="source ~/.zshrc"
 alias stats="tokei"
 alias weather='curl wttr.in'
 
-# Git workflow aliases
+# ============================================================================
+# Tool Shortcuts
+# ============================================================================
+
+alias lg="lazygit"
+alias nv='nvim'
+alias dirs='fd --type d | fzf --preview "eza --tree --color=always {}"'
+alias files='fd --type f | fzf --preview "bat --color=always {}"'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+
+# ============================================================================
+# Git Aliases
+# ============================================================================
+
 alias branches='git branch --sort=-committerdate | head -10'
 alias gst='git status'
 alias gco='git checkout'
@@ -89,9 +131,43 @@ alias gclean='git branch --merged | grep -v "\*\|main\|trunk" | xargs git branch
 alias gfix='git add -A && git commit --fixup=HEAD'
 alias gwip='git add -A && git commit -m "WIP"'
 
-# Git worktrees
+# Git worktree aliases
 alias lswt='git worktree list'
 
+# ============================================================================
+# Functions
+# ============================================================================
+
+# File manager integration - open yazi and cd to selected directory
+y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+		builtin cd -- "$cwd"
+	fi
+	rm -f -- "$tmp"
+}
+
+# AWS profile selector
+awsp() {
+  export AWS_PROFILE=$(aws configure list-profiles | fzf)
+}
+
+# Fuzzy process killer
+fkill() {
+  procs | fzf | choose 0 | xargs kill
+}
+
+# Zellij floating commands
+zrf() {
+  zellij run --name "$*" --floating -- zsh -ic "$*";
+}
+
+zef() {
+  zellij edit --floating "$1";
+}
+
+# Git worktree management - create worktree
 mkwt() {
   if [ "$#" -ne 2 ]; then
     printf 'Usage: mkwt <branch> <worktree-path>\n' >&2
@@ -136,6 +212,7 @@ mkwt() {
   git worktree add "${force_flag[@]}" -b "$branch" "$wt_path"
 }
 
+# Git worktree management - remove worktree
 rmwt() {
   local opt force_flag=() wt_path wt_abs
   OPTIND=1
@@ -172,33 +249,9 @@ rmwt() {
   git worktree remove "${force_flag[@]}" "$wt_path"
 }
 
-# File management
-y() {
-	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
-	yazi "$@" --cwd-file="$tmp"
-	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
-		builtin cd -- "$cwd"
-	fi
-	rm -f -- "$tmp"
-}
-
-# Cloud
-awsp() {
-  export AWS_PROFILE=$(aws configure list-profiles | fzf)
-}
-# System
-fkill() {
-  procs | fzf | choose 0 | xargs kill
-}
-
-# zellij
-function zrf () {
-  zellij run --name "$*" --floating -- zsh -ic "$*";
-}
-
-function zef () {
-  zellij edit --floating "$1";
-}
+# ============================================================================
+# Final Hooks
+# ============================================================================
 
 # Load direnv
 eval "$(direnv hook zsh)"
