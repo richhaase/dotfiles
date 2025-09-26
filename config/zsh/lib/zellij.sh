@@ -3,11 +3,16 @@
 # ============================================================================
 
 # Zellij floating run command
-zrf() {
+zr() {
   zellij run --name "$*" --floating -- zsh -ic "$*";
 }
 
+# Zellij floating run command
+zp() {
+  zellij run --name "$*" -- zsh -ic "$*";
+}
+
 # Zellij floating edit command
-zef() {
+ze() {
   zellij edit --floating "$1";
 }

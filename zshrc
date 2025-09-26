@@ -69,6 +69,19 @@ plugins=(
 plugin-load $plugins
 
 # ============================================================================
+# Completions
+# ============================================================================
+
+# Add Homebrew completions to fpath if available
+if [[ -n "${HOMEBREW_PREFIX:-}" && -d "${HOMEBREW_PREFIX}/share/zsh/site-functions" ]]; then
+  fpath+=("${HOMEBREW_PREFIX}/share/zsh/site-functions")
+fi
+
+autoload -Uz compinit
+zmodload -i zsh/complist 2>/dev/null
+compinit -C
+
+# ============================================================================
 # Tool Initializations
 # ============================================================================
 
