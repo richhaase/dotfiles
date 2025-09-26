@@ -4,6 +4,8 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 export EDITOR=hx
 export LANG=en_US.UTF-8
 
+export PATH="${HOME}/bin:$PATH"
+
 . "$HOME/.cargo/env"
 export PATH="$(go env GOPATH)/bin:$PATH"
 export PATH="${HOME}/.pixi/bin:$PATH"
@@ -18,6 +20,13 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 # pnpm end
 export PATH="${HOME}/.local/bin:$PATH"
+
+# bun completions
+[ -s "/Users/rdh/.bun/_bun" ] && source "/Users/rdh/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
 
 # Shell Options
 setopt AUTO_MENU
@@ -83,8 +92,6 @@ alias gwip='git add -A && git commit -m "WIP"'
 # Git worktrees
 alias lswt='git worktree list'
 
-# Functions
-# git worktrees
 mkwt() {
   if [ "$#" -ne 2 ]; then
     printf 'Usage: mkwt <branch> <worktree-path>\n' >&2

@@ -53,7 +53,7 @@
 	abbrevCommit = true
 
 [init]
-	defaultBranch = trunk
+	defaultBranch = main
 
 [push]
 	default = current
