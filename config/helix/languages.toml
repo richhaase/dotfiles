@@ -120,7 +120,7 @@ formatter = { command = "shfmt", args = ["-i", "2", "-bn", "-ci"] }
 [[language]]
 name = "dockerfile"
 scope = "source.dockerfile"
-file-types = ["Dockerfile"]
+file-types = ["Dockerfile", "dockerfile", "Containerfile"]
 language-servers = ["docker-langserver"]
 
 [[language]]
