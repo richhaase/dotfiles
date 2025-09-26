@@ -10,6 +10,8 @@ color-modes = true
 auto-pairs = true
 rulers = [80]
 idle-timeout = 50
+auto-format = true
+trim-trailing-whitespace = true
 
 [editor.cursor-shape]
 insert = "bar"
