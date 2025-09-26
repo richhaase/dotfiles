@@ -53,6 +53,20 @@ setopt AUTO_MENU
 setopt COMPLETE_IN_WORD
 
 # ============================================================================
+# History
+# ============================================================================
+
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=100000
+SAVEHIST=100000
+setopt APPEND_HISTORY       # Append to the history file, don't overwrite
+setopt INC_APPEND_HISTORY   # Write after each command finishes
+setopt HIST_EXPIRE_DUPS_FIRST
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_SPACE    # Commands starting with a space are not saved
+setopt HIST_VERIFY          # Expand history but do not execute immediately
+
+# ============================================================================
 # Plugin System
 # ============================================================================
 
