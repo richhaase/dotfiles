@@ -9,7 +9,7 @@ alias du="dust"
 alias myip='curl ifconfig.me'
 alias netcheck='procs | choose 0,10 | sort -nr'
 alias ports='netstat -tuln'
-alias refresh="source ~/.zshrc"
+alias refresh='exec zsh'
 alias stats="tokei"
 alias weather='curl wttr.in'
 
