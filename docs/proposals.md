@@ -7,15 +7,15 @@ Status: Proposal 2 completed; others pending. Pick what you want and I’ll impl
 ## 1) Starship Prompt Tuned For Your Workflow
 
 - Why
-  - Surface high‑signal context (AWS profile, envs, concise git) and keep prompt fast.
+  - Surface high‑signal context (direnv activation, language context for Python/JS-TS/Rust/Go, concise git) and keep prompt fast. No k8s or cloud modules.
 - What
-  - Add `config/starship.toml` with compact format, AWS/env modules, trimmed git status, sane timeouts.
+  - Add `config/starship.toml` with compact format, direnv + language modules (Python, Node.js, Rust, Go), trimmed git status, sane timeouts. Exclude k8s/AWS.
 - How (example)
   ```toml
   # config/starship.toml
-  format = "[\n$directory]($style) $git_branch$git_state$git_status$aws$python$cmd_duration\n$character"
+  format = "[ $directory ]($style) $git_branch$git_state$git_status$direnv$python$nodejs$rust$golang$status$cmd_duration$jobs\n$character"
   add_newline = true
-
+  
   [directory]
   style = "bold blue"
   truncation_length = 3
@@ -31,13 +31,27 @@ Status: Proposal 2 completed; others pending. Pick what you want and I’ll impl
   behind = "⇣${count}"
   diverged = "⇕"
 
-  [aws]
-  format = "[($profile)(@$region)](bold yellow) "
-  disabled = false
-
   [python]
   format = "[($virtualenv )]($style)"
   pyenv_version_name = false
+  only_virtualenv = true
+  disabled = false
+
+  [nodejs]
+  format = "[node $version]($style) "
+  detect_files = ["package.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb"]
+  disabled = false
+
+  [rust]
+  format = "[rust $version]($style) "
+  disabled = false
+
+  [golang]
+  format = "[go $version]($style) "
+  disabled = false
+
+  [direnv]
+  format = "[⛶ direnv](bold cyan) "
   disabled = false
 
   [cmd_duration]
@@ -157,20 +171,23 @@ Status: Completed (commit 965b5db)
 - Why
   - Keep prompt responsive in large repos or remote shells.
 - What
-  - Disable slow modules globally and limit detection.
+  - Disable slow/unneeded modules globally (cloud/k8s) and limit detection.
 - How
   ```toml
   # config/starship.toml (in addition to Proposal 1)
   command_timeout = 800  # ms per module
-
-  [node]
-  disabled = true  # enable only if you need auto detection
 
   [python]
   detect_extensions = ["py"]
   detect_folders = [".venv", "venv"]
 
   [git_metrics]
+  disabled = true
+
+  # Not needed in your workflow
+  [kubernetes]
+  disabled = true
+  [aws]
   disabled = true
   ```
 

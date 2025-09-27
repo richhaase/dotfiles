@@ -1,0 +1,87 @@
+format = "$directory on $git_branch$git_status $direnv$python$nodejs$rust$golang$status$cmd_duration$jobs\n$character"
+add_newline = true
+scan_timeout = 50
+command_timeout = 800
+
+[directory]
+style = "bold blue"
+truncation_length = 3
+truncate_to_repo = true
+fish_style_pwd_dir_length = 1
+
+[git_branch]
+format = "[$symbol$branch]($style) "
+style = "bold purple"
+symbol = " "
+
+[git_status]
+format = "[$all_status$ahead_behind]($style) "
+style = "bold red"
+conflicted = "✖"
+staged = "+"
+modified = "!"
+untracked = "?"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕"
+
+[git_state]
+format = "[($state( $progress_current/$progress_total))]($style) "
+style = "yellow"
+
+[direnv]
+format = "[⛶ direnv](bold cyan) "
+disabled = false
+
+[python]
+format = "[($virtualenv )]($style)"
+style = "bold green"
+pyenv_version_name = false
+disabled = false
+
+[nodejs]
+format = "[node $version]($style) "
+style = "bold green"
+detect_files = ["package.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb"]
+disabled = false
+
+[rust]
+format = "[rust $version]($style) "
+style = "bold red"
+disabled = false
+
+[golang]
+format = "[go $version]($style) "
+style = "bold cyan"
+disabled = false
+
+[status]
+format = "[✗ $status]($style) "
+style = "bold red"
+disabled = false
+pipestatus = true
+map_symbol = true
+recognize_signal_code = true
+
+[cmd_duration]
+min_time = 1500
+format = "[took $duration]($style) "
+style = "dim cyan"
+show_milliseconds = false
+
+[jobs]
+format = "[✦ $number]($style) "
+style = "bold magenta"
+number_threshold = 1
+symbol_threshold = 1
+disabled = false
+
+# keep prompt snappy
+[package]
+disabled = true
+[docker_context]
+disabled = true
+[kubernetes]
+disabled = true
+[aws]
+disabled = true
