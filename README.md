@@ -8,7 +8,6 @@
   - `config/starship.toml` — classic one‑line prompt: `<dir> on <branch> <git-status> <direnv/python/node/rust/go> <status> <duration>`; no cloud/K8s modules
   - `editorconfig`, `gitconfig` — base editor and git UI (delta) settings
 ### Editors
-  - Neovim (LazyVim): `config/nvim` (plugins + language extras)
   - Helix: `config/helix/config.toml` (format‑on‑save, trim trailing whitespace, insert final newline, tuned file picker)
     - Minimal overrides: `config/helix/languages.toml` — Ruff formatter for Python; detect `Containerfile` as Dockerfile
 ### Terminal
@@ -28,7 +27,7 @@
 ## Highlights & Conventions
 
 ### Shell defaults
-  - Editor: `hx` (Helix); Neovim present but de‑emphasized
+  - Editor: `hx` (Helix)
   - Completions: Homebrew site functions + `compinit` + zstyle UI; `zsh-users/zsh-completions`
   - PATH: zsh `path` array with de‑duplication
   - History: McFly‑friendly (`APPEND_HISTORY`, `INC_APPEND_HISTORY`, large history)
@@ -42,9 +41,6 @@
 ### Git
   - Pretty `delta` diffs, rebase merges on pull, autosquash, `trunk` default branch
   - Aliases and worktree helpers under `config/zsh/lib/git.sh`
-### Neovim
-  - LazyVim core with extras for: Go, Python, Rust, Terraform, Docker, Helm, JSON, YAML, Markdown, SQL, Git, TOML, Ansible
-  - See `config/nvim/lazyvim.json` to tune extras
 ### Terminals
   - Ghostty config included; pick your preferred terminal
 
@@ -64,7 +60,6 @@ Usage varies by CLI; consult each tool’s docs and point the CLI to these files
 ## Credits
 
 - Zsh plugin loader pattern inspired by zsh_unplugged
-- LazyVim for a batteries‑included Neovim base
 
 ---
 
