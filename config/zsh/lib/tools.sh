@@ -15,5 +15,3 @@ hxg() {
   fi
   hx --grammar fetch && hx --grammar build
 }
-
-alias hxgh='hx --grammar health'
