@@ -1,7 +1,5 @@
 # Dotfiles
 
-These are my personal dotfiles and tool configurations, meant to be deployed with my plonk tool. The repository lives at `~/.config/plonk` on my machines and contains both top‑level dotfiles and per‑app configs under `config/`.
-
 ## What’s Inside
 
 - Top‑level files
