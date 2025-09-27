@@ -1,6 +1,6 @@
 # Dotfiles Improvement Proposals
 
-Status: proposals only — no changes applied. Pick what you want and I’ll implement.
+Status: Proposal 2 completed; others pending. Pick what you want and I’ll implement.
 
 ---
 
@@ -52,6 +52,8 @@ Status: proposals only — no changes applied. Pick what you want and I’ll imp
 ---
 
 ## 2) Richer Completions with `zsh-users/zsh-completions`
+
+Status: Completed (commit 965b5db)
 
 - Why
   - Adds many community completions (git/docker/etc.) beyond Homebrew’s site functions.
@@ -179,4 +181,3 @@ Status: proposals only — no changes applied. Pick what you want and I’ll imp
 - Pick any subset; changes are independent.
 - I’ll implement exactly what you approve, with guarded inits and minimal churn.
 - If you later decide to remove Neovim entirely, nothing here depends on it.
-
