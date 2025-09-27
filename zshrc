@@ -73,6 +73,7 @@ setopt HIST_VERIFY          # Expand history but do not execute immediately
 [ -r "$HOME/.config/zsh/lib/plugin_loader.sh" ] && source "$HOME/.config/zsh/lib/plugin_loader.sh"
 
 plugins=(
+  zsh-users/zsh-completions
   zsh-users/zsh-autosuggestions
 )
 
