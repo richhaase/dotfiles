@@ -1,0 +1,10 @@
+[[language]]
+name = "python"
+scope = "source.python"
+file-types = ["py"]
+formatter = { command = "ruff", args = ["format", "-"] }
+
+[[language]]
+name = "dockerfile"
+scope = "source.dockerfile"
+file-types = ["Dockerfile", "dockerfile", "Containerfile"]
