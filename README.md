@@ -3,17 +3,20 @@
 ## What’s Inside
 
 - Zsh and shell tooling
-  - `zshrc` — shell setup, aliases, FZF, Starship, zoxide, mcfly, direnv
-  - `plugins.zsh` — minimal plugin loader; auto‑clones syntax highlighting + autosuggestions
+  - `zshrc` — shell setup; PATH via zsh `path` array; completions (compinit + zstyle); Starship; zoxide; mcfly; direnv; FZF; explicit sourcing of `config/zsh/lib/*.sh`
+  - `config/zsh/lib/plugin_loader.sh` — minimal plugin loader; auto‑clones `zsh-completions`, `zsh-autosuggestions`, `zsh-syntax-highlighting` (highlighting loads last)
+  - `config/starship.toml` — classic one‑line prompt: `<dir> on <branch> <git-status> <direnv/python/node/rust/go> <status> <duration>`; no cloud/K8s modules
   - `editorconfig`, `gitconfig` — base editor and git UI (delta) settings
 - Editors
   - Neovim (LazyVim): `config/nvim` (plugins + language extras)
-  - Helix: `config/helix/config.toml`
+  - Helix: `config/helix/config.toml` (format‑on‑save, trim trailing whitespace, insert final newline, tuned file picker)
+    - Minimal overrides: `config/helix/languages.toml` — Ruff formatter for Python; detect `Containerfile` as Dockerfile
 - Terminal
   - Ghostty: `config/ghostty/config`
   - Zellij: `config/zellij/config.kdl`
 - CLI tools configs
   - `config/bat/config`, `config/btop/btop.conf`, `config/mcfly/config.yaml`
+  - Shell helpers: `hxg` to fetch+build Helix grammars
 - AI assistant `prompts`
   - Codex CLI prompts: `codex/prompts`
   - Claude agents/commands: `claude/agents`, `claude/commands/cm`
@@ -25,16 +28,20 @@
 ## Highlights & Conventions
 
 - Shell defaults
-  - Editor: `hx` (Helix); Neovim is configured and ready
+  - Editor: `hx` (Helix); Neovim present but de‑emphasized
+  - Completions: Homebrew site functions + `compinit` + zstyle UI; `zsh-users/zsh-completions`
+  - PATH: zsh `path` array with de‑duplication
+  - History: McFly‑friendly (`APPEND_HISTORY`, `INC_APPEND_HISTORY`, large history)
   - FZF defaults: respects hidden files (excludes `.git`) with rich previews
-  - Helpful aliases: `ll`, `files`, `dirs`, `lg` (lazygit), `stats` (tokei), `dps`, `du` (dust), `df` (duf)
+  - Helpful aliases: `ll`, `files`, `dirs`, `lg` (lazygit), `stats` (tokei), `dps`, `du` (dust), `df` (duf), `refresh` → `exec zsh`
   - Handy functions:
     - `y` — open yazi file manager and return to selected directory
-    - `awsp` — set `AWS_PROFILE` via fuzzy selection
     - `fkill` — fuzzy kill a process (via `procs`)
     - `zrf` / `zef` — run/edit floating commands in Zellij
+    - `hxg` — Helix grammar fetch + build
 - Git
   - Pretty `delta` diffs, rebase merges on pull, autosquash, `trunk` default branch
+  - Aliases and worktree helpers under `config/zsh/lib/git.sh`
 - Neovim
   - LazyVim core with extras for: Go, Python, Rust, Terraform, Docker, Helm, JSON, YAML, Markdown, SQL, Git, TOML, Ansible
   - See `config/nvim/lazyvim.json` to tune extras
