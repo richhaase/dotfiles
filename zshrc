@@ -21,7 +21,7 @@ ZPLUGINDIR="$HOME/.config/zsh/plugins"
 
 # Use zsh-native path array with deduplication
 typeset -U path PATH
-path=("${HOME}/bin" "${HOME}/.pixi/bin" "${HOME}/.local/bin" $path)
+path=("${HOME}/.bin" "${HOME}/.pixi/bin" "${HOME}/.local/bin" $path)
 (( $+commands[go] )) && path+=("$(go env GOPATH 2>/dev/null)/bin")
 
 # ============================================================================
