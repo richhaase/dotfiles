@@ -50,13 +50,6 @@ resources:
         version: 1.4.5
       installed_at: "2025-09-21T11:57:20-06:00"
     - type: package
-      id: brew:colima
-      metadata:
-        manager: brew
-        name: colima
-        version: 0.8.4
-      installed_at: "2025-08-07T22:07:53-06:00"
-    - type: package
       id: brew:coreutils
       metadata:
         manager: brew
