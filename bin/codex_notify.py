@@ -26,8 +26,10 @@ def main() -> int:
             message = " ".join(input_messages)
             title += message
         case _:
-            print(f"not sending a push notification for: {notification_type}")
-            return 0
+            title = "Codex: Unknown Event"
+            message = str(notification)
+            #print(f"not sending a push notification for: {notification_type}")
+            #return 0
 
     subprocess.check_output(
         [
@@ -39,6 +41,8 @@ def main() -> int:
             "-group",
             "codex",
             "-ignoreDnD",
+            "-sound",
+            "Glass"
         ]
     )
 
