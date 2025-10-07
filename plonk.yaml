@@ -1,3 +1,8 @@
+expand_directories:
+    - .claude
+    - .config
+    - .codex
+    - .gemini
 ignore_patterns:
     - README.md
     - .DS_Store
