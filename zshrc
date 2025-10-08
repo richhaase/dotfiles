@@ -73,8 +73,10 @@ setopt HIST_VERIFY          # Expand history but do not execute immediately
 [ -r "$HOME/.config/zsh/lib/plugin_loader.sh" ] && source "$HOME/.config/zsh/lib/plugin_loader.sh"
 
 plugins=(
+  romkatv/zsh-defer
   zsh-users/zsh-completions
   zsh-users/zsh-autosuggestions
+  Aloxaf/fzf-tab
 )
 
 plugin-load $plugins
@@ -97,6 +99,11 @@ zstyle ':completion:*' menu select
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*:descriptions' format '%F{yellow}%d%f'
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' 'r:|[._-]=** r:|=**'
+
+# fzf-tab configuration (previews + group switching)
+zstyle ':fzf-tab:*' switch-group ',' '.'
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -lah --color=always --icons=always "$realpath" 2>/dev/null | head -200'
+zstyle ':fzf-tab:complete:*:argument-rest' fzf-preview '[ -d "$realpath" ] && eza --tree --color=always --icons=always "$realpath" | head -200 || (bat --color=always --style=header,grid --line-range :200 "$realpath" 2>/dev/null || file --brief "$realpath")'
 
 # ============================================================================
 # Tool Initializations
