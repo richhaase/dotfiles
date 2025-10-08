@@ -141,13 +141,6 @@ resources:
         version: 25.07.1
       installed_at: "2025-07-30T21:33:22-06:00"
     - type: package
-      id: brew:neovim
-      metadata:
-        manager: brew
-        name: neovim
-        version: 0.11.4
-      installed_at: "2025-09-21T11:57:39-06:00"
-    - type: package
       id: brew:node
       metadata:
         manager: brew
