@@ -344,13 +344,6 @@ resources:
         version: 0.1.22
       installed_at: "2025-09-21T11:58:36-06:00"
     - type: package
-      id: brew:raycast
-      metadata:
-        manager: brew
-        name: raycast
-        version: ""
-      installed_at: "2025-08-18T07:27:53-06:00"
-    - type: package
       id: brew:ghostty
       metadata:
         manager: brew
