@@ -22,8 +22,8 @@ alias lswt='git worktree list'
 
 # Git worktree management - create worktree
 mkwt() {
-  if [ "$#" -ne 2 ]; then
-    printf 'Usage: mkwt <branch> <worktree-path>\n' >&2
+  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    printf 'Usage: mkwt <branch> [worktree-path]\n' >&2
     return 1
   fi
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -32,8 +32,24 @@ mkwt() {
   fi
 
   local branch="$1"
-  local wt_path="$2"
+  local wt_path
   local force_flag=()
+
+  branch="${branch%/}"
+  if [ -z "$branch" ]; then
+    printf 'mkwt: branch name cannot be empty\n' >&2
+    return 1
+  fi
+
+  if [ "$#" -eq 1 ]; then
+    local branch_dir="${branch##*/}"
+    if [ -z "$branch_dir" ]; then
+      branch_dir="$branch"
+    fi
+    wt_path="../$branch_dir"
+  else
+    wt_path="$2"
+  fi
 
   if [ -e "$wt_path" ] && [ ! -d "$wt_path" ]; then
     printf 'mkwt: %s exists and is not a directory\n' "$wt_path" >&2
