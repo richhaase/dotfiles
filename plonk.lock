@@ -162,13 +162,6 @@ resources:
         version: 0.14.10
       installed_at: "2025-07-30T21:33:30-06:00"
     - type: package
-      id: brew:python3
-      metadata:
-        manager: brew
-        name: python3
-        version: 3.13.5
-      installed_at: "2025-07-30T21:33:32-06:00"
-    - type: package
       id: brew:scc
       metadata:
         manager: brew
@@ -246,10 +239,10 @@ resources:
         version: 2.30.6
       installed_at: "2025-09-21T11:57:59-06:00"
     - type: package
-      id: brew:delta
+      id: brew:git-delta
       metadata:
         manager: brew
-        name: delta
+        name: git-delta
         version: 0.18.2_3
       installed_at: "2025-08-01T07:21:06-06:00"
     - type: package
@@ -273,13 +266,6 @@ resources:
         name: git
         version: 2.50.1
       installed_at: "2025-08-01T07:21:13-06:00"
-    - type: package
-      id: brew:golang
-      metadata:
-        manager: brew
-        name: golang
-        version: 1.25.1
-      installed_at: "2025-09-21T11:58:05-06:00"
     - type: package
       id: brew:just
       metadata:
@@ -357,3 +343,10 @@ resources:
         name: direnv
         version: 2.37.1
       installed_at: "2025-09-06T08:45:03-06:00"
+    - type: package
+      id: brew:python@3.14
+      metadata:
+        manager: brew
+        name: python@3.14
+        version: ""
+      installed_at: "2025-10-26T14:14:56-06:00"
