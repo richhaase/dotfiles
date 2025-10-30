@@ -19,6 +19,7 @@ alias gwip='git add -A && git commit -m "WIP"'
 
 # Git worktree aliases
 alias lswt='git worktree list'
+alias rmwt='git worktree remove'
 
 # Git worktree management - create worktree
 mkwt() {
@@ -67,53 +68,26 @@ mkwt() {
   fi
 
   if git show-ref --verify --quiet "refs/heads/$branch"; then
-    git worktree add "${force_flag[@]}" "$wt_path" "$branch"
-    return $?
-  fi
-
-  if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-    git fetch origin "$branch" || return $?
-    git branch --track "$branch" "origin/$branch" || return $?
-    git worktree add "${force_flag[@]}" "$wt_path" "$branch"
-    return $?
-  fi
-
-  git worktree add "${force_flag[@]}" -b "$branch" "$wt_path"
-}
-
-# Git worktree management - remove worktree
-rmwt() {
-  local opt force_flag=() wt_path wt_abs
-  OPTIND=1
-  while getopts ":f" opt; do
-    case "$opt" in
-      f) force_flag=(--force) ;;
-      \?) printf 'rmwt: invalid option -- %s\n' "$OPTARG" >&2; return 1 ;;
-    esac
-  done
-  shift $((OPTIND-1))
-
-  if [ "$#" -ne 1 ]; then
-    printf 'Usage: rmwt [-f] <worktree-path>\n' >&2
-    return 1
-  fi
-  wt_path="$1"
-
-  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    printf 'rmwt: not inside a git repository\n' >&2
-    return 1
-  fi
-
-  if [ -d "$wt_path" ]; then
-    wt_abs="$(cd "$wt_path" && pwd)"
+    git worktree add "${force_flag[@]}" "$wt_path" "$branch" >&2 || return $?
+  elif git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    git fetch origin "$branch" >&2 || return $?
+    git branch --track "$branch" "origin/$branch" >&2 || return $?
+    git worktree add "${force_flag[@]}" "$wt_path" "$branch" >&2 || return $?
   else
-    wt_abs="$(cd "$(dirname "$wt_path")" 2>/dev/null && pwd 2>/dev/null)/$(basename "$wt_path")"
+    git worktree add "${force_flag[@]}" -b "$branch" "$wt_path" >&2 || return $?
   fi
 
-  if ! git worktree list --porcelain | grep -Fqx "worktree $wt_abs"; then
-    printf 'rmwt: %s is not a registered worktree\n' "$wt_path" >&2
-    return 1
+  local wt_abs
+  wt_abs="$(git -C "$wt_path" rev-parse --show-toplevel 2>/dev/null)"
+  if [ -z "$wt_abs" ]; then
+    case "$wt_path" in
+      /*) wt_abs="$wt_path" ;;
+      *) wt_abs="$PWD/$wt_path" ;;
+    esac
   fi
 
-  git worktree remove "${force_flag[@]}" "$wt_path"
+  printf '%s\n' "$wt_abs"
+  if [ ! -t 1 ] && [ -t 2 ]; then
+    printf '%s\n' "$wt_abs" >&2
+  fi
 }
