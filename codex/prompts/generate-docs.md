@@ -23,3 +23,8 @@ Guidelines:
 
 When writing files, prefer minimal, high‑value edits and include copy‑paste‑ready commands.
 
+Instructions:
+
+- Present the list of documentation that you can generate as a menu mapping each document to a number.  You will accept either name(s) or number(s) as input documents to update.
+- Prompt the user for which document(s) they would like generated or updated.
+- Generate or update the user requested documents.
