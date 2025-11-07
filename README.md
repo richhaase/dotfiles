@@ -6,8 +6,8 @@
   - `zshrc` — Primary zsh setup: PATH/env, history, completions, FZF, Starship, `zoxide`, `mcfly`, `direnv`, and a small plugin loader. Loads modular shell functions from `config/zsh/lib/*`.
   - `gitconfig` — Git identity, sensible defaults (delta pager, rerere, default branch), and a rich alias set (status/log helpers, worktree workflow).
   - `editorconfig` — Cross‑editor code style: UTF‑8, LF, 2‑space indent (4 for Go/Python), final newline, trim trailing whitespace.
-  - `plonk.yaml` — Plonk configuration file.
-  - `plonk.lock` — Plonk lockfile recording provisioned packages (brew, npm, pnpm, etc.). Serves as a reproducible inventory for a new machine.
+  - `plonk.yaml` — [Plonk](https://github.com/richhaase/plonk) configuration file.
+  - `plonk.lock` — [Plonk](https://github.com/richhaase/plonk) lockfile recording provisioned packages (brew, npm, pnpm, etc.). Serves as a reproducible inventory for a new machine.
 
 - `bin/`
   - `bin/codex_notify.py` — Lightweight notifier for Codex CLI. On certain agent events (e.g., turn complete), sends a macOS notification via `terminal-notifier`.
@@ -39,4 +39,4 @@
 
 ---
 
-If you are not me and are browsing these dotfiles: feel free to borrow ideas, but double‑check `plonk.yaml` and any platform‑specific assumptions before adopting wholesale.
+If you are not me and are browsing these dotfiles: feel free to borrow ideas, but use at your own risk.
