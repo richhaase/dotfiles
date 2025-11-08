@@ -13,15 +13,23 @@ Usage: python git-contributor-stats.py [path_to_repo]
 import subprocess
 import sys
 import os
+import shlex
 from collections import defaultdict
 from typing import Dict, List, Tuple
 import argparse
 
 
+SORT_CHOICES = ['author', 'commits', 'added', 'removed', 'net', 'total']
+
+DEFAULT_BRANCH = 'main'
+
+
 class GitStats:
-    def __init__(self, repo_path: str = "."):
+    def __init__(self, repo_path: str = ".", ref: str = DEFAULT_BRANCH):
         self.repo_path = repo_path
         self.original_dir = os.getcwd()
+        self.ref = ref
+        self.ref_arg = shlex.quote(ref)
 
     def __enter__(self):
         os.chdir(self.repo_path)
@@ -45,9 +53,54 @@ class GitStats:
             print(f"Error running git command: {e}")
             return ""
 
+    @staticmethod
+    def _truncate(text: str, width: int) -> str:
+        """Clamp overly long strings so table columns stay aligned."""
+        if len(text) <= width or width <= 3:
+            return text[:width]
+        return text[:width - 3] + "..."
+
+    @staticmethod
+    def _header_label(label: str, width: int, active: bool, ascending: bool) -> str:
+        """Annotate the active header with an arrow indicator within its width."""
+        if not active or width <= 1:
+            return label[:width]
+
+        marker = ' ▲' if ascending else ' ▼'
+        if len(marker) >= width:
+            return label[:width]
+
+        base_width = max(width - len(marker), 1)
+        base = label[:base_width]
+        return (base + marker)[:width]
+
+    @staticmethod
+    def _normalized_name(name: str) -> str:
+        """Lowercase author name and strip whitespace for fuzzy matching."""
+        return "".join(name.lower().split())
+
+    @classmethod
+    def _are_similar_names(cls, name_a: str, name_b: str) -> bool:
+        norm_a = cls._normalized_name(name_a)
+        norm_b = cls._normalized_name(name_b)
+
+        if not norm_a or not norm_b:
+            return False
+
+        if norm_a == norm_b:
+            return True
+
+        if len(norm_a) > 5 and (norm_a in norm_b or norm_b in norm_a):
+            return True
+
+        if len(norm_b) > 5 and (norm_a in norm_b or norm_b in norm_a):
+            return True
+
+        return False
+
     def get_commit_counts(self) -> Dict[str, int]:
         """Get commit counts per author."""
-        output = self.run_git_command("git shortlog -sn --all --no-merges")
+        output = self.run_git_command(f"git shortlog -sn --no-merges {self.ref_arg}")
         counts = {}
 
         for line in output.strip().split('\n'):
@@ -64,7 +117,9 @@ class GitStats:
         stats = defaultdict(lambda: {'added': 0, 'removed': 0, 'files': 0})
 
         # Get all authors first
-        authors_output = self.run_git_command("git log --all --format='%aN' | sort -u")
+        authors_output = self.run_git_command(
+            f"git log {self.ref_arg} --format='%aN' | sort -u"
+        )
         authors = [a.strip() for a in authors_output.strip().split('\n') if a.strip()]
 
         for author in authors:
@@ -72,7 +127,10 @@ class GitStats:
             escaped_author = author.replace('"', '\\"').replace("'", "\\'")
 
             # Get stats for this author
-            cmd = f'git log --all --author="{escaped_author}" --pretty=tformat: --numstat'
+            cmd = (
+                f'git log {self.ref_arg} --author="{escaped_author}" '
+                f"--pretty=tformat: --numstat"
+            )
             output = self.run_git_command(cmd)
 
             for line in output.strip().split('\n'):
@@ -103,21 +161,17 @@ class GitStats:
         merged_commits = {}
         processed = set()
 
-        authors = list(stats.keys()) + list(commits.keys())
-        authors = list(set(authors))  # Remove duplicates
+        authors = sorted(set(list(stats.keys()) + list(commits.keys())), key=str.lower)
 
         for author in authors:
             if author in processed:
                 continue
 
             # Find similar names (case-insensitive, removing spaces)
-            base_name = author.lower().replace(' ', '')
             similar = []
 
             for other in authors:
-                other_base = other.lower().replace(' ', '')
-                if other_base == base_name or \
-                   (len(base_name) > 5 and (base_name in other_base or other_base in base_name)):
+                if self._are_similar_names(author, other):
                     similar.append(other)
                     processed.add(other)
 
@@ -146,10 +200,31 @@ class GitStats:
 
         return merged_stats, merged_commits
 
-    def print_statistics(self, sort_by: str = 'commits'):
+    def print_statistics(self, sort_by: str = 'total', reverse_sort: bool = False):
         """Print formatted statistics."""
+        author_width = 30
+        total_width = 14
+        row_format = (
+            "{rank:<6} {author:<" + str(author_width) + "} "
+            "{commits:<10} {added:<12} {removed:<12} {net:<12} {total:<" + str(total_width) + "}"
+        )
+        ascending_sort = True if sort_by == 'author' else False
+        if reverse_sort:
+            ascending_sort = not ascending_sort
+        reverse = not ascending_sort
+        header = row_format.format(
+            rank="Rank",
+            author=self._header_label("Author", author_width, sort_by == 'author', ascending_sort),
+            commits=self._header_label("Commits", 10, sort_by == 'commits', ascending_sort),
+            added=self._header_label("Added", 12, sort_by == 'added', ascending_sort),
+            removed=self._header_label("Removed", 12, sort_by == 'removed', ascending_sort),
+            net=self._header_label("Net", 12, sort_by == 'net', ascending_sort),
+            total=self._header_label("Total Change", total_width, sort_by == 'total', ascending_sort)
+        )
+        table_width = len(header)
+
         print("\nAnalyzing git repository...")
-        print("=" * 80)
+        print("=" * table_width)
 
         # Get data
         commits = self.get_commit_counts()
@@ -163,45 +238,58 @@ class GitStats:
         combined = []
 
         for author in all_authors:
+            added = line_stats.get(author, {}).get('added', 0)
+            removed = line_stats.get(author, {}).get('removed', 0)
             combined.append({
                 'author': author,
                 'commits': commits.get(author, 0),
-                'added': line_stats.get(author, {}).get('added', 0),
-                'removed': line_stats.get(author, {}).get('removed', 0),
+                'added': added,
+                'removed': removed,
                 'net': line_stats.get(author, {}).get('net', 0),
-                'files': line_stats.get(author, {}).get('files', 0)
+                'files': line_stats.get(author, {}).get('files', 0),
+                'total_change': added + removed
             })
 
         # Sort based on criteria
-        if sort_by == 'commits':
-            combined.sort(key=lambda x: x['commits'], reverse=True)
-        elif sort_by == 'added':
-            combined.sort(key=lambda x: x['added'], reverse=True)
-        elif sort_by == 'net':
-            combined.sort(key=lambda x: x['net'], reverse=True)
+        sort_key_map = {
+            'author': lambda x: x['author'].lower(),
+            'commits': lambda x: x['commits'],
+            'added': lambda x: x['added'],
+            'removed': lambda x: x['removed'],
+            'net': lambda x: x['net'],
+            'total': lambda x: x['total_change']
+        }
+        combined.sort(key=sort_key_map.get(sort_by, sort_key_map['total']), reverse=reverse)
 
-        # Print header
-        print(f"\n{'Rank':<6} {'Author':<30} {'Commits':<10} {'Added':<12} {'Removed':<12} {'Net':<12}")
-        print("-" * 80)
+        print(f"\n{header}")
+        print("-" * table_width)
 
         # Print top contributors
         for i, author_data in enumerate(combined[:20], 1):
-            print(f"{i:<6} {author_data['author']:<30} "
-                  f"{author_data['commits']:<10} "
-                  f"{author_data['added']:<12,} "
-                  f"{author_data['removed']:<12,} "
-                  f"{author_data['net']:<12,}")
+            display_author = self._truncate(author_data['author'], author_width)
+            print(
+                row_format.format(
+                    rank=i,
+                    author=display_author,
+                    commits=author_data['commits'],
+                    added=f"{author_data['added']:,}",
+                    removed=f"{author_data['removed']:,}",
+                    net=f"{author_data['net']:,}",
+                    total=f"{author_data['total_change']:,}"
+                )
+            )
 
         # Summary statistics
-        print("\n" + "=" * 80)
+        print("\n" + "=" * table_width)
         print("REPOSITORY SUMMARY")
-        print("-" * 80)
+        print("-" * table_width)
         print(f"Total contributors: {len(combined)}")
         print(f"Total commits: {sum(a['commits'] for a in combined):,}")
         print(f"Total lines added: {sum(a['added'] for a in combined):,}")
         print(f"Total lines removed: {sum(a['removed'] for a in combined):,}")
-        print(f"Total lines changed: {sum(a['net'] for a in combined):,}")
-        print("=" * 80)
+        print(f"Total net lines: {sum(a['net'] for a in combined):,}")
+        print(f"Total lines changed: {sum(a['total_change'] for a in combined):,}")
+        print("=" * table_width)
 
 
 def main():
@@ -216,9 +304,19 @@ def main():
     )
     parser.add_argument(
         '--sort',
-        choices=['commits', 'added', 'net'],
-        default='commits',
-        help='Sort results by commits, lines added, or weighted contribution (default: commits)'
+        choices=SORT_CHOICES,
+        default='total',
+        help='Sort results by author, commits, added, removed, net, or total change (default: total)'
+    )
+    parser.add_argument(
+        '--ref',
+        default=DEFAULT_BRANCH,
+        help=f"Git ref/branch to analyze (default: {DEFAULT_BRANCH})"
+    )
+    parser.add_argument(
+        '--reverse',
+        action='store_true',
+        help='Flip the default sort direction (author defaults ascending, others descending)'
     )
 
     args = parser.parse_args()
@@ -234,9 +332,22 @@ def main():
         print(f"Error: '{args.repo_path}' is not a git repository")
         sys.exit(1)
 
+    # Ensure requested ref exists
+    try:
+        subprocess.run(
+            ['git', 'rev-parse', '--verify', args.ref],
+            cwd=args.repo_path,
+            capture_output=True,
+            check=True,
+            text=True
+        )
+    except subprocess.CalledProcessError:
+        print(f"Error: Git ref '{args.ref}' not found. Use --ref to specify an existing branch or commit.")
+        sys.exit(1)
+
     # Run analysis
-    with GitStats(args.repo_path) as stats:
-        stats.print_statistics(sort_by=args.sort)
+    with GitStats(args.repo_path, ref=args.ref) as stats:
+        stats.print_statistics(sort_by=args.sort, reverse_sort=args.reverse)
 
 
 if __name__ == "__main__":
