@@ -1,0 +1,32 @@
+layout {
+  tab name="default" hide_floating_panes=true {
+    pane size=1 borderless=true {
+      plugin location="zellij:tab-bar"
+    }
+    pane split_direction="horizontal" {
+      pane split_direction="vertical" {
+        pane {
+          command "hx"
+        }
+        pane {
+          command "codex"
+        }
+      }
+      pane size=20 {
+        command "zsh"
+      }
+    }
+    pane size=1 borderless=true {
+      plugin location="zellij:status-bar"
+    }
+    floating_panes {
+      pane focus=false start_suspended=true {
+        width "80%"
+        height "80%"
+        x "10%"
+        y "10%"
+        command "lazygit"
+      }
+    }
+  }
+}
