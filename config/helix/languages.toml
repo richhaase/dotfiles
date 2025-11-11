@@ -1,10 +1,177 @@
+#############################
+# Language servers
+#############################
+
+# --- Python ---
+[language-server.ruff-lsp]
+command = "ruff-lsp"
+
+[language-server.pyright]
+command = "pyright-langserver"
+args    = ["--stdio"]
+
+# --- Go ---
+[language-server.gopls]
+command = "gopls"
+
+# --- Rust ---
+[language-server.rust-analyzer]
+command = "rust-analyzer"
+
+# --- TypeScript / JavaScript ---
+[language-server.tsserver]
+command = "typescript-language-server"
+args    = ["--stdio"]
+
+# --- Markdown ---
+[language-server.marksman]
+command = "marksman"
+
+# --- Astro ---
+[language-server.astro-ls]
+command = "astro-ls"
+args    = ["--stdio"]
+
+# --- Terraform / HCL ---
+[language-server.terraform-ls]
+command = "terraform-ls"
+args    = ["serve"]
+
+# --- YAML ---
+[language-server.yaml-language-server]
+command = "yaml-language-server"
+args    = ["--stdio"]
+
+#############################
+# Python
+#############################
 [[language]]
 name = "python"
-scope = "source.python"
-file-types = ["py"]
-formatter = { command = "ruff", args = ["format", "-"] }
+roots = ["pyproject.toml", "setup.cfg", "requirements.txt", ".git"]
+language-servers = ["ruff-lsp", "pyright"]
+auto-format = true
 
+[language.formatter]
+command = "black"
+args = ["-"]
+
+#############################
+# Go
+#############################
 [[language]]
-name = "dockerfile"
-scope = "source.dockerfile"
-file-types = ["Dockerfile", "dockerfile", "Containerfile"]
+name = "go"
+roots = ["go.work", "go.mod", ".git"]
+language-servers = ["gopls"]
+auto-format = true
+
+[language.formatter]
+command = "goimports"
+
+#############################
+# Rust
+#############################
+[[language]]
+name = "rust"
+roots = ["Cargo.toml", "Cargo.lock", ".git"]
+language-servers = ["rust-analyzer"]
+auto-format = true
+
+[language.formatter]
+command = "rustfmt"
+args = ["--emit=stdout"]
+
+#############################
+# TypeScript
+#############################
+[[language]]
+name = "typescript"
+roots = ["tsconfig.json", "package.json", "pnpm-workspace.yaml", "yarn.lock", "package-lock.json", ".git"]
+language-servers = ["tsserver"]
+auto-format = true
+
+[language.formatter]
+command = "prettier"
+args = ["--stdin-filepath", "file.ts"]
+
+#############################
+# TSX (React)
+#############################
+[[language]]
+name = "tsx"
+roots = ["tsconfig.json", "package.json", ".git"]
+language-servers = ["tsserver"]
+auto-format = true
+
+[language.formatter]
+command = "prettier"
+args = ["--stdin-filepath", "file.tsx"]
+
+#############################
+# JavaScript
+#############################
+[[language]]
+name = "javascript"
+roots = ["package.json", ".git"]
+language-servers = ["tsserver"]
+auto-format = true
+
+[language.formatter]
+command = "prettier"
+args = ["--stdin-filepath", "file.js"]
+
+#############################
+# Markdown
+#############################
+[[language]]
+name = "markdown"
+file-types = ["md", "markdown"]
+roots = [".git"]
+language-servers = ["marksman"]
+auto-format = true
+
+[language.formatter]
+command = "prettier"
+args = ["--stdin-filepath", "file.md"]
+
+#############################
+# Astro
+#############################
+[[language]]
+name = "astro"
+file-types = ["astro"]
+roots = ["astro.config.mjs", "astro.config.ts", "package.json", ".git"]
+language-servers = ["astro-ls", "tsserver"]
+auto-format = true
+
+[language.formatter]
+command = "prettier"
+args = ["--stdin-filepath", "file.astro"]
+
+#############################
+# Terraform / HCL
+#############################
+[[language]]
+name = "hcl"
+language-id = "terraform"
+file-types = ["tf", "tfvars"]
+roots = ["terraform.tf", "terraform.tfvars", ".terraform", ".git"]
+language-servers = ["terraform-ls"]
+auto-format = true
+
+[language.formatter]
+command = "terraform"
+args = ["fmt", "-"]
+
+#############################
+# YAML
+#############################
+[[language]]
+name = "yaml"
+file-types = ["yaml", "yml"]
+roots = [".git"]
+language-servers = ["yaml-language-server"]
+auto-format = true
+
+[language.formatter]
+command = "prettier"
+args = ["--stdin-filepath", "file.yaml"]

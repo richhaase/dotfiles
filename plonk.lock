@@ -22,20 +22,6 @@ resources:
         version: ""
       installed_at: "2025-10-27T12:53:43-06:00"
     - type: package
-      id: npm:prettier
-      metadata:
-        manager: npm
-        name: prettier
-        version: ""
-      installed_at: "2025-10-27T12:54:05-06:00"
-    - type: package
-      id: npm:eslint
-      metadata:
-        manager: npm
-        name: eslint
-        version: ""
-      installed_at: "2025-10-27T12:54:04-06:00"
-    - type: package
       id: brew:btop
       metadata:
         manager: brew
@@ -329,3 +315,80 @@ resources:
         name: ollama
         version: ""
       installed_at: "2025-11-02T14:17:51-07:00"
+    - type: package
+      id: brew:gopls
+      metadata:
+        manager: brew
+        name: gopls
+        version: ""
+      installed_at: "2025-11-11T10:34:59-07:00"
+    - type: package
+      id: brew:typescript-language-server
+      metadata:
+        manager: brew
+        name: typescript-language-server
+        version: ""
+      installed_at: "2025-11-11T10:36:44-07:00"
+    - type: package
+      id: brew:ruff
+      metadata:
+        manager: brew
+        name: ruff
+        version: ""
+      installed_at: "2025-11-11T10:43:41-07:00"
+    - type: package
+      id: brew:ruff-lsp
+      metadata:
+        manager: brew
+        name: ruff-lsp
+        version: ""
+      installed_at: "2025-11-11T10:43:50-07:00"
+    - type: package
+      id: brew:black
+      metadata:
+        manager: brew
+        name: black
+        version: ""
+      installed_at: "2025-11-11T10:44:04-07:00"
+    - type: package
+      id: pnpm:@astrojs/language-server
+      metadata:
+        manager: pnpm
+        name: '@astrojs/language-server'
+        version: ""
+      installed_at: "2025-11-11T10:46:00-07:00"
+    - type: package
+      id: brew:marksman
+      metadata:
+        manager: brew
+        name: marksman
+        version: ""
+      installed_at: "2025-11-11T10:46:29-07:00"
+    - type: package
+      id: pnpm:eslint
+      metadata:
+        manager: pnpm
+        name: eslint
+        version: ""
+      installed_at: "2025-11-11T11:45:15-07:00"
+    - type: package
+      id: pnpm:prettier
+      metadata:
+        manager: pnpm
+        name: prettier
+        version: ""
+      installed_at: "2025-11-11T11:45:40-07:00"
+    - type: package
+      id: brew:terraform-ls
+      metadata:
+        manager: brew
+        name: terraform-ls
+        version: ""
+      installed_at: "2025-11-11T13:04:39-07:00"
+    - type: package
+      id: brew:yaml-language-server
+      metadata:
+        manager: brew
+        name: yaml-language-server
+        version: ""
+      installed_at: "2025-11-11T13:05:16-07:00"
