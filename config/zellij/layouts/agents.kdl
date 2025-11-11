@@ -1,5 +1,5 @@
 layout {
-  tab name="default" hide_floating_panes=true {
+  tab hide_floating_panes=true {
     pane size=1 borderless=true {
       plugin location="zellij:tab-bar"
     }
@@ -8,8 +8,13 @@ layout {
         pane {
           command "hx"
         }
-        pane {
-          command "codex"
+        pane stacked=true {
+          pane start_suspended=true {
+            command "claude"
+          }
+          pane {
+            command "codex"
+          }
         }
       }
       pane size=20 {

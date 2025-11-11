@@ -50,7 +50,7 @@ zt() {
   name="${target_path:t}" # zsh basename shorthand
 
   # Open new tab in the target directory
-  if ! zellij action new-tab --cwd "$target_path" --name "$name" --layout default; then
+  if ! zellij action new-tab --cwd "$target_path" --name "$name" --layout agents; then
     printf 'zt: failed to open zellij tab\n' >&2
     return 1
   fi
