@@ -6,11 +6,14 @@ layout {
     pane split_direction="horizontal" {
       pane split_direction="vertical" {
         pane {
-          command "hx"
+          command "lazygit"
         }
         pane stacked=true {
           pane start_suspended=true {
             command "claude"
+          }
+          pane name="reviewer" start_suspended=true {
+            command "codex"
           }
           pane {
             command "codex"
@@ -25,12 +28,11 @@ layout {
       plugin location="zellij:status-bar"
     }
     floating_panes {
-      pane focus=false start_suspended=true {
+      pane focus=false {
         width "80%"
         height "80%"
         x "10%"
         y "10%"
-        command "lazygit"
       }
     }
   }
