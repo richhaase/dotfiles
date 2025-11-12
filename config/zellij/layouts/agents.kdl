@@ -7,11 +7,11 @@ layout {
       pane split_direction="vertical" {
         pane stacked=true {
           pane start_suspended=true {
-            command "lazygit"
+            command "hx"
           }
           pane {
             focus true
-            command "hx"
+            command "lazygit"
           }
         }
         pane stacked=true {
