@@ -64,6 +64,5 @@ fi
 terminal-notifier \
   -title "$title" \
   -message "$message" \
-  -group codex \
   -ignoreDnD \
   -sound Glass
