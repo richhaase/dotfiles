@@ -155,13 +155,6 @@ resources:
         version: ""
       installed_at: "2025-10-27T12:53:49-06:00"
     - type: package
-      id: brew:tldr
-      metadata:
-        manager: brew
-        name: tldr
-        version: ""
-      installed_at: "2025-10-27T12:53:50-06:00"
-    - type: package
       id: brew:tokei
       metadata:
         manager: brew
@@ -337,13 +330,6 @@ resources:
         version: ""
       installed_at: "2025-11-11T10:43:41-07:00"
     - type: package
-      id: brew:ruff-lsp
-      metadata:
-        manager: brew
-        name: ruff-lsp
-        version: ""
-      installed_at: "2025-11-11T10:43:50-07:00"
-    - type: package
       id: brew:black
       metadata:
         manager: brew
@@ -372,13 +358,6 @@ resources:
         version: ""
       installed_at: "2025-11-11T11:45:15-07:00"
     - type: package
-      id: pnpm:prettier
-      metadata:
-        manager: pnpm
-        name: prettier
-        version: ""
-      installed_at: "2025-11-11T11:45:40-07:00"
-    - type: package
       id: brew:terraform-ls
       metadata:
         manager: brew
@@ -392,3 +371,24 @@ resources:
         name: yaml-language-server
         version: ""
       installed_at: "2025-11-11T13:05:16-07:00"
+    - type: package
+      id: brew:prettier
+      metadata:
+        manager: brew
+        name: prettier
+        version: ""
+      installed_at: "2025-11-13T11:42:29-07:00"
+    - type: package
+      id: brew:pyright
+      metadata:
+        manager: brew
+        name: pyright
+        version: ""
+      installed_at: "2025-11-13T11:43:22-07:00"
+    - type: package
+      id: brew:shellcheck
+      metadata:
+        manager: brew
+        name: shellcheck
+        version: ""
+      installed_at: "2025-11-13T14:37:50-07:00"
