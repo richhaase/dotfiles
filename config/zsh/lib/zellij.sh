@@ -49,6 +49,19 @@ zt() {
 
   name="${target_path:t}" # zsh basename shorthand
 
+  # If we're outside Zellij, start or attach to a session rooted in the target dir
+  if [ -z "${ZELLIJ:-}" ]; then
+    if ! (
+      builtin cd "$target_path" || exit 1
+      zellij --new-session-with-layout agents --session "$name" ||
+        zellij attach --create "$name"
+    ); then
+      printf 'zt: failed to start zellij session\n' >&2
+      return 1
+    fi
+    return 0
+  fi
+
   # Open new tab in the target directory
   if ! zellij action new-tab --cwd "$target_path" --name "$name" --layout agents; then
     printf 'zt: failed to open zellij tab\n' >&2
