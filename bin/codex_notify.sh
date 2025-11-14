@@ -92,8 +92,7 @@ if (( ${#message} > max_chars )); then
   message="${message:0:max_chars}..."
 fi
 
-terminal-notifier \
-  -message "$message" \
+printf '%s' "$message" | terminal-notifier \
   -title "$title" \
   -ignoreDnD \
   -sound Glass
