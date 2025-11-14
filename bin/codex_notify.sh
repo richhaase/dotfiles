@@ -93,7 +93,7 @@ if (( ${#message} > max_chars )); then
 fi
 
 terminal-notifier \
-  -title "$title" \
   -message "$message" \
+  -title "$title" \
   -ignoreDnD \
   -sound Glass
