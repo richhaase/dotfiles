@@ -91,3 +91,31 @@ mkwt() {
     printf '%s\n' "$wt_abs" >&2
   fi
 }
+
+# Create a git worktree and open an agents tab in Zellij
+wtz() {
+  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    printf 'Usage: wtz <branch> [worktree-path]\n' >&2
+    return 1
+  fi
+
+  local wt_path
+
+  if ! wt_path="$(mkwt "$@")"; then
+    return $?
+  fi
+
+  if ! command -v zellij >/dev/null 2>&1; then
+    printf 'wtz: zellij not found in PATH; worktree created at %s\n' "$wt_path" >&2
+    printf '%s\n' "$wt_path"
+    return 0
+  fi
+
+  if ! zt "$wt_path"; then
+    printf 'wtz: worktree created at %s, but failed to open zellij tab\n' "$wt_path" >&2
+    printf '%s\n' "$wt_path"
+    return 1
+  fi
+
+  printf '%s\n' "$wt_path"
+}

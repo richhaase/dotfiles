@@ -306,12 +306,18 @@ def main():
         '--sort',
         choices=SORT_CHOICES,
         default='total',
-        help='Sort results by author, commits, added, removed, net, or total change (default: total)'
+        help=(
+            'Sort results by author, commits, added, removed, net, or total '
+            'change (default: total)'
+        ),
     )
     parser.add_argument(
         '--ref',
-        default=DEFAULT_BRANCH,
-        help=f"Git ref/branch to analyze (default: {DEFAULT_BRANCH})"
+        default=None,
+        help=(
+            'Git ref/branch to analyze '
+            '(default: auto-detected main branch)'
+        ),
     )
     parser.add_argument(
         '--reverse',
@@ -332,21 +338,63 @@ def main():
         print(f"Error: '{args.repo_path}' is not a git repository")
         sys.exit(1)
 
+    # Determine which ref to analyze
+    ref = args.ref
+
+    if ref is None:
+        # Try origin/HEAD first to respect the default branch
+        try:
+            result = subprocess.run(
+                ['git', 'symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD'],
+                cwd=args.repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            origin_head = result.stdout.strip()
+            if origin_head:
+                ref = origin_head.rsplit('/', 1)[-1]
+        except subprocess.CalledProcessError:
+            ref = None
+
+    if ref is None:
+        # Fallback to commonly used trunk branch names
+        for candidate in ('main', 'master'):
+            try:
+                subprocess.run(
+                    ['git', 'rev-parse', '--verify', candidate],
+                    cwd=args.repo_path,
+                    capture_output=True,
+                    check=True,
+                    text=True,
+                )
+                ref = candidate
+                break
+            except subprocess.CalledProcessError:
+                continue
+
+    if ref is None:
+        # Final fallback: analyze the current HEAD
+        ref = 'HEAD'
+
     # Ensure requested ref exists
     try:
         subprocess.run(
-            ['git', 'rev-parse', '--verify', args.ref],
+            ['git', 'rev-parse', '--verify', ref],
             cwd=args.repo_path,
             capture_output=True,
             check=True,
-            text=True
+            text=True,
         )
     except subprocess.CalledProcessError:
-        print(f"Error: Git ref '{args.ref}' not found. Use --ref to specify an existing branch or commit.")
+        print(
+            f"Error: Git ref '{ref}' not found. "
+            "Use --ref to specify an existing branch or commit."
+        )
         sys.exit(1)
 
     # Run analysis
-    with GitStats(args.repo_path, ref=args.ref) as stats:
+    with GitStats(args.repo_path, ref=ref) as stats:
         stats.print_statistics(sort_by=args.sort, reverse_sort=args.reverse)
 
 

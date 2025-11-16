@@ -5,9 +5,9 @@
 # Zellij floating run command
 zrf() {
   if [ $# -eq 0 ]; then
-    zellij run --floating -- zsh
+    zellij run --floating -x 10% -y 10% --width 80% --height 80% -- zsh
   else
-    zellij run --name "$*" --floating -- zsh -ic "$*"
+    zellij run --name "$*" --floating -x 10% -y 10% --width 80% --height 80% -- zsh -ic "$*"
   fi
 }
 
@@ -22,7 +22,7 @@ zr() {
 
 # Zellij floating edit command
 zef() {
-  zellij edit --floating "$1";
+  zellij edit --floating -x 10% -y 10% --width 80% --height 80% "$1";
 }
 
 # Zellij floating edit command
