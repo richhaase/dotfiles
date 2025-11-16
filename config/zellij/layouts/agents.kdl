@@ -13,22 +13,18 @@ layout {
             focus true
             command "lazygit"
           }
+          pane {
+            command "zsh"
+          }
         }
         pane stacked=true {
           pane start_suspended=true {
-            command "claude"
-          }
-          pane name="reviewer" start_suspended=true {
             command "codex"
           }
           pane {
-            focus true
             command "codex"
           }
         }
-      }
-      pane size=20 {
-        command "zsh"
       }
     }
     pane size=1 borderless=true {

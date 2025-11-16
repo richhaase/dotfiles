@@ -2,6 +2,9 @@ keybinds clear-defaults=true {
     locked {
         bind "Ctrl l" { SwitchToMode "normal"; }
     }
+    normal {
+        bind "Ctrl l" { SwitchToMode "locked"; }
+    }
     pane {
         bind "left" { MoveFocus "left"; }
         bind "down" { MoveFocus "down"; }
