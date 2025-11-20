@@ -8,8 +8,8 @@ alias gst='git status'
 alias gco='git checkout'
 alias gcob='git checkout -b'
 alias glog='git log --date=short --graph --format="%C(bold cyan)%h%C(reset) %C(red)%ad%C(auto)%d %C(reset)%s %C(cyan)(%an)"'
-alias gp='git push'
-alias gl='git pull'
+alias push='git push'
+alias pull='git pull'
 alias ga='git add'
 alias gc='git commit'
 alias gca='git commit --amend --no-edit'
@@ -93,9 +93,9 @@ mkwt() {
 }
 
 # Create a git worktree and open an agents tab in Zellij
-wtz() {
+wzt() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    printf 'Usage: wtz <branch> [worktree-path]\n' >&2
+    printf 'Usage: wzt <branch> [worktree-path]\n' >&2
     return 1
   fi
 
@@ -106,13 +106,13 @@ wtz() {
   fi
 
   if ! command -v zellij >/dev/null 2>&1; then
-    printf 'wtz: zellij not found in PATH; worktree created at %s\n' "$wt_path" >&2
+    printf 'wzt: zellij not found in PATH; worktree created at %s\n' "$wt_path" >&2
     printf '%s\n' "$wt_path"
     return 0
   fi
 
   if ! zt "$wt_path"; then
-    printf 'wtz: worktree created at %s, but failed to open zellij tab\n' "$wt_path" >&2
+    printf 'wzt: worktree created at %s, but failed to open zellij tab\n' "$wt_path" >&2
     printf '%s\n' "$wt_path"
     return 1
   fi
