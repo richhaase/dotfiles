@@ -274,13 +274,6 @@ resources:
         version: ""
       installed_at: "2025-11-19T08:16:59-07:00"
     - type: package
-      id: pnpm:@google/gemini-cli
-      metadata:
-        manager: pnpm
-        name: '@google/gemini-cli'
-        version: ""
-      installed_at: "2025-11-19T08:17:15-07:00"
-    - type: package
       id: brew:ghostty
       metadata:
         manager: brew
@@ -351,13 +344,6 @@ resources:
         version: ""
       installed_at: "2025-11-19T08:16:17-07:00"
     - type: package
-      id: pnpm:eslint
-      metadata:
-        manager: pnpm
-        name: eslint
-        version: ""
-      installed_at: "2025-11-19T08:17:16-07:00"
-    - type: package
       id: brew:terraform-ls
       metadata:
         manager: brew
@@ -392,3 +378,17 @@ resources:
         name: shellcheck
         version: ""
       installed_at: "2025-11-19T08:16:46-07:00"
+    - type: package
+      id: brew:eslint
+      metadata:
+        manager: brew
+        name: eslint
+        version: ""
+      installed_at: "2025-11-20T07:20:45-07:00"
+    - type: package
+      id: pnpm:@google/gemini-cli
+      metadata:
+        manager: pnpm
+        name: '@google/gemini-cli'
+        version: ""
+      installed_at: "2025-11-20T07:21:30-07:00"
