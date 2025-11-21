@@ -2,6 +2,8 @@
 # Zellij Terminal Multiplexer
 # ============================================================================
 
+alias zj='zellij'
+
 # Zellij floating run command
 zrf() {
   if [ $# -eq 0 ]; then
