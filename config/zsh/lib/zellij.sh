@@ -3,6 +3,7 @@
 # ============================================================================
 
 alias zj='zellij'
+alias zjw='zellij -l welcome'
 
 # Zellij floating run command
 zrf() {
