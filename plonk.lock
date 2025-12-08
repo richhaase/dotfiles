@@ -6,389 +6,389 @@ resources:
         manager: brew
         name: bat
         version: ""
-      installed_at: "2025-11-19T08:14:25-07:00"
+      installed_at: "2025-12-06T09:41:41-07:00"
     - type: package
       id: brew:fd
       metadata:
         manager: brew
         name: fd
         version: ""
-      installed_at: "2025-11-19T08:15:20-07:00"
+      installed_at: "2025-12-06T09:42:08-07:00"
     - type: package
       id: brew:ripgrep
       metadata:
         manager: brew
         name: ripgrep
         version: ""
-      installed_at: "2025-11-19T08:16:39-07:00"
+      installed_at: "2025-12-06T09:43:17-07:00"
     - type: package
       id: brew:btop
       metadata:
         manager: brew
         name: btop
         version: ""
-      installed_at: "2025-11-19T08:14:28-07:00"
+      installed_at: "2025-12-06T09:41:44-07:00"
     - type: package
       id: brew:coreutils
       metadata:
         manager: brew
         name: coreutils
         version: ""
-      installed_at: "2025-11-19T08:14:34-07:00"
+      installed_at: "2025-12-06T09:41:55-07:00"
     - type: package
       id: brew:curl
       metadata:
         manager: brew
         name: curl
         version: ""
-      installed_at: "2025-11-19T08:15:07-07:00"
+      installed_at: "2025-12-06T09:41:57-07:00"
     - type: package
       id: brew:docker
       metadata:
         manager: brew
         name: docker
         version: ""
-      installed_at: "2025-11-19T08:15:13-07:00"
+      installed_at: "2025-12-06T09:42:02-07:00"
     - type: package
       id: brew:editorconfig
       metadata:
         manager: brew
         name: editorconfig
         version: ""
-      installed_at: "2025-11-19T08:15:17-07:00"
+      installed_at: "2025-12-06T09:42:05-07:00"
     - type: package
       id: brew:eza
       metadata:
         manager: brew
         name: eza
         version: ""
-      installed_at: "2025-11-19T08:15:18-07:00"
+      installed_at: "2025-12-06T09:42:06-07:00"
     - type: package
       id: brew:fzf
       metadata:
         manager: brew
         name: fzf
         version: ""
-      installed_at: "2025-11-19T08:15:23-07:00"
+      installed_at: "2025-12-06T09:42:09-07:00"
     - type: package
       id: brew:gcc
       metadata:
         manager: brew
         name: gcc
         version: ""
-      installed_at: "2025-11-19T08:15:24-07:00"
+      installed_at: "2025-12-06T09:42:10-07:00"
     - type: package
       id: brew:gh
       metadata:
         manager: brew
         name: gh
         version: ""
-      installed_at: "2025-11-19T08:15:29-07:00"
+      installed_at: "2025-12-06T09:42:11-07:00"
     - type: package
       id: brew:go
       metadata:
         manager: brew
         name: go
         version: ""
-      installed_at: "2025-11-19T08:16:02-07:00"
+      installed_at: "2025-12-06T09:42:32-07:00"
     - type: package
       id: brew:jq
       metadata:
         manager: brew
         name: jq
         version: ""
-      installed_at: "2025-11-19T08:16:08-07:00"
+      installed_at: "2025-12-06T09:42:44-07:00"
     - type: package
       id: brew:lazygit
       metadata:
         manager: brew
         name: lazygit
         version: ""
-      installed_at: "2025-11-19T08:16:15-07:00"
+      installed_at: "2025-12-06T09:42:49-07:00"
     - type: package
       id: brew:mcfly
       metadata:
         manager: brew
         name: mcfly
         version: ""
-      installed_at: "2025-11-19T08:16:19-07:00"
+      installed_at: "2025-12-06T09:42:54-07:00"
     - type: package
       id: brew:helix
       metadata:
         manager: brew
         name: helix
         version: ""
-      installed_at: "2025-11-19T08:16:07-07:00"
+      installed_at: "2025-12-06T09:42:43-07:00"
     - type: package
       id: brew:node
       metadata:
         manager: brew
         name: node
         version: ""
-      installed_at: "2025-11-19T08:16:28-07:00"
+      installed_at: "2025-12-06T09:42:56-07:00"
     - type: package
       id: brew:procs
       metadata:
         manager: brew
         name: procs
         version: ""
-      installed_at: "2025-11-19T08:16:35-07:00"
+      installed_at: "2025-12-06T09:43:04-07:00"
     - type: package
       id: brew:scc
       metadata:
         manager: brew
         name: scc
         version: ""
-      installed_at: "2025-11-19T08:16:43-07:00"
+      installed_at: "2025-12-06T09:43:21-07:00"
     - type: package
       id: brew:sd
       metadata:
         manager: brew
         name: sd
         version: ""
-      installed_at: "2025-11-19T08:16:45-07:00"
+      installed_at: "2025-12-06T09:43:23-07:00"
     - type: package
       id: brew:starship
       metadata:
         manager: brew
         name: starship
         version: ""
-      installed_at: "2025-11-19T08:16:50-07:00"
+      installed_at: "2025-12-06T09:43:25-07:00"
     - type: package
       id: brew:tokei
       metadata:
         manager: brew
         name: tokei
         version: ""
-      installed_at: "2025-11-19T08:16:52-07:00"
+      installed_at: "2025-12-06T09:43:28-07:00"
     - type: package
       id: brew:wget
       metadata:
         manager: brew
         name: wget
         version: ""
-      installed_at: "2025-11-19T08:17:00-07:00"
+      installed_at: "2025-12-06T09:43:36-07:00"
     - type: package
       id: brew:xh
       metadata:
         manager: brew
         name: xh
         version: ""
-      installed_at: "2025-11-19T08:17:01-07:00"
+      installed_at: "2025-12-06T09:43:37-07:00"
     - type: package
       id: brew:yazi
       metadata:
         manager: brew
         name: yazi
         version: ""
-      installed_at: "2025-11-19T08:17:04-07:00"
+      installed_at: "2025-12-06T09:43:40-07:00"
     - type: package
       id: brew:zellij
       metadata:
         manager: brew
         name: zellij
         version: ""
-      installed_at: "2025-11-19T08:17:05-07:00"
+      installed_at: "2025-12-06T09:43:41-07:00"
     - type: package
       id: brew:zoxide
       metadata:
         manager: brew
         name: zoxide
         version: ""
-      installed_at: "2025-11-19T08:17:06-07:00"
+      installed_at: "2025-12-06T09:43:42-07:00"
     - type: package
       id: brew:awscli
       metadata:
         manager: brew
         name: awscli
         version: ""
-      installed_at: "2025-11-19T08:14:24-07:00"
+      installed_at: "2025-12-06T09:41:38-07:00"
     - type: package
       id: brew:git-delta
       metadata:
         manager: brew
         name: git-delta
         version: ""
-      installed_at: "2025-11-19T08:15:39-07:00"
+      installed_at: "2025-12-06T09:42:15-07:00"
     - type: package
       id: brew:duf
       metadata:
         manager: brew
         name: duf
         version: ""
-      installed_at: "2025-11-19T08:15:15-07:00"
+      installed_at: "2025-12-06T09:42:03-07:00"
     - type: package
       id: brew:dust
       metadata:
         manager: brew
         name: dust
         version: ""
-      installed_at: "2025-11-19T08:15:16-07:00"
+      installed_at: "2025-12-06T09:42:04-07:00"
     - type: package
       id: brew:git
       metadata:
         manager: brew
         name: git
         version: ""
-      installed_at: "2025-11-19T08:15:38-07:00"
+      installed_at: "2025-12-06T09:42:14-07:00"
     - type: package
       id: brew:just
       metadata:
         manager: brew
         name: just
         version: ""
-      installed_at: "2025-11-19T08:16:11-07:00"
+      installed_at: "2025-12-06T09:42:46-07:00"
     - type: package
       id: brew:markdown
       metadata:
         manager: brew
         name: markdown
         version: ""
-      installed_at: "2025-11-19T08:16:16-07:00"
+      installed_at: "2025-12-06T09:42:50-07:00"
     - type: package
       id: brew:goimports
       metadata:
         manager: brew
         name: goimports
         version: ""
-      installed_at: "2025-11-19T08:16:03-07:00"
+      installed_at: "2025-12-06T09:42:34-07:00"
     - type: package
       id: brew:goreleaser
       metadata:
         manager: brew
         name: goreleaser
         version: ""
-      installed_at: "2025-11-19T08:16:06-07:00"
+      installed_at: "2025-12-06T09:42:42-07:00"
     - type: package
       id: brew:codex
       metadata:
         manager: brew
         name: codex
         version: ""
-      installed_at: "2025-11-19T08:14:29-07:00"
+      installed_at: "2025-12-06T09:41:54-07:00"
     - type: package
       id: brew:uv
       metadata:
         manager: brew
         name: uv
         version: ""
-      installed_at: "2025-11-19T08:16:59-07:00"
+      installed_at: "2025-12-06T09:43:35-07:00"
     - type: package
       id: brew:ghostty
       metadata:
         manager: brew
         name: ghostty
         version: ""
-      installed_at: "2025-11-19T08:15:30-07:00"
+      installed_at: "2025-12-06T09:42:13-07:00"
     - type: package
       id: brew:direnv
       metadata:
         manager: brew
         name: direnv
         version: ""
-      installed_at: "2025-11-19T08:15:09-07:00"
+      installed_at: "2025-12-06T09:41:58-07:00"
     - type: package
       id: brew:python@3.14
       metadata:
         manager: brew
         name: python@3.14
         version: ""
-      installed_at: "2025-11-19T08:16:38-07:00"
+      installed_at: "2025-12-06T09:43:15-07:00"
     - type: package
       id: brew:ollama
       metadata:
         manager: brew
         name: ollama
         version: ""
-      installed_at: "2025-11-19T08:16:32-07:00"
+      installed_at: "2025-12-06T09:42:59-07:00"
     - type: package
       id: brew:gopls
       metadata:
         manager: brew
         name: gopls
         version: ""
-      installed_at: "2025-11-19T08:16:04-07:00"
+      installed_at: "2025-12-06T09:42:35-07:00"
     - type: package
       id: brew:typescript-language-server
       metadata:
         manager: brew
         name: typescript-language-server
         version: ""
-      installed_at: "2025-11-19T08:16:53-07:00"
+      installed_at: "2025-12-06T09:43:30-07:00"
     - type: package
       id: brew:ruff
       metadata:
         manager: brew
         name: ruff
         version: ""
-      installed_at: "2025-11-19T08:16:40-07:00"
+      installed_at: "2025-12-06T09:43:20-07:00"
     - type: package
       id: brew:black
       metadata:
         manager: brew
         name: black
         version: ""
-      installed_at: "2025-11-19T08:14:27-07:00"
+      installed_at: "2025-12-06T09:41:42-07:00"
     - type: package
       id: pnpm:@astrojs/language-server
       metadata:
         manager: pnpm
         name: '@astrojs/language-server'
         version: ""
-      installed_at: "2025-11-19T08:17:13-07:00"
+      installed_at: "2025-12-06T09:43:45-07:00"
     - type: package
       id: brew:marksman
       metadata:
         manager: brew
         name: marksman
         version: ""
-      installed_at: "2025-11-19T08:16:17-07:00"
+      installed_at: "2025-12-06T09:42:53-07:00"
     - type: package
       id: brew:terraform-ls
       metadata:
         manager: brew
         name: terraform-ls
         version: ""
-      installed_at: "2025-11-19T08:16:51-07:00"
+      installed_at: "2025-12-06T09:43:26-07:00"
     - type: package
       id: brew:yaml-language-server
       metadata:
         manager: brew
         name: yaml-language-server
         version: ""
-      installed_at: "2025-11-19T08:17:03-07:00"
+      installed_at: "2025-12-06T09:43:39-07:00"
     - type: package
       id: brew:prettier
       metadata:
         manager: brew
         name: prettier
         version: ""
-      installed_at: "2025-11-19T08:16:34-07:00"
+      installed_at: "2025-12-06T09:47:26-07:00"
     - type: package
       id: brew:pyright
       metadata:
         manager: brew
         name: pyright
         version: ""
-      installed_at: "2025-11-19T08:16:36-07:00"
+      installed_at: "2025-12-06T09:43:05-07:00"
     - type: package
       id: brew:shellcheck
       metadata:
         manager: brew
         name: shellcheck
         version: ""
-      installed_at: "2025-11-19T08:16:46-07:00"
+      installed_at: "2025-12-06T09:43:24-07:00"
     - type: package
       id: pnpm:@google/gemini-cli
       metadata:
         manager: pnpm
         name: '@google/gemini-cli'
         version: ""
-      installed_at: "2025-11-20T07:21:30-07:00"
+      installed_at: "2025-12-06T09:43:46-07:00"
     - type: package
       id: pnpm:eslint
       metadata:
         manager: pnpm
         name: eslint
         version: ""
-      installed_at: "2025-11-20T07:50:59-07:00"
+      installed_at: "2025-12-06T09:43:47-07:00"
