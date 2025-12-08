@@ -14,6 +14,9 @@ zrf() {
   fi
 }
 
+alias zlg='zrf lg'
+alias zbt='zrf btop'
+
 # Zellij run command
 zr() {
   if [ $# -eq 0 ]; then
