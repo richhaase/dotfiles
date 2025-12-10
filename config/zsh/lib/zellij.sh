@@ -36,9 +36,10 @@ ze() {
   zellij edit "$1";
 }
 
-# Open a new Zellij tab in a target directory (or CWD) and name it after the basename
+# Open a new Zellij tab in a target directory (or CWD) with optional layout
+# Usage: zt [directory] [layout]
 zt() {
-  local target_path name
+  local target_path name layout
 
   # Use provided directory or default to current working directory
   if [ $# -ge 1 ] && [ -n "$1" ]; then
@@ -46,6 +47,9 @@ zt() {
   else
     target_path="$PWD"
   fi
+
+  # Optional layout argument
+  layout="$2"
 
   # Ensure the target path is a directory
   if [ ! -d "$target_path" ]; then
@@ -59,8 +63,13 @@ zt() {
   if [ -z "${ZELLIJ:-}" ]; then
     if ! (
       builtin cd "$target_path" || exit 1
-      zellij --new-session-with-layout agents --session "$name" ||
-        zellij attach --create "$name"
+      if [ -n "$layout" ]; then
+        zellij --new-session-with-layout "$layout" --session "$name" ||
+          zellij attach --create "$name"
+      else
+        zellij --session "$name" ||
+          zellij attach --create "$name"
+      fi
     ); then
       printf 'zt: failed to start zellij session\n' >&2
       return 1
@@ -69,8 +78,15 @@ zt() {
   fi
 
   # Open new tab in the target directory
-  if ! zellij action new-tab --cwd "$target_path" --name "$name" --layout agents; then
-    printf 'zt: failed to open zellij tab\n' >&2
-    return 1
+  if [ -n "$layout" ]; then
+    if ! zellij action new-tab --cwd "$target_path" --name "$name" --layout "$layout"; then
+      printf 'zt: failed to open zellij tab\n' >&2
+      return 1
+    fi
+  else
+    if ! zellij action new-tab --cwd "$target_path" --name "$name"; then
+      printf 'zt: failed to open zellij tab\n' >&2
+      return 1
+    fi
   fi
 }
