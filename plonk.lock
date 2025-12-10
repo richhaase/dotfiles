@@ -391,4 +391,11 @@ resources:
         manager: pnpm
         name: eslint
         version: ""
-      installed_at: "2025-12-08T08:30:50-07:00"
+      installed_at: "2025-12-06T09:43:47-07:00"
+    - type: package
+      id: brew:circumflex
+      metadata:
+        manager: brew
+        name: circumflex
+        version: ""
+      installed_at: "2025-12-09T17:57:00-07:00"
