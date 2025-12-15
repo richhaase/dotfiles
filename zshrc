@@ -35,11 +35,6 @@ path=("${HOME}/.bin" "${HOME}/.pixi/bin" "${HOME}/.local/bin" $path)
 export PNPM_HOME="$HOME/Library/pnpm"
 [[ -d "$PNPM_HOME" ]] && path+=("$PNPM_HOME")
 
-# Node Version Manager
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-
 # Bun
 export BUN_INSTALL="$HOME/.bun"
 path+=("$BUN_INSTALL/bin")
