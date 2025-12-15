@@ -111,7 +111,6 @@ zstyle ':fzf-tab:complete:*:argument-rest' fzf-preview '[ -d "$realpath" ] && ez
 
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
-(( $+commands[mcfly] )) && eval "$(mcfly init zsh)"
 
 # ============================================================================
 # FZF Configuration
@@ -124,6 +123,9 @@ export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=header,grid --line
 export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 
 (( $+commands[fzf] )) && source <(fzf --zsh)
+
+# Initialize Atuin AFTER fzf so Ctrl+R uses Atuin instead of fzf
+(( $+commands[atuin] )) && eval "$(atuin init zsh)"
 
 
 # ============================================================================

@@ -1,0 +1,72 @@
+## Atuin Configuration
+## Docs: https://atuin.sh/docs/config/
+
+# Search mode: "prefix", "fulltext", "fuzzy", "skim"
+search_mode = "fuzzy"
+
+# Filter mode to use by default
+# possible values: "global", "host", "session", "session-preload", "directory", "workspace"
+filter_mode = "global"
+
+# UI style: "auto", "full", "compact"
+style = "auto"
+
+# Maximum number of lines the interface should take up
+# Set to 0 for full screen (default behavior)
+inline_height = 0
+
+# Show preview of the selected command
+show_preview = true
+
+# Show help row at the bottom
+show_help = true
+
+# Show tabs for search modes
+show_tabs = true
+
+# Keymap mode on startup
+# "auto" = use shell's keymap, "emacs", "vim-insert", or "vim-normal"
+keymap_mode = "auto"
+
+# Cursor style in each keymap mode
+keymap_cursor = { emacs = "blink-block", vim_insert = "blink-block", vim_normal = "steady-block" }
+
+# Use ctrl instead of alt for numerical shortcuts
+ctrl_n_shortcuts = false
+
+# Disable automatic update checks
+update_check = false
+
+# Disable automatic sync to cloud
+auto_sync = false
+
+# Enter executes command immediately (tab to edit)
+enter_accept = true
+
+# Maximum preview height
+max_preview_height = 4
+
+# Filter secrets from history by default
+secrets_filter = true
+
+# Prevent motion in UI (set to true for less distraction)
+prefers_reduced_motion = false
+
+[stats]
+# Track subcommands for these tools
+common_subcommands = [
+  "cargo",
+  "docker",
+  "git",
+  "go",
+  "kubectl",
+  "npm",
+  "pnpm",
+]
+
+# Strip these prefixes from stats
+common_prefix = ["sudo"]
+
+[keys]
+# Allow scrolling past first/last entry to exit
+scroll_exits = true

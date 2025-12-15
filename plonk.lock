@@ -106,13 +106,6 @@ resources:
         version: ""
       installed_at: "2025-12-10T08:03:20-07:00"
     - type: package
-      id: brew:mcfly
-      metadata:
-        manager: brew
-        name: mcfly
-        version: ""
-      installed_at: "2025-12-10T08:03:24-07:00"
-    - type: package
       id: brew:helix
       metadata:
         manager: brew
@@ -406,3 +399,10 @@ resources:
         name: ccusage
         version: ""
       installed_at: "2025-12-11T14:57:46-07:00"
+    - type: package
+      id: brew:atuin
+      metadata:
+        manager: brew
+        name: atuin
+        version: ""
+      installed_at: "2025-12-15T10:39:40-07:00"
