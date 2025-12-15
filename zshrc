@@ -87,7 +87,13 @@ fi
 
 autoload -Uz compinit
 zmodload -i zsh/complist 2>/dev/null
-compinit -C
+
+# Only rebuild completion cache once per day for faster startup
+if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
 
 # Completion UI tweaks
 zstyle ':completion:*' menu select
