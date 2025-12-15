@@ -399,3 +399,10 @@ resources:
         name: circumflex
         version: ""
       installed_at: "2025-12-09T17:57:00-07:00"
+    - type: package
+      id: brew:ccusage
+      metadata:
+        manager: brew
+        name: ccusage
+        version: ""
+      installed_at: "2025-12-11T14:57:46-07:00"
