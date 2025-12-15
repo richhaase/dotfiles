@@ -406,3 +406,10 @@ resources:
         name: atuin
         version: ""
       installed_at: "2025-12-15T10:39:40-07:00"
+    - type: package
+      id: brew:choose
+      metadata:
+        manager: brew
+        name: choose
+        version: ""
+      installed_at: "2025-12-15T15:21:52-07:00"
