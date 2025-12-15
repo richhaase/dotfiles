@@ -131,3 +131,27 @@ wzt() {
 
   printf '%s\n' "$wt_path"
 }
+
+# Interactive git branch switcher with preview
+gcof() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'gcof: not inside a git repository\n' >&2
+    return 1
+  fi
+
+  local branch
+  branch=$(git branch --all --color=always |
+    grep -v '/HEAD\s' |
+    fzf --ansi \
+        --height=50% \
+        --preview 'git log --oneline --graph --color=always --date=short --format="%C(auto)%h %C(blue)%ad %C(auto)%d %C(reset)%s %C(cyan)(%an)" $(echo {} | sed "s/.* //" | sed "s#remotes/[^/]*/##") --' \
+        --preview-window=right:60% \
+        --bind 'ctrl-/:change-preview-window(down|hidden|)' \
+        --header 'Ctrl-/ to toggle preview' |
+    sed 's/.* //' |
+    sed 's#remotes/[^/]*/##')
+
+  if [[ -n "$branch" ]]; then
+    git checkout "$branch"
+  fi
+}
