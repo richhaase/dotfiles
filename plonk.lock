@@ -413,3 +413,24 @@ resources:
         name: choose
         version: ""
       installed_at: "2025-12-15T15:21:52-07:00"
+    - type: package
+      id: brew:hyperfine
+      metadata:
+        manager: brew
+        name: hyperfine
+        version: ""
+      installed_at: "2025-12-15T19:05:50-07:00"
+    - type: package
+      id: brew:difftastic
+      metadata:
+        manager: brew
+        name: difftastic
+        version: ""
+      installed_at: "2025-12-15T19:07:06-07:00"
+    - type: package
+      id: brew:jj
+      metadata:
+        manager: brew
+        name: jj
+        version: ""
+      installed_at: "2025-12-15T19:08:10-07:00"

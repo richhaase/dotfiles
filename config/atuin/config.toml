@@ -8,6 +8,9 @@ search_mode = "fuzzy"
 # possible values: "global", "host", "session", "session-preload", "directory", "workspace"
 filter_mode = "global"
 
+# Enable workspace-aware filtering (filters by git repo when in one)
+workspaces = true
+
 # UI style: "auto", "full", "compact"
 style = "auto"
 
