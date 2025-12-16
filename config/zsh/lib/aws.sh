@@ -4,5 +4,6 @@
 
 # AWS profile selector
 awsp() {
-  export AWS_PROFILE=$(aws configure list-profiles | fzf)
+  local profile
+  profile=$(aws configure list-profiles | fzf) && [[ -n "$profile" ]] && export AWS_PROFILE="$profile"
 }
