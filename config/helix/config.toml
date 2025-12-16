@@ -56,9 +56,6 @@ right = [
   "version-control",
 ]
 
-[editor.whitespace]
-render = "trailing"
-
 [keys.normal]
 C-r = ":reload"
 C-R = ":reload-all"
