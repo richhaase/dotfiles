@@ -18,8 +18,34 @@ alias gfix='git add -A && git commit --fixup=HEAD'
 alias gwip='git add -A && git commit -m "WIP"'
 
 # Git worktree aliases
-alias lswt='git worktree list'
 alias rmwt='git worktree remove'
+
+# List git worktrees
+# Usage: lswt [path]
+#   No args: list all worktrees under ~
+#   path:    list worktrees under given path (use . for current repo)
+lswt() {
+  local scan_path="${1:-$HOME}"
+  local repos gitdir repo name
+
+  # Resolve to absolute path
+  scan_path="$(cd "$scan_path" 2>/dev/null && pwd)" || {
+    printf 'lswt: cannot access %s\n' "$1" >&2
+    return 1
+  }
+
+  repos=$(fd -H -t d '^\.git$' "$scan_path" --max-depth 4 \
+    --exclude '.cache' \
+    --exclude 'node_modules' \
+    --exclude '.venv' 2>/dev/null)
+  while IFS= read -r gitdir; do
+    [[ -z "$gitdir" ]] && continue
+    gitdir="${gitdir%/}"  # remove trailing slash
+    repo="${gitdir%/.git}"
+    name="${repo##*/}"
+    git -C "$repo" worktree list 2>/dev/null | awk -v n="$name" '{print n "\t" $0}'
+  done <<< "$repos" | sort
+}
 
 # Git worktree management - create worktree
 mkwt() {
