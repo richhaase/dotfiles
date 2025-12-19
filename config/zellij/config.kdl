@@ -193,6 +193,12 @@ keybinds clear-defaults=true {
                 height "80%"
             }
         }
+        bind "Alt m" {
+          LaunchOrFocusPlugin "file:~/.config/zellij/plugins/pane-picker.wasm" {
+            floating true
+            move_to_focused_tab true
+          }
+        }
     }
     shared_except "locked" "renametab" "renamepane" {
         bind "Ctrl g" { SwitchToMode "locked"; }
@@ -272,6 +278,7 @@ plugins {
     welcome-screen location="zellij:session-manager" {
         welcome_screen true
     }
+    pane-picker location="file:~/.config/zellij/plugins/pane-picker.wasm"
 }
 
 // Plugins to load in the background when a new session starts

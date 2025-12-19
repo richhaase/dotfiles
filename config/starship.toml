@@ -1,4 +1,4 @@
-format = "$directory on $git_branch$git_status $direnv$python$nodejs$rust$golang$status$cmd_duration$jobs\n$character"
+format = "$directory ${custom.git_branch}${custom.git_status}${custom.jj}$direnv$python$nodejs$rust$golang$status$cmd_duration$jobs\n$character"
 add_newline = true
 scan_timeout = 50
 command_timeout = 800
@@ -10,24 +10,30 @@ truncate_to_repo = true
 fish_style_pwd_dir_length = 1
 
 [git_branch]
-format = "[$symbol$branch]($style) "
-style = "bold purple"
-symbol = " "
+disabled = true
 
 [git_status]
-format = "[$all_status$ahead_behind]($style) "
-style = "bold red"
-conflicted = "✖"
-staged = "+"
-modified = "!"
-untracked = "?"
-ahead = "⇡${count}"
-behind = "⇣${count}"
-diverged = "⇕"
+disabled = true
 
 [git_state]
 format = "[($state( $progress_current/$progress_total))]($style) "
 style = "yellow"
+
+[custom.git_branch]
+when = "! jj root --ignore-working-copy 2>/dev/null"
+command = "starship module git_branch"
+
+[custom.git_status]
+when = "! jj root --ignore-working-copy 2>/dev/null"
+command = "starship module git_status"
+
+[custom.jj]
+command = "prompt"
+format = "$output"
+ignore_timeout = true
+shell = ["starship-jj", "--ignore-working-copy", "starship"]
+use_stdin = false
+when = true
 
 [direnv]
 format = "[⛶ direnv](bold cyan) "

@@ -1,0 +1,51 @@
+module_separator = " "
+
+[bookmarks]
+exclude = []
+
+[[module]]
+type = "Symbol"
+symbol = "󱗆 "
+color = "Magenta"
+
+[[module]]
+type = "Bookmarks"
+separator = " "
+color = "Magenta"
+behind_symbol = "⇡"
+max_length = 12
+surround_with_quotes = false
+
+[[module]]
+type = "Commit"
+max_length = 20
+surround_with_quotes = false
+empty_text = "(wip)"
+show_previous_if_empty = false
+
+[[module]]
+type = "State"
+separator = " "
+
+[module.conflict]
+text = "!"
+color = "Red"
+
+[module.divergent]
+text = "⇕"
+color = "Cyan"
+
+[module.hidden]
+disabled = true
+text = ""
+color = "Yellow"
+
+[module.immutable]
+disabled = true
+text = ""
+color = "Yellow"
+
+[module.empty]
+disabled = true
+text = ""
+color = "Yellow"

@@ -377,7 +377,7 @@ resources:
         manager: pnpm
         name: '@google/gemini-cli'
         version: ""
-      installed_at: "2025-12-10T08:03:58-07:00"
+      installed_at: "2025-12-17T07:48:40-07:00"
     - type: package
       id: pnpm:eslint
       metadata:
@@ -441,3 +441,10 @@ resources:
         name: serpl
         version: ""
       installed_at: "2025-12-15T20:35:37-07:00"
+    - type: package
+      id: cargo:starship-jj
+      metadata:
+        manager: cargo
+        name: starship-jj
+        version: ""
+      installed_at: "2025-12-18T19:21:30-07:00"
