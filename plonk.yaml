@@ -4,6 +4,7 @@ expand_directories:
     - .codex
     - .gemini
 ignore_patterns:
+    - .gitignore
     - /AGENTS.md
     - README.md
     - .DS_Store

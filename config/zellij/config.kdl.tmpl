@@ -197,7 +197,7 @@ keybinds clear-defaults=true {
           LaunchOrFocusPlugin "file:~/.config/zellij/plugins/maestro.wasm" {
             floating true
             move_to_focused_tab true
-            cwd "{{home_dir}}"
+            cwd "{{.home_dir}}"
           }
         }
     }
@@ -280,7 +280,7 @@ plugins {
         welcome_screen true
     }
     pane-picker location="file:~/.config/zellij/plugins/maestro.wasm" {
-      cwd "{{home_dir}}"
+      cwd "{{.home_dir}}"
     }
 }
 
