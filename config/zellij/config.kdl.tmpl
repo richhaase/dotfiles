@@ -194,9 +194,10 @@ keybinds clear-defaults=true {
             }
         }
         bind "Alt m" {
-          LaunchOrFocusPlugin "file:~/.config/zellij/plugins/pane-picker.wasm" {
+          LaunchOrFocusPlugin "file:~/.config/zellij/plugins/maestro.wasm" {
             floating true
             move_to_focused_tab true
+            cwd "{{home_dir}}"
           }
         }
     }
@@ -278,7 +279,9 @@ plugins {
     welcome-screen location="zellij:session-manager" {
         welcome_screen true
     }
-    pane-picker location="file:~/.config/zellij/plugins/pane-picker.wasm"
+    pane-picker location="file:~/.config/zellij/plugins/maestro.wasm" {
+      cwd "{{home_dir}}"
+    }
 }
 
 // Plugins to load in the background when a new session starts
