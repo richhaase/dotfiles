@@ -38,13 +38,15 @@ lswt() {
     --exclude '.cache' \
     --exclude 'node_modules' \
     --exclude '.venv' 2>/dev/null)
-  while IFS= read -r gitdir; do
-    [[ -z "$gitdir" ]] && continue
-    gitdir="${gitdir%/}"  # remove trailing slash
-    repo="${gitdir%/.git}"
-    name="${repo##*/}"
-    git -C "$repo" worktree list 2>/dev/null | awk -v n="$name" '{print n "\t" $0}'
-  done <<< "$repos" | sort
+  {
+    while IFS= read -r gitdir; do
+      [[ -z "$gitdir" ]] && continue
+      gitdir="${gitdir%/}"  # remove trailing slash
+      repo="${gitdir%/.git}"
+      name="${repo##*/}"
+      git -C "$repo" worktree list 2>/dev/null | awk -v n="$name" '{print n "\t" $0}'
+    done <<< "$repos"
+  } | sort | column -t
 }
 
 # Git worktree management - create worktree
