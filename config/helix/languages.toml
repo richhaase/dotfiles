@@ -42,6 +42,21 @@ args    = ["serve"]
 command = "yaml-language-server"
 args    = ["--stdio"]
 
+# --- TOML ---
+[language-server.taplo]
+command = "taplo"
+args    = ["lsp", "stdio"]
+
+# --- JSON ---
+[language-server.vscode-json-language-server]
+command = "vscode-json-language-server"
+args    = ["--stdio"]
+
+# --- Bash ---
+[language-server.bash-language-server]
+command = "bash-language-server"
+args    = ["start"]
+
 #############################
 # Python
 #############################
@@ -52,8 +67,8 @@ language-servers = ["ruff-lsp", "pyright"]
 auto-format = true
 
 [language.formatter]
-command = "black"
-args = ["-"]
+command = "ruff"
+args = ["format", "-"]
 
 #############################
 # Go
@@ -175,3 +190,45 @@ auto-format = true
 [language.formatter]
 command = "prettier"
 args = ["--stdin-filepath", "file.yaml"]
+
+#############################
+# TOML
+#############################
+[[language]]
+name = "toml"
+file-types = ["toml"]
+roots = [".git"]
+language-servers = ["taplo"]
+auto-format = true
+
+[language.formatter]
+command = "taplo"
+args = ["fmt", "-"]
+
+#############################
+# JSON
+#############################
+[[language]]
+name = "json"
+file-types = ["json", "jsonc"]
+roots = [".git"]
+language-servers = ["vscode-json-language-server"]
+auto-format = true
+
+[language.formatter]
+command = "prettier"
+args = ["--stdin-filepath", "file.json"]
+
+#############################
+# Bash / Shell
+#############################
+[[language]]
+name = "bash"
+file-types = ["sh", "bash", "zsh", ".zshrc", ".bashrc", ".bash_profile", ".zprofile"]
+roots = [".git"]
+language-servers = ["bash-language-server"]
+auto-format = false
+
+[language.formatter]
+command = "shfmt"
+args = ["-i", "2", "-"]

@@ -1,6 +1,7 @@
 theme = "catppuccin_macchiato"
 
 [editor]
+bufferline = "multiple"
 scroll-lines = 1
 cursorline = true
 auto-save = false
@@ -15,7 +16,7 @@ trim-trailing-whitespace = true
 insert-final-newline = true
 
 [editor.file-picker]
-git-ignore = false
+git-ignore = true
 hidden = false
 follow-symlinks = true
 

@@ -427,3 +427,31 @@ resources:
         name: raycast
         version: ""
       installed_at: "2025-12-18T09:00:56-07:00"
+    - type: package
+      id: cargo:taplo-cli
+      metadata:
+        manager: cargo
+        name: taplo-cli
+        version: ""
+      installed_at: "2025-12-24T08:59:12-07:00"
+    - type: package
+      id: brew:vscode-langservers-extracted
+      metadata:
+        manager: brew
+        name: vscode-langservers-extracted
+        version: ""
+      installed_at: "2025-12-24T08:59:34-07:00"
+    - type: package
+      id: brew:bash-language-server
+      metadata:
+        manager: brew
+        name: bash-language-server
+        version: ""
+      installed_at: "2025-12-24T08:59:49-07:00"
+    - type: package
+      id: brew:shfmt
+      metadata:
+        manager: brew
+        name: shfmt
+        version: ""
+      installed_at: "2025-12-24T08:59:56-07:00"
