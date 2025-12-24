@@ -455,3 +455,10 @@ resources:
         name: shfmt
         version: ""
       installed_at: "2025-12-24T08:59:56-07:00"
+    - type: package
+      id: brew:font-jetbrains-mono-nerd-font
+      metadata:
+        manager: brew
+        name: font-jetbrains-mono-nerd-font
+        version: ""
+      installed_at: "2025-12-24T09:39:30-07:00"

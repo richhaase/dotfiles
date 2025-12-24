@@ -1,4 +1,6 @@
-font-family = "Hack Nerd Font"
+font-family = "JetBrainsMono Nerd Font"
 font-size = 14
+font-feature = calt
+font-feature = liga
 theme = "Solarized Darcula"
 keybind = shift+enter=text:\n
