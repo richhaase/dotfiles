@@ -4,10 +4,6 @@ expand_directories:
     - .codex
     - .gemini
 ignore_patterns:
-    - /.claude/settings.local.json
-    - /.gitattributes
-    - /.beads
-    - /.gitignore
     - /AGENTS.md
     - README.md
     - .DS_Store
