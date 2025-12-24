@@ -16,6 +16,11 @@ alias gca='git commit --amend --no-edit'
 alias gclean='git branch --merged | grep -v "\*\|main\|trunk" | xargs git branch -d'
 alias gfix='git add -A && git commit --fixup=HEAD'
 alias gwip='git add -A && git commit -m "WIP"'
+alias gundo='git reset HEAD~1 --mixed'
+alias gconflicts='git diff --name-only --diff-filter=U'
+alias gsup='git submodule update'
+alias grv='git remote --verbose'
+alias glocal='git branch -vv | cut -c 3- | awk '\''$3 !~/\[/ { print $1 }'\'''
 
 # Git worktree aliases
 alias rmwt='git worktree remove'
