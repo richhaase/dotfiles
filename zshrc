@@ -22,7 +22,7 @@ ZPLUGINDIR="$HOME/.config/zsh/plugins"
 # Use zsh-native path array with deduplication
 typeset -U path PATH
 path=("${HOME}/.bin" "${HOME}/.pixi/bin" "${HOME}/.local/bin" $path)
-(( $+commands[go] )) && path+=("$(go env GOPATH 2>/dev/null)/bin")
+(( $+commands[go] )) && path+=("${GOPATH:-$HOME/go}/bin")
 
 # ============================================================================
 # Package Managers
@@ -37,7 +37,7 @@ export PNPM_HOME="$HOME/Library/pnpm"
 
 # Bun
 export BUN_INSTALL="$HOME/.bun"
-path+=("$BUN_INSTALL/bin")
+[[ -d "$BUN_INSTALL/bin" ]] && path+=("$BUN_INSTALL/bin")
 [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
 # ============================================================================
@@ -46,6 +46,10 @@ path+=("$BUN_INSTALL/bin")
 
 setopt AUTO_MENU
 setopt COMPLETE_IN_WORD
+setopt EXTENDED_GLOB        # More powerful globbing patterns
+setopt NO_BEEP              # Disable terminal beeps
+setopt INTERACTIVE_COMMENTS # Allow comments in interactive shell
+setopt PUSHD_IGNORE_DUPS    # No duplicates in dir stack
 
 # ============================================================================
 # History
@@ -96,6 +100,8 @@ else
 fi
 
 # Completion UI tweaks
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
 zstyle ':completion:*' menu select
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*:descriptions' format '%F{yellow}%d%f'
