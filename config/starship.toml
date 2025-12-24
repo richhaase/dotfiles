@@ -1,7 +1,7 @@
 format = "$directory on $git_branch$git_status $direnv$python$nodejs$rust$golang$status$cmd_duration$jobs\n$character"
 add_newline = true
 scan_timeout = 50
-command_timeout = 800
+command_timeout = 500
 
 [directory]
 style = "bold blue"
@@ -42,7 +42,7 @@ disabled = false
 [nodejs]
 format = "[node $version]($style) "
 style = "bold green"
-detect_files = ["package.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb"]
+detect_files = ["package.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "package-lock.json"]
 disabled = false
 
 [rust]
