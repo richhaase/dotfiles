@@ -7,7 +7,7 @@ Analyzes a git repository and generates statistics about contributors including:
 - Lines added/removed/net
 - File changes
 
-Usage: python git-contributor-stats.py [path_to_repo]
+Usage: leaderboard.py [path_to_repo]
 """
 
 import subprocess
