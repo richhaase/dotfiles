@@ -1,0 +1,13 @@
+layout {
+  tab hide_floating_panes=true {
+    pane size=1 borderless=true {
+      plugin location="zellij:tab-bar"
+    }
+    pane {
+      command "cursor-agent"
+    }
+    pane size=1 borderless=true {
+      plugin location="zellij:status-bar"
+    }
+  }
+}
