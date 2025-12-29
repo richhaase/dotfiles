@@ -57,7 +57,9 @@ zt() {
     return 1
   fi
 
-  name="${target_path:t}" # zsh basename shorthand
+  # Resolve absolute path and replace $HOME/ with nothing (relative path from home)
+  target_path=${target_path:A}
+  name="${target_path/#$HOME\//}"
 
   # If we're outside Zellij, start or attach to a session rooted in the target dir
   if [ -z "${ZELLIJ:-}" ]; then
