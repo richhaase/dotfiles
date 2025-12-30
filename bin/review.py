@@ -640,10 +640,12 @@ async def async_main(args: argparse.Namespace) -> int:
     failed_iters: List[int] = []
     timed_out_iters: List[int] = []
     worker_durations: dict[int, float] = {}
+    exception_count = 0
 
     for result in results:
         if isinstance(result, Exception):
             state.log(f"Worker exception: {result}")
+            exception_count += 1
             continue
 
         parse_errors += result.parse_errors
@@ -655,6 +657,12 @@ async def async_main(args: argparse.Namespace) -> int:
             failed_iters.append(result.worker_id)
 
         all_findings.extend(result.findings)
+
+    # Check if all workers failed
+    total_failures = len(failed_iters) + len(timed_out_iters) + exception_count
+    if total_failures >= args.workers:
+        state.log("All workers failed")
+        return EXIT_ERROR
 
     # Summarize
     aggregated = aggregate_findings(all_findings)
