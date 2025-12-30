@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--json]
+# Env: REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF
 
 import argparse
 import json
+import logging
 import os
 import shlex
 import shutil
@@ -16,13 +18,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Iterable, List, Tuple, TypedDict
 
+logger = logging.getLogger(__name__)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-DEFAULT_WORKERS = 5
-DEFAULT_TIMEOUT = 300
-DEFAULT_BASE_REF = "main"
+DEFAULT_WORKERS = int(os.environ.get("REVIEW_WORKERS", 5))
+DEFAULT_TIMEOUT = int(os.environ.get("REVIEW_TIMEOUT", 300))
+DEFAULT_BASE_REF = os.environ.get("REVIEW_BASE_REF", "main")
 MAX_REPORT_WIDTH = 90
 SPINNER_INTERVAL = 0.2
 CLEAR_LINE_WIDTH = 90
@@ -86,6 +90,36 @@ def wrap_text(
     )
 
 
+class SpinnerHandler(logging.Handler):
+    """Logging handler that coordinates with spinner output."""
+
+    def __init__(
+        self,
+        write_lock: threading.Lock,
+        spinner_state: dict,
+        spinner_stop: threading.Event,
+        spinner_enabled: bool,
+    ):
+        super().__init__()
+        self.write_lock = write_lock
+        self.spinner_state = spinner_state
+        self.spinner_stop = spinner_stop
+        self.spinner_enabled = spinner_enabled
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            with self.write_lock:
+                if self.spinner_enabled:
+                    sys.stderr.write("\r" + " " * CLEAR_LINE_WIDTH + "\r")
+                sys.stderr.write(msg + "\n")
+                if self.spinner_enabled and not self.spinner_stop.is_set():
+                    sys.stderr.write(self.spinner_state.get("line", ""))
+                sys.stderr.flush()
+        except Exception:
+            self.handleError(record)
+
+
 @dataclass
 class Finding:
     text: str
@@ -111,10 +145,32 @@ class FindingGroup(TypedDict):
     title: str
     summary: str
     messages: List[str]
+    worker_count: int
 
 
 class GroupedFindings(TypedDict):
     findings: List[FindingGroup]
+
+
+class AggregatedFinding(TypedDict):
+    text: str
+    workers: List[int]
+
+
+def aggregate_findings(findings: List[Finding]) -> List[AggregatedFinding]:
+    """Aggregate findings by text, tracking which workers found each."""
+    seen: dict[str, List[int]] = {}
+    for f in findings:
+        normalized = f.text.strip()
+        if normalized:
+            if normalized not in seen:
+                seen[normalized] = []
+            if f.iteration not in seen[normalized]:
+                seen[normalized].append(f.iteration)
+    return [
+        AggregatedFinding(text=text, workers=sorted(workers))
+        for text, workers in seen.items()
+    ]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -236,13 +292,14 @@ GROUP_PROMPT = """# Codex Review Summarizer
 
 You are grouping results from repeated Codex review runs.
 
-Input: a JSON array of strings, each string is an agent_message from a review run.
+Input: a JSON array of objects, each with "text" (the finding) and "workers" (list of worker IDs that found it).
 
 Task:
 - Cluster messages that describe the same underlying issue.
 - Create a short, precise title per group.
 - Keep groups distinct; do not merge different issues.
 - If something is unique, keep it as its own group.
+- Sum up unique worker IDs across clustered messages for worker_count.
 
 Output format (JSON only, no extra prose):
 {
@@ -250,7 +307,8 @@ Output format (JSON only, no extra prose):
     {
       "title": "Short issue title",
       "summary": "1-2 sentence summary.",
-      "messages": ["short excerpt 1", "short excerpt 2"]
+      "messages": ["short excerpt 1", "short excerpt 2"],
+      "worker_count": 3
     }
   ]
 }
@@ -259,23 +317,24 @@ Rules:
 - Return ONLY valid JSON.
 - Keep excerpts under ~200 characters each.
 - Preserve file paths, flags, branch names, and commands in excerpts when present.
+- worker_count = number of unique workers that reported any message in this cluster.
 - If the input is empty, return: {"findings": []}
 """
 
 
 def summarize_findings(
-    messages: List[str],
+    aggregated: List[AggregatedFinding],
 ) -> Tuple[GroupedFindings, int, str, str, float]:
     """Summarize findings using LLM.
 
     Returns: (grouped, exit_code, stderr, raw_output, duration_seconds)
     """
-    if not messages:
+    if not aggregated:
         return GroupedFindings(findings=[]), 0, "", "", 0.0
 
     start_time = time.monotonic()
     prompt = GROUP_PROMPT.rstrip()
-    payload = json.dumps(messages, ensure_ascii=True)
+    payload = json.dumps(aggregated, ensure_ascii=True)
     full_prompt = f"{prompt}\n\nINPUT JSON:\n{payload}\n"
 
     proc = subprocess.run(
@@ -313,6 +372,7 @@ def render_report(
     timed_out_iters: List[int] | None = None,
     worker_durations: dict[int, float] | None = None,
     summarizer_duration: float | None = None,
+    total_workers: int | None = None,
 ) -> str:
     c = Colors
     width = min(get_terminal_width(), MAX_REPORT_WIDTH)
@@ -379,7 +439,12 @@ def render_report(
             messages = []
 
         lines.append("")
-        lines.append(f"{c.YELLOW}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}")
+        worker_count = finding.get("worker_count", 0)
+        if total_workers and worker_count:
+            confidence = f" {c.DIM}({worker_count}/{total_workers} workers){c.RESET}"
+        else:
+            confidence = ""
+        lines.append(f"{c.YELLOW}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}{confidence}")
         lines.append(get_ruler(width))
 
         # Summary
@@ -477,17 +542,11 @@ def main() -> int:
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
-    def _clear_line() -> None:
-        sys.stderr.write("\r" + " " * CLEAR_LINE_WIDTH + "\r")
-
-    def log(message: str) -> None:
-        with write_lock:
-            if spinner_enabled:
-                _clear_line()
-            sys.stderr.write(message + "\n")
-            if spinner_enabled and not spinner_stop.is_set():
-                sys.stderr.write(spinner_state["line"])
-            sys.stderr.flush()
+    # Set up logging with spinner-aware handler
+    handler = SpinnerHandler(write_lock, spinner_state, spinner_stop, spinner_enabled)
+    handler.setFormatter(logging.Formatter("[review] %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     def spinner() -> None:
         if not spinner_enabled:
@@ -516,8 +575,8 @@ def main() -> int:
     spinner_thread = threading.Thread(target=spinner, daemon=True)
     spinner_thread.start()
 
-    log(f"[review] Command: {cmd_str}")
-    log(f"[review] Workers: {args.workers}")
+    logger.info(f"Command: {cmd_str}")
+    logger.info(f"Workers: {args.workers}")
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         executor_ref.append(executor)
@@ -542,14 +601,13 @@ def main() -> int:
                 failed_iters.append(result.worker_id)
             for finding in result.findings:
                 all_findings.append(finding)
-            if args.verbose:
-                dur_str = format_duration(result.duration_seconds)
-                if result.findings:
-                    for finding in result.findings:
-                        if finding.text:
-                            log(f"[review] worker {result.worker_id} ({dur_str}): {finding.text}")
-                else:
-                    log(f"[review] worker {result.worker_id} ({dur_str}): (no findings)")
+            dur_str = format_duration(result.duration_seconds)
+            if result.findings:
+                for finding in result.findings:
+                    if finding.text:
+                        logger.debug(f"worker {result.worker_id} ({dur_str}): {finding.text}")
+            else:
+                logger.debug(f"worker {result.worker_id} ({dur_str}): (no findings)")
             with completed_lock:
                 completed += 1
 
@@ -557,22 +615,25 @@ def main() -> int:
     spinner_thread.join(timeout=1)
 
     if interrupted.is_set():
+        logger.removeHandler(handler)
         return 130
 
     # Summarization
+    aggregated = aggregate_findings(all_findings)
     (
         grouped,
         summarize_exit_code,
         summarize_stderr,
         summarize_raw,
         summarizer_duration,
-    ) = summarize_findings([finding.text for finding in all_findings if finding.text])
+    ) = summarize_findings(aggregated)
 
     # Output
     if args.json:
         worker_durs = list(worker_durations.values())
         output_data = {
             "findings": grouped.get("findings", []),
+            "total_workers": args.workers,
             "warnings": {
                 "failed_workers": failed_iters,
                 "timed_out_workers": timed_out_iters,
@@ -598,6 +659,7 @@ def main() -> int:
                 "raw_output": summarize_raw,
             }
         print(json.dumps(output_data, indent=2))
+        logger.removeHandler(handler)
         return 0
 
     output = render_report(
@@ -610,8 +672,10 @@ def main() -> int:
         timed_out_iters=timed_out_iters,
         worker_durations=worker_durations,
         summarizer_duration=summarizer_duration,
+        total_workers=args.workers,
     )
     print(output)
+    logger.removeHandler(handler)
     return 0
 
 
