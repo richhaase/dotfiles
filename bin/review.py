@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--retries N] [--json]
 # Env: REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
+# Exit: 0=no findings, 1=findings, 2=error, 130=interrupted
 
 import argparse
 import asyncio
@@ -26,6 +27,12 @@ DEFAULT_RETRIES = int(os.environ.get("REVIEW_RETRIES", 1))
 MAX_REPORT_WIDTH = 90
 SPINNER_INTERVAL = 0.2
 MAX_RAW_OUTPUT_LINES = 10
+
+# Exit codes (grep-style)
+EXIT_NO_FINDINGS = 0
+EXIT_FINDINGS = 1
+EXIT_ERROR = 2
+EXIT_INTERRUPTED = 130
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -619,13 +626,13 @@ async def async_main(args: argparse.Namespace) -> int:
     except asyncio.CancelledError:
         state.spinner_stop.set()
         await spinner_task
-        return 130
+        return EXIT_INTERRUPTED
 
     state.spinner_stop.set()
     await spinner_task
 
     if state.interrupted:
-        return 130
+        return EXIT_INTERRUPTED
 
     # Process results
     all_findings: List[Finding] = []
@@ -688,7 +695,10 @@ async def async_main(args: argparse.Namespace) -> int:
                 "raw_output": summarize_raw,
             }
         print(json.dumps(output_data, indent=2))
-        return 0
+        if summarize_exit_code != 0:
+            return EXIT_ERROR
+        findings = grouped.get("findings", [])
+        return EXIT_FINDINGS if findings else EXIT_NO_FINDINGS
 
     output = render_report(
         grouped=grouped,
@@ -703,7 +713,11 @@ async def async_main(args: argparse.Namespace) -> int:
         total_workers=args.workers,
     )
     print(output)
-    return 0
+
+    if summarize_exit_code != 0:
+        return EXIT_ERROR
+    findings = grouped.get("findings", [])
+    return EXIT_FINDINGS if findings else EXIT_NO_FINDINGS
 
 
 def main() -> int:
@@ -713,11 +727,11 @@ def main() -> int:
         Colors.disable()
 
     if not check_dependencies():
-        return 1
+        return EXIT_ERROR
 
     if args.workers < 1:
         print("--workers must be >= 1", file=sys.stderr)
-        return 2
+        return EXIT_ERROR
 
     return asyncio.run(async_main(args))
 
