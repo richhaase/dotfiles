@@ -46,9 +46,9 @@ def parse_args() -> argparse.Namespace:
         help="Pass through to codex exec --output-schema <schema>. Default: unset.",
     )
     parser.add_argument(
-        "--quiet",
+        "--verbose",
         action="store_true",
-        help="Suppress progress logs (default: false).",
+        help="Print agent_message entries as they arrive (default: false).",
     )
     return parser.parse_args()
 
@@ -211,19 +211,17 @@ def main() -> int:
 
     total_iters = 0
     cmd_str = " ".join(shlex.quote(part) for part in cmd)
-    if not args.quiet:
-        print(f"[codex-review-harvest] Command: {cmd_str}", file=sys.stderr)
-        print(
-            f"[codex-review-harvest] Iterations: min={args.min_iters} max={args.max_iters}",
-            file=sys.stderr,
-        )
+    print(f"[codex-review-harvest] Command: {cmd_str}", file=sys.stderr)
+    print(
+        f"[codex-review-harvest] Iterations: min={args.min_iters} max={args.max_iters}",
+        file=sys.stderr,
+    )
     for iteration in range(1, args.max_iters + 1):
         total_iters = iteration
-        if not args.quiet:
-            print(
-                f"[codex-review-harvest] Iteration {iteration} starting...",
-                file=sys.stderr,
-            )
+        print(
+            f"[codex-review-harvest] Iteration {iteration} starting...",
+            file=sys.stderr,
+        )
         findings, exit_code, parse_errs = collect_findings(cmd, iteration)
         parse_errors += parse_errs
 
@@ -233,7 +231,7 @@ def main() -> int:
         for finding in findings:
             all_findings.append(finding)
 
-        if not args.quiet:
+        if args.verbose:
             if findings:
                 for finding in findings:
                     if finding.text:
@@ -243,10 +241,10 @@ def main() -> int:
                         )
             else:
                 print("[codex-review-harvest] agent_message: (none)", file=sys.stderr)
-            print(
-                f"[codex-review-harvest] Iteration {iteration} done.",
-                file=sys.stderr,
-            )
+        print(
+            f"[codex-review-harvest] Iteration {iteration} done.",
+            file=sys.stderr,
+        )
 
     grouped_output, summarize_exit_code, summarize_stderr = summarize_findings(
         [finding.text for finding in all_findings if finding.text]
