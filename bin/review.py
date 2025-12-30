@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--json]
-# Env: REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF
+# Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--retries N] [--json]
+# Env: REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
 
 import argparse
 import json
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_WORKERS = int(os.environ.get("REVIEW_WORKERS", 5))
 DEFAULT_TIMEOUT = int(os.environ.get("REVIEW_TIMEOUT", 300))
 DEFAULT_BASE_REF = os.environ.get("REVIEW_BASE_REF", "main")
+DEFAULT_RETRIES = int(os.environ.get("REVIEW_RETRIES", 1))
 MAX_REPORT_WIDTH = 90
 SPINNER_INTERVAL = 0.2
 CLEAR_LINE_WIDTH = 90
@@ -215,6 +216,12 @@ def parse_args() -> argparse.Namespace:
         help=f"Timeout in seconds per worker (default: {DEFAULT_TIMEOUT})",
     )
     parser.add_argument(
+        "--retries",
+        type=int,
+        default=DEFAULT_RETRIES,
+        help=f"Retry failed workers N times (default: {DEFAULT_RETRIES})",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Output JSON instead of formatted report",
@@ -286,6 +293,26 @@ def collect_findings(
         timed_out=timed_out,
         duration_seconds=duration,
     )
+
+
+def collect_findings_with_retry(
+    cmd: List[str], worker_id: int, timeout: int, retries: int
+) -> WorkerResult:
+    """Collect findings with retry on non-timeout failures."""
+    result: WorkerResult | None = None
+    for attempt in range(retries + 1):
+        result = collect_findings(cmd, worker_id, timeout)
+        if result.exit_code == 0 or result.timed_out:
+            return result
+        if attempt < retries:
+            delay = 2**attempt
+            logger.warning(
+                f"worker {worker_id} failed (exit {result.exit_code}), "
+                f"retry {attempt + 1}/{retries} in {delay}s"
+            )
+            time.sleep(delay)
+    assert result is not None  # Always at least one iteration
+    return result
 
 
 GROUP_PROMPT = """# Codex Review Summarizer
@@ -583,7 +610,9 @@ def main() -> int:
         futures = {}
         for worker_id in range(1, args.workers + 1):
             futures[
-                executor.submit(collect_findings, cmd, worker_id, args.timeout)
+                executor.submit(
+                    collect_findings_with_retry, cmd, worker_id, args.timeout, args.retries
+                )
             ] = worker_id
 
         for future in as_completed(futures):
@@ -591,7 +620,8 @@ def main() -> int:
                 break
             try:
                 result: WorkerResult = future.result()
-            except Exception:
+            except Exception as e:
+                logger.warning(f"worker {futures[future]} exception: {e}")
                 continue
             parse_errors += result.parse_errors
             worker_durations[result.worker_id] = result.duration_seconds
