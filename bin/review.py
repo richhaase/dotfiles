@@ -255,6 +255,7 @@ def collect_findings(
     parse_errors = 0
     findings: List[Finding] = []
     timed_out = False
+    timeout_event = threading.Event()
 
     proc = subprocess.Popen(
         cmd,
@@ -264,26 +265,38 @@ def collect_findings(
         bufsize=1,
     )
 
-    for event in iter_json_lines(proc):
-        if event.get("__parse_error__"):
-            parse_errors += 1
-            continue
+    def watchdog() -> None:
+        """Kill process if timeout exceeded."""
+        if timeout_event.wait(timeout=timeout):
+            return  # Completed normally
+        try:
+            proc.kill()
+        except OSError:
+            pass  # Process already dead
 
-        item = event.get("item")
-        if isinstance(item, dict) and item.get("type") == "agent_message":
-            text = item.get("text")
-            if text:
-                findings.append(Finding(text=text, iteration=worker_id))
+    watchdog_thread = threading.Thread(target=watchdog, daemon=True)
+    watchdog_thread.start()
 
     try:
-        exit_code = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-        exit_code = -1
-        timed_out = True
+        for event in iter_json_lines(proc):
+            if event.get("__parse_error__"):
+                parse_errors += 1
+                continue
 
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "agent_message":
+                text = item.get("text")
+                if text:
+                    findings.append(Finding(text=text, iteration=worker_id))
+    finally:
+        timeout_event.set()  # Signal watchdog to stop
+
+    exit_code = proc.wait()
     duration = time.monotonic() - start_time
+
+    if duration >= timeout:
+        timed_out = True
+        exit_code = -1
 
     return WorkerResult(
         worker_id=worker_id,
