@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--json] [--skip-summary]
+# Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--json]
 
 import argparse
 import json
@@ -24,7 +24,6 @@ DEFAULT_WORKERS = 5
 DEFAULT_TIMEOUT = 300
 DEFAULT_BASE_REF = "main"
 MAX_REPORT_WIDTH = 90
-EXCERPT_MAX_LENGTH = 200
 SPINNER_INTERVAL = 0.2
 CLEAR_LINE_WIDTH = 90
 MAX_RAW_OUTPUT_LINES = 10
@@ -64,6 +63,15 @@ def get_ruler(width: int, char: str = "─") -> str:
     return f"{Colors.DIM}{char * width}{Colors.RESET}"
 
 
+def format_duration(seconds: float) -> str:
+    """Format duration in human-readable form."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes = int(seconds // 60)
+    secs = seconds % 60
+    return f"{minutes}m {secs:.1f}s"
+
+
 def wrap_text(
     text: str, width: int, initial_indent: str = "", subsequent_indent: str = ""
 ) -> str:
@@ -82,6 +90,16 @@ def wrap_text(
 class Finding:
     text: str
     iteration: int
+
+
+@dataclass
+class WorkerResult:
+    worker_id: int
+    findings: List["Finding"]
+    exit_code: int
+    parse_errors: int
+    timed_out: bool
+    duration_seconds: float
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -143,12 +161,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--json",
         action="store_true",
-        help="Output raw JSON instead of formatted report",
-    )
-    parser.add_argument(
-        "--skip-summary",
-        action="store_true",
-        help="Skip LLM summarization, show raw findings list",
+        help="Output JSON instead of formatted report",
     )
     return parser.parse_args()
 
@@ -173,11 +186,9 @@ def iter_json_lines(proc: subprocess.Popen) -> Iterable[dict]:
 
 def collect_findings(
     cmd: List[str], worker_id: int, timeout: int = DEFAULT_TIMEOUT
-) -> Tuple[int, List[Finding], int, int, bool]:
-    """Collect findings from a single worker.
-
-    Returns: (worker_id, findings, exit_code, parse_errors, timed_out)
-    """
+) -> WorkerResult:
+    """Collect findings from a single worker."""
+    start_time = time.monotonic()
     parse_errors = 0
     findings: List[Finding] = []
     timed_out = False
@@ -209,7 +220,16 @@ def collect_findings(
         exit_code = -1
         timed_out = True
 
-    return worker_id, findings, exit_code, parse_errors, timed_out
+    duration = time.monotonic() - start_time
+
+    return WorkerResult(
+        worker_id=worker_id,
+        findings=findings,
+        exit_code=exit_code,
+        parse_errors=parse_errors,
+        timed_out=timed_out,
+        duration_seconds=duration,
+    )
 
 
 GROUP_PROMPT = """# Codex Review Summarizer
@@ -243,10 +263,17 @@ Rules:
 """
 
 
-def summarize_findings(messages: List[str]) -> Tuple[GroupedFindings, int, str, str]:
-    if not messages:
-        return GroupedFindings(findings=[]), 0, "", ""
+def summarize_findings(
+    messages: List[str],
+) -> Tuple[GroupedFindings, int, str, str, float]:
+    """Summarize findings using LLM.
 
+    Returns: (grouped, exit_code, stderr, raw_output, duration_seconds)
+    """
+    if not messages:
+        return GroupedFindings(findings=[]), 0, "", "", 0.0
+
+    start_time = time.monotonic()
     prompt = GROUP_PROMPT.rstrip()
     payload = json.dumps(messages, ensure_ascii=True)
     full_prompt = f"{prompt}\n\nINPUT JSON:\n{payload}\n"
@@ -257,10 +284,12 @@ def summarize_findings(messages: List[str]) -> Tuple[GroupedFindings, int, str, 
         text=True,
         capture_output=True,
     )
+    duration = time.monotonic() - start_time
+
     output = proc.stdout.strip()
     stderr = proc.stderr.strip()
     if not output:
-        return GroupedFindings(findings=[]), proc.returncode, stderr, output
+        return GroupedFindings(findings=[]), proc.returncode, stderr, output, duration
     try:
         data: GroupedFindings = json.loads(output)
     except json.JSONDecodeError:
@@ -269,8 +298,9 @@ def summarize_findings(messages: List[str]) -> Tuple[GroupedFindings, int, str, 
             1,
             "Failed to parse summarizer JSON output.",
             output,
+            duration,
         )
-    return data, proc.returncode, stderr, output
+    return data, proc.returncode, stderr, output, duration
 
 
 def render_report(
@@ -281,6 +311,8 @@ def render_report(
     parse_errors: int,
     failed_iters: List[int],
     timed_out_iters: List[int] | None = None,
+    worker_durations: dict[int, float] | None = None,
+    summarizer_duration: float | None = None,
 ) -> str:
     c = Colors
     width = min(get_terminal_width(), MAX_REPORT_WIDTH)
@@ -375,6 +407,29 @@ def render_report(
     lines.append("")
     lines.append(get_ruler(width, "━"))
 
+    # Timing stats
+    if worker_durations or summarizer_duration:
+        lines.append("")
+        lines.append(f"{c.DIM}Timing:{c.RESET}")
+
+        if worker_durations:
+            durations = list(worker_durations.values())
+            total = sum(durations)
+            avg = total / len(durations)
+            min_dur = min(durations)
+            max_dur = max(durations)
+            lines.append(
+                f"  {c.DIM}workers: avg {format_duration(avg)} | "
+                f"min {format_duration(min_dur)} | "
+                f"max {format_duration(max_dur)} | "
+                f"total {format_duration(total)}{c.RESET}"
+            )
+
+        if summarizer_duration is not None and summarizer_duration > 0:
+            lines.append(
+                f"  {c.DIM}summarizer: {format_duration(summarizer_duration)}{c.RESET}"
+            )
+
     return "\n".join(lines)
 
 
@@ -397,6 +452,7 @@ def main() -> int:
     parse_errors = 0
     failed_iters: List[int] = []
     timed_out_iters: List[int] = []
+    worker_durations: dict[int, float] = {}
 
     cmd_str = " ".join(shlex.quote(part) for part in cmd)
 
@@ -475,23 +531,25 @@ def main() -> int:
             if interrupted.is_set():
                 break
             try:
-                worker_id, findings, exit_code, parse_errs, timed_out = future.result()
+                result: WorkerResult = future.result()
             except Exception:
                 continue
-            parse_errors += parse_errs
-            if timed_out:
-                timed_out_iters.append(worker_id)
-            elif exit_code != 0:
-                failed_iters.append(worker_id)
-            for finding in findings:
+            parse_errors += result.parse_errors
+            worker_durations[result.worker_id] = result.duration_seconds
+            if result.timed_out:
+                timed_out_iters.append(result.worker_id)
+            elif result.exit_code != 0:
+                failed_iters.append(result.worker_id)
+            for finding in result.findings:
                 all_findings.append(finding)
             if args.verbose:
-                if findings:
-                    for finding in findings:
+                dur_str = format_duration(result.duration_seconds)
+                if result.findings:
+                    for finding in result.findings:
                         if finding.text:
-                            log(f"[review] agent_message: {finding.text}")
+                            log(f"[review] worker {result.worker_id} ({dur_str}): {finding.text}")
                 else:
-                    log("[review] agent_message: (none)")
+                    log(f"[review] worker {result.worker_id} ({dur_str}): (no findings)")
             with completed_lock:
                 completed += 1
 
@@ -501,36 +559,47 @@ def main() -> int:
     if interrupted.is_set():
         return 130
 
+    # Summarization
+    (
+        grouped,
+        summarize_exit_code,
+        summarize_stderr,
+        summarize_raw,
+        summarizer_duration,
+    ) = summarize_findings([finding.text for finding in all_findings if finding.text])
+
+    # Output
     if args.json:
-        # JSON mode: output raw findings without summarization
+        worker_durs = list(worker_durations.values())
         output_data = {
-            "findings": [{"text": f.text, "worker": f.iteration} for f in all_findings],
-            "failed_workers": failed_iters,
-            "timed_out_workers": timed_out_iters,
-            "parse_errors": parse_errors,
+            "findings": grouped.get("findings", []),
+            "warnings": {
+                "failed_workers": failed_iters,
+                "timed_out_workers": timed_out_iters,
+                "parse_errors": parse_errors,
+            },
+            "timing": {
+                "workers": {
+                    "durations": worker_durations,
+                    "total_seconds": sum(worker_durs) if worker_durs else 0,
+                    "avg_seconds": sum(worker_durs) / len(worker_durs)
+                    if worker_durs
+                    else 0,
+                    "min_seconds": min(worker_durs) if worker_durs else 0,
+                    "max_seconds": max(worker_durs) if worker_durs else 0,
+                },
+                "summarizer_seconds": summarizer_duration,
+            },
         }
+        if summarize_exit_code != 0:
+            output_data["summarizer_error"] = {
+                "exit_code": summarize_exit_code,
+                "stderr": summarize_stderr,
+                "raw_output": summarize_raw,
+            }
         print(json.dumps(output_data, indent=2))
         return 0
 
-    if args.skip_summary:
-        # Skip summarization, create ungrouped findings for display
-        grouped = GroupedFindings(
-            findings=[
-                FindingGroup(
-                    title=f"Worker {f.iteration}",
-                    summary=f.text[:EXCERPT_MAX_LENGTH]
-                    + ("..." if len(f.text) > EXCERPT_MAX_LENGTH else ""),
-                    messages=[],
-                )
-                for f in all_findings
-                if f.text
-            ]
-        )
-        summarize_exit_code, summarize_stderr, summarize_raw = 0, "", ""
-    else:
-        grouped, summarize_exit_code, summarize_stderr, summarize_raw = summarize_findings(
-            [finding.text for finding in all_findings if finding.text]
-        )
     output = render_report(
         grouped=grouped,
         summarize_exit_code=summarize_exit_code,
@@ -539,6 +608,8 @@ def main() -> int:
         parse_errors=parse_errors,
         failed_iters=failed_iters,
         timed_out_iters=timed_out_iters,
+        worker_durations=worker_durations,
+        summarizer_duration=summarizer_duration,
     )
     print(output)
     return 0
