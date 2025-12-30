@@ -450,6 +450,7 @@ def render_report(
     failed_iters: List[int],
     timed_out_iters: List[int] | None = None,
     wall_clock_duration: float | None = None,
+    worker_durations: dict[int, float] | None = None,
     summarizer_duration: float | None = None,
     total_workers: int | None = None,
 ) -> str:
@@ -550,13 +551,27 @@ def render_report(
     lines.append(get_ruler(width, "━"))
 
     # Timing stats
-    if wall_clock_duration is not None or summarizer_duration is not None:
+    has_timing = (
+        wall_clock_duration is not None
+        or worker_durations
+        or summarizer_duration is not None
+    )
+    if has_timing:
         lines.append("")
         lines.append(f"{c.DIM}Timing:{c.RESET}")
 
         if wall_clock_duration is not None:
             lines.append(
                 f"  {c.DIM}workers: {format_duration(wall_clock_duration)}{c.RESET}"
+            )
+
+        if worker_durations:
+            durations = list(worker_durations.values())
+            avg = sum(durations) / len(durations)
+            lines.append(
+                f"  {c.DIM}  min {format_duration(min(durations))} / "
+                f"avg {format_duration(avg)} / "
+                f"max {format_duration(max(durations))}{c.RESET}"
             )
 
         if summarizer_duration is not None:
@@ -642,6 +657,7 @@ async def async_main(args: argparse.Namespace) -> int:
     parse_errors = 0
     failed_iters: List[int] = []
     timed_out_iters: List[int] = []
+    worker_durations: dict[int, float] = {}
     exception_count = 0
 
     for result in results:
@@ -651,6 +667,7 @@ async def async_main(args: argparse.Namespace) -> int:
             continue
 
         parse_errors += result.parse_errors
+        worker_durations[result.worker_id] = result.duration_seconds
 
         if result.timed_out:
             timed_out_iters.append(result.worker_id)
@@ -687,6 +704,11 @@ async def async_main(args: argparse.Namespace) -> int:
             },
             "timing": {
                 "workers_seconds": workers_duration,
+                "worker_stats": {
+                    "min": min(worker_durations.values()) if worker_durations else 0,
+                    "avg": sum(worker_durations.values()) / len(worker_durations) if worker_durations else 0,
+                    "max": max(worker_durations.values()) if worker_durations else 0,
+                },
                 "summarizer_seconds": summarizer_duration,
                 "total_seconds": workers_duration + (summarizer_duration or 0),
             },
@@ -712,6 +734,7 @@ async def async_main(args: argparse.Namespace) -> int:
         failed_iters=failed_iters,
         timed_out_iters=timed_out_iters,
         wall_clock_duration=workers_duration,
+        worker_durations=worker_durations,
         summarizer_duration=summarizer_duration,
         total_workers=args.workers,
     )
