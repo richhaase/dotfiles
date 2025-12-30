@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: codex_review_harvest.py [--workers N] [--base BRANCH]
+# Usage: codex_review.py [--workers N] [--base BRANCH]
 
 import argparse
 import json
@@ -12,7 +12,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Tuple
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -49,7 +49,9 @@ def get_ruler(width: int, char: str = "─") -> str:
     return f"{Colors.DIM}{char * width}{Colors.RESET}"
 
 
-def wrap_text(text: str, width: int, initial_indent: str = "", subsequent_indent: str = "") -> str:
+def wrap_text(
+    text: str, width: int, initial_indent: str = "", subsequent_indent: str = ""
+) -> str:
     """Wrap text to width with proper indentation."""
     return textwrap.fill(
         text,
@@ -83,11 +85,6 @@ def parse_args() -> argparse.Namespace:
         "--base", default="main", help="Base ref for review command (default: main)"
     )
     parser.add_argument(
-        "--output-schema",
-        default=None,
-        help="Pass through to codex exec --output-schema <schema>. Default: unset.",
-    )
-    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Print agent_message entries as they arrive (default: false).",
@@ -95,10 +92,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_command(base: str, output_schema: Optional[str]) -> List[str]:
+def build_command(base: str) -> List[str]:
     cmd = ["codex", "exec", "--json", "--color", "never", "review", "--base", base]
-    if output_schema:
-        cmd += ["--output-schema", output_schema]
     return cmd
 
 
@@ -144,7 +139,7 @@ def collect_findings(
     return worker_id, findings, exit_code, parse_errors
 
 
-GROUP_PROMPT = """# Codex Review Harvest Summarizer
+GROUP_PROMPT = """# Codex Review Summarizer
 
 You are grouping results from repeated Codex review runs.
 
@@ -280,7 +275,9 @@ def render_report(
 
         # Summary
         if summary:
-            wrapped = wrap_text(summary, width - 3, initial_indent="   ", subsequent_indent="   ")
+            wrapped = wrap_text(
+                summary, width - 3, initial_indent="   ", subsequent_indent="   "
+            )
             lines.append(wrapped)
 
         # Messages
@@ -315,7 +312,7 @@ def main() -> int:
         print("--workers must be >= 1", file=sys.stderr)
         return 2
 
-    cmd = build_command(args.base, args.output_schema)
+    cmd = build_command(args.base)
     all_findings: List[Finding] = []
     parse_errors = 0
     failed_iters: List[int] = []
@@ -350,9 +347,7 @@ def main() -> int:
             with completed_lock:
                 done = completed
             frame = frames[idx % len(frames)]
-            line = (
-                f"\r[codex-review-harvest] Running: {done}/{args.workers} complete {frame}"
-            )
+            line = f"\r[codex-review] Running: {done}/{args.workers} complete {frame}"
             with write_lock:
                 spinner_state["line"] = line
                 sys.stderr.write(line)
@@ -361,9 +356,7 @@ def main() -> int:
             time.sleep(0.2)
         with completed_lock:
             done = completed
-        final_line = (
-            f"\r[codex-review-harvest] Running: {done}/{args.workers} complete ✓"
-        )
+        final_line = f"\r[codex-review] Running: {done}/{args.workers} complete ✓"
         with write_lock:
             spinner_state["line"] = final_line
             sys.stderr.write(final_line + "\n")
@@ -372,8 +365,8 @@ def main() -> int:
     spinner_thread = threading.Thread(target=spinner, daemon=True)
     spinner_thread.start()
 
-    log(f"[codex-review-harvest] Command: {cmd_str}")
-    log(f"[codex-review-harvest] Workers: {args.workers}")
+    log(f"[codex-review] Command: {cmd_str}")
+    log(f"[codex-review] Workers: {args.workers}")
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         futures = {}
@@ -391,11 +384,9 @@ def main() -> int:
                 if findings:
                     for finding in findings:
                         if finding.text:
-                            log(
-                                f"[codex-review-harvest] agent_message: {finding.text}"
-                            )
+                            log(f"[codex-review] agent_message: {finding.text}")
                 else:
-                    log("[codex-review-harvest] agent_message: (none)")
+                    log("[codex-review] agent_message: (none)")
             with completed_lock:
                 completed += 1
 
