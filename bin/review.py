@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: codex_review.py [--workers N] [--base BRANCH]
+# Usage: review.py [--workers N] [--base BRANCH]
 
 import argparse
 import json
@@ -347,7 +347,7 @@ def main() -> int:
             with completed_lock:
                 done = completed
             frame = frames[idx % len(frames)]
-            line = f"\r[codex-review] Running: {done}/{args.workers} complete {frame}"
+            line = f"\r[review] Running: {done}/{args.workers} complete {frame}"
             with write_lock:
                 spinner_state["line"] = line
                 sys.stderr.write(line)
@@ -356,7 +356,7 @@ def main() -> int:
             time.sleep(0.2)
         with completed_lock:
             done = completed
-        final_line = f"\r[codex-review] Running: {done}/{args.workers} complete ✓"
+        final_line = f"\r[review] Running: {done}/{args.workers} complete ✓"
         with write_lock:
             spinner_state["line"] = final_line
             sys.stderr.write(final_line + "\n")
@@ -365,8 +365,8 @@ def main() -> int:
     spinner_thread = threading.Thread(target=spinner, daemon=True)
     spinner_thread.start()
 
-    log(f"[codex-review] Command: {cmd_str}")
-    log(f"[codex-review] Workers: {args.workers}")
+    log(f"[review] Command: {cmd_str}")
+    log(f"[review] Workers: {args.workers}")
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         futures = {}
@@ -384,9 +384,9 @@ def main() -> int:
                 if findings:
                     for finding in findings:
                         if finding.text:
-                            log(f"[codex-review] agent_message: {finding.text}")
+                            log(f"[review] agent_message: {finding.text}")
                 else:
-                    log("[codex-review] agent_message: (none)")
+                    log("[review] agent_message: (none)")
             with completed_lock:
                 completed += 1
 
