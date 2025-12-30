@@ -311,16 +311,20 @@ def collect_findings(
 def collect_findings_with_retry(
     cmd: List[str], worker_id: int, timeout: int, retries: int
 ) -> WorkerResult:
-    """Collect findings with retry on non-timeout failures."""
+    """Collect findings with retry on failure or timeout."""
     result: WorkerResult | None = None
     for attempt in range(retries + 1):
         result = collect_findings(cmd, worker_id, timeout)
-        if result.exit_code == 0 or result.timed_out:
+        if result.exit_code == 0:
             return result
         if attempt < retries:
             delay = 2**attempt
+            if result.timed_out:
+                reason = "timed out"
+            else:
+                reason = f"exit {result.exit_code}"
             logger.warning(
-                f"worker {worker_id} failed (exit {result.exit_code}), "
+                f"worker {worker_id} {reason}, "
                 f"retry {attempt + 1}/{retries} in {delay}s"
             )
             time.sleep(delay)
