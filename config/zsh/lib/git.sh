@@ -13,14 +13,11 @@ alias gl='git pull'
 alias ga='git add'
 alias gc='git commit'
 alias gca='git commit --amend --no-edit'
-alias gclean='git branch --merged | grep -v "\*\|main\|trunk" | xargs git branch -d'
-alias gfix='git add -A && git commit --fixup=HEAD'
 alias gwip='git add -A && git commit -m "WIP"'
 alias gundo='git reset HEAD~1 --mixed'
 alias gconflicts='git diff --name-only --diff-filter=U'
 alias gsup='git submodule update'
 alias grv='git remote --verbose'
-alias glocal='git branch -vv | cut -c 3- | awk '\''$3 !~/\[/ { print $1 }'\'''
 
 # Git worktree aliases
 alias lswt='git worktree list'
@@ -40,6 +37,10 @@ mkwt() {
   local branch="$1"
   local wt_path
   local force_flag=()
+  local common_dir
+  common_dir=$(git rev-parse --git-common-dir)
+  local repo_root
+  repo_root=$(cd "$common_dir/.." && pwd)
 
   branch="${branch%/}"
   if [ -z "$branch" ]; then
@@ -52,7 +53,7 @@ mkwt() {
     if [ -z "$branch_dir" ]; then
       branch_dir="$branch"
     fi
-    wt_path="../$branch_dir"
+    wt_path="$repo_root/.worktrees/$branch_dir"
   else
     wt_path="$2"
   fi
@@ -67,6 +68,13 @@ mkwt() {
   fi
 
   mkdir -p -- "$(dirname "$wt_path")" || return 1
+
+  # Ensure .worktrees is ignored locally
+  if [ -d "$common_dir/info" ]; then
+    if ! grep -q "^\.worktrees/" "$common_dir/info/exclude" 2>/dev/null; then
+      echo ".worktrees/" >>"$common_dir/info/exclude"
+    fi
+  fi
 
   if git worktree list --porcelain | grep -Fqx "branch $branch"; then
     force_flag=(--force)

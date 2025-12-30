@@ -8,7 +8,7 @@ command = "ruff-lsp"
 
 [language-server.pyright]
 command = "pyright-langserver"
-args    = ["--stdio"]
+args = ["--stdio"]
 
 # --- Go ---
 [language-server.gopls]
@@ -19,9 +19,9 @@ command = "gopls"
 command = "rust-analyzer"
 
 # --- TypeScript / JavaScript ---
-[language-server.tsserver]
+[language-server.ts-ls]
 command = "typescript-language-server"
-args    = ["--stdio"]
+args = ["--stdio"]
 
 # --- Markdown ---
 [language-server.marksman]
@@ -30,32 +30,32 @@ command = "marksman"
 # --- Astro ---
 [language-server.astro-ls]
 command = "astro-ls"
-args    = ["--stdio"]
+args = ["--stdio"]
 
 # --- Terraform / HCL ---
 [language-server.terraform-ls]
 command = "terraform-ls"
-args    = ["serve"]
+args = ["serve"]
 
 # --- YAML ---
 [language-server.yaml-language-server]
 command = "yaml-language-server"
-args    = ["--stdio"]
+args = ["--stdio"]
 
 # --- TOML ---
 [language-server.taplo]
 command = "taplo"
-args    = ["lsp", "stdio"]
+args = ["lsp", "stdio"]
 
 # --- JSON ---
 [language-server.vscode-json-language-server]
 command = "vscode-json-language-server"
-args    = ["--stdio"]
+args = ["--stdio"]
 
 # --- Bash ---
 [language-server.bash-language-server]
 command = "bash-language-server"
-args    = ["start"]
+args = ["start"]
 
 #############################
 # Python
@@ -100,8 +100,15 @@ args = ["--emit=stdout"]
 #############################
 [[language]]
 name = "typescript"
-roots = ["tsconfig.json", "package.json", "pnpm-workspace.yaml", "yarn.lock", "package-lock.json", ".git"]
-language-servers = ["tsserver"]
+roots = [
+  "tsconfig.json",
+  "package.json",
+  "pnpm-workspace.yaml",
+  "yarn.lock",
+  "package-lock.json",
+  ".git",
+]
+language-servers = ["ts-ls"]
 auto-format = true
 
 [language.formatter]
@@ -114,7 +121,7 @@ args = ["--stdin-filepath", "file.ts"]
 [[language]]
 name = "tsx"
 roots = ["tsconfig.json", "package.json", ".git"]
-language-servers = ["tsserver"]
+language-servers = ["ts-ls"]
 auto-format = true
 
 [language.formatter]
@@ -127,7 +134,7 @@ args = ["--stdin-filepath", "file.tsx"]
 [[language]]
 name = "javascript"
 roots = ["package.json", ".git"]
-language-servers = ["tsserver"]
+language-servers = ["ts-ls"]
 auto-format = true
 
 [language.formatter]
@@ -155,7 +162,7 @@ args = ["--stdin-filepath", "file.md"]
 name = "astro"
 file-types = ["astro"]
 roots = ["astro.config.mjs", "astro.config.ts", "package.json", ".git"]
-language-servers = ["astro-ls", "tsserver"]
+language-servers = ["astro-ls", "ts-ls"]
 auto-format = true
 
 [language.formatter]
@@ -224,7 +231,15 @@ args = ["--stdin-filepath", "file.json"]
 #############################
 [[language]]
 name = "bash"
-file-types = ["sh", "bash", "zsh", ".zshrc", ".bashrc", ".bash_profile", ".zprofile"]
+file-types = [
+  "sh",
+  "bash",
+  "zsh",
+  ".zshrc",
+  ".bashrc",
+  ".bash_profile",
+  ".zprofile",
+]
 roots = [".git"]
 language-servers = ["bash-language-server"]
 auto-format = false
