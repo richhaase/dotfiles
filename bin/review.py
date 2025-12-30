@@ -254,8 +254,8 @@ def collect_findings(
     start_time = time.monotonic()
     parse_errors = 0
     findings: List[Finding] = []
-    timed_out = False
     timeout_event = threading.Event()
+    timed_out_flag = threading.Event()
 
     proc = subprocess.Popen(
         cmd,
@@ -263,14 +263,16 @@ def collect_findings(
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
+        start_new_session=True,
     )
 
     def watchdog() -> None:
         """Kill process if timeout exceeded."""
         if timeout_event.wait(timeout=timeout):
             return  # Completed normally
+        timed_out_flag.set()
         try:
-            proc.kill()
+            os.killpg(proc.pid, signal.SIGKILL)
         except OSError:
             pass  # Process already dead
 
@@ -293,9 +295,9 @@ def collect_findings(
 
     exit_code = proc.wait()
     duration = time.monotonic() - start_time
+    timed_out = timed_out_flag.is_set()
 
-    if duration >= timeout:
-        timed_out = True
+    if timed_out:
         exit_code = -1
 
     return WorkerResult(
@@ -309,11 +311,17 @@ def collect_findings(
 
 
 def collect_findings_with_retry(
-    cmd: List[str], worker_id: int, timeout: int, retries: int
+    cmd: List[str],
+    worker_id: int,
+    timeout: int,
+    retries: int,
+    stop_event: threading.Event | None = None,
 ) -> WorkerResult:
     """Collect findings with retry on failure or timeout."""
     result: WorkerResult | None = None
     for attempt in range(retries + 1):
+        if stop_event and stop_event.is_set():
+            break
         result = collect_findings(cmd, worker_id, timeout)
         if result.exit_code == 0:
             return result
@@ -327,7 +335,10 @@ def collect_findings_with_retry(
                 f"worker {worker_id} {reason}, "
                 f"retry {attempt + 1}/{retries} in {delay}s"
             )
-            time.sleep(delay)
+            if stop_event and stop_event.wait(timeout=delay):
+                break  # Interrupted during backoff
+            elif not stop_event:
+                time.sleep(delay)
     assert result is not None  # Always at least one iteration
     return result
 
@@ -575,6 +586,8 @@ def main() -> int:
     executor_ref: List[ThreadPoolExecutor] = []
 
     def handle_interrupt(sig: int, frame: object) -> None:
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         interrupted.set()
         spinner_stop.set()
         with write_lock:
@@ -628,7 +641,12 @@ def main() -> int:
         for worker_id in range(1, args.workers + 1):
             futures[
                 executor.submit(
-                    collect_findings_with_retry, cmd, worker_id, args.timeout, args.retries
+                    collect_findings_with_retry,
+                    cmd,
+                    worker_id,
+                    args.timeout,
+                    args.retries,
+                    interrupted,
                 )
             ] = worker_id
 
