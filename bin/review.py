@@ -136,6 +136,7 @@ class ReviewState:
     interrupted: bool = False
     spinner_stop: asyncio.Event = field(default_factory=asyncio.Event)
     verbose: bool = False
+    tasks: List[asyncio.Task] = field(default_factory=list)
 
     def log(self, msg: str, force: bool = False) -> None:
         """Log a message, clearing spinner line first if needed."""
@@ -578,10 +579,15 @@ async def async_main(args: argparse.Namespace) -> int:
     loop = asyncio.get_running_loop()
 
     def handle_interrupt() -> None:
+        if state.interrupted:
+            return  # Already handling
         state.interrupted = True
         state.spinner_stop.set()
         sys.stderr.write("\n[review] Interrupted, shutting down...\n")
         sys.stderr.flush()
+        # Cancel all running tasks
+        for task in state.tasks:
+            task.cancel()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, handle_interrupt)
@@ -603,10 +609,13 @@ async def async_main(args: argparse.Namespace) -> int:
         state.completed += 1
         return result
 
-    tasks = [run_worker(i) for i in range(1, args.workers + 1)]
+    # Create tasks and store references for cancellation
+    state.tasks = [
+        asyncio.create_task(run_worker(i)) for i in range(1, args.workers + 1)
+    ]
 
     try:
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*state.tasks, return_exceptions=True)
     except asyncio.CancelledError:
         state.spinner_stop.set()
         await spinner_task
