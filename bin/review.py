@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-# Usage: review.py [--workers N] [--base BRANCH]
+# Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--json] [--skip-summary]
 
 import argparse
 import json
 import os
 import shlex
+import shutil
+import signal
 import subprocess
 import sys
 import textwrap
@@ -12,7 +14,20 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, TypedDict
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Constants
+# ─────────────────────────────────────────────────────────────────────────────
+
+DEFAULT_WORKERS = 5
+DEFAULT_TIMEOUT = 300
+DEFAULT_BASE_REF = "main"
+MAX_REPORT_WIDTH = 90
+EXCERPT_MAX_LENGTH = 200
+SPINNER_INTERVAL = 0.2
+CLEAR_LINE_WIDTH = 90
+MAX_RAW_OUTPUT_LINES = 10
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,6 +84,34 @@ class Finding:
     iteration: int
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Type definitions for structured data
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class FindingGroup(TypedDict):
+    title: str
+    summary: str
+    messages: List[str]
+
+
+class GroupedFindings(TypedDict):
+    findings: List[FindingGroup]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dependency validation
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def check_dependencies() -> bool:
+    """Check that required external tools are available."""
+    if shutil.which("codex") is None:
+        print("Error: 'codex' not found in PATH", file=sys.stderr)
+        return False
+    return True
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -78,16 +121,34 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--workers",
         type=int,
-        default=5,
-        help="Parallel review runs to execute (default: 5)",
+        default=DEFAULT_WORKERS,
+        help=f"Parallel review runs to execute (default: {DEFAULT_WORKERS})",
     )
     parser.add_argument(
-        "--base", default="main", help="Base ref for review command (default: main)"
+        "--base",
+        default=DEFAULT_BASE_REF,
+        help=f"Base ref for review command (default: {DEFAULT_BASE_REF})",
     )
     parser.add_argument(
         "--verbose",
         action="store_true",
         help="Print agent_message entries as they arrive (default: false).",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help=f"Timeout in seconds per worker (default: {DEFAULT_TIMEOUT})",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output raw JSON instead of formatted report",
+    )
+    parser.add_argument(
+        "--skip-summary",
+        action="store_true",
+        help="Skip LLM summarization, show raw findings list",
     )
     return parser.parse_args()
 
@@ -111,10 +172,15 @@ def iter_json_lines(proc: subprocess.Popen) -> Iterable[dict]:
 
 
 def collect_findings(
-    cmd: List[str], worker_id: int
-) -> Tuple[int, List[Finding], int, int]:
+    cmd: List[str], worker_id: int, timeout: int = DEFAULT_TIMEOUT
+) -> Tuple[int, List[Finding], int, int, bool]:
+    """Collect findings from a single worker.
+
+    Returns: (worker_id, findings, exit_code, parse_errors, timed_out)
+    """
     parse_errors = 0
     findings: List[Finding] = []
+    timed_out = False
 
     proc = subprocess.Popen(
         cmd,
@@ -135,8 +201,15 @@ def collect_findings(
             if text:
                 findings.append(Finding(text=text, iteration=worker_id))
 
-    exit_code = proc.wait()
-    return worker_id, findings, exit_code, parse_errors
+    try:
+        exit_code = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        exit_code = -1
+        timed_out = True
+
+    return worker_id, findings, exit_code, parse_errors, timed_out
 
 
 GROUP_PROMPT = """# Codex Review Summarizer
@@ -170,9 +243,9 @@ Rules:
 """
 
 
-def summarize_findings(messages: List[str]) -> Tuple[dict, int, str, str]:
+def summarize_findings(messages: List[str]) -> Tuple[GroupedFindings, int, str, str]:
     if not messages:
-        return {"findings": []}, 0, "", ""
+        return GroupedFindings(findings=[]), 0, "", ""
 
     prompt = GROUP_PROMPT.rstrip()
     payload = json.dumps(messages, ensure_ascii=True)
@@ -187,12 +260,12 @@ def summarize_findings(messages: List[str]) -> Tuple[dict, int, str, str]:
     output = proc.stdout.strip()
     stderr = proc.stderr.strip()
     if not output:
-        return {"findings": []}, proc.returncode, stderr, output
+        return GroupedFindings(findings=[]), proc.returncode, stderr, output
     try:
-        data = json.loads(output)
+        data: GroupedFindings = json.loads(output)
     except json.JSONDecodeError:
         return (
-            {"findings": []},
+            GroupedFindings(findings=[]),
             1,
             "Failed to parse summarizer JSON output.",
             output,
@@ -201,15 +274,16 @@ def summarize_findings(messages: List[str]) -> Tuple[dict, int, str, str]:
 
 
 def render_report(
-    grouped: dict,
+    grouped: GroupedFindings,
     summarize_exit_code: int,
     summarize_stderr: str,
     summarize_raw: str,
     parse_errors: int,
     failed_iters: List[int],
+    timed_out_iters: List[int] | None = None,
 ) -> str:
     c = Colors
-    width = min(get_terminal_width(), 90)
+    width = min(get_terminal_width(), MAX_REPORT_WIDTH)
 
     findings = grouped.get("findings")
     if not isinstance(findings, list):
@@ -227,7 +301,7 @@ def render_report(
             lines.append(f"  Stderr: {summarize_stderr}")
         if summarize_raw:
             lines.append(f"\n  {c.DIM}Raw output:{c.RESET}")
-            for line in summarize_raw.splitlines()[:10]:
+            for line in summarize_raw.splitlines()[:MAX_RAW_OUTPUT_LINES]:
                 lines.append(f"  {c.DIM}{line}{c.RESET}")
         return "\n".join(lines)
 
@@ -238,6 +312,9 @@ def render_report(
     if failed_iters:
         joined = ", ".join(str(i) for i in failed_iters)
         warnings.append(f"Failed workers: {joined}")
+    if timed_out_iters:
+        joined = ", ".join(str(i) for i in timed_out_iters)
+        warnings.append(f"Timed out workers: {joined}")
 
     if warnings:
         lines.append("")
@@ -308,6 +385,9 @@ def main() -> int:
     if not sys.stdout.isatty():
         Colors.disable()
 
+    if not check_dependencies():
+        return 1
+
     if args.workers < 1:
         print("--workers must be >= 1", file=sys.stderr)
         return 2
@@ -316,6 +396,7 @@ def main() -> int:
     all_findings: List[Finding] = []
     parse_errors = 0
     failed_iters: List[int] = []
+    timed_out_iters: List[int] = []
 
     cmd_str = " ".join(shlex.quote(part) for part in cmd)
 
@@ -325,9 +406,23 @@ def main() -> int:
     spinner_enabled = sys.stderr.isatty()
     spinner_state = {"line": ""}
     write_lock = threading.Lock()
+    interrupted = threading.Event()
+    executor_ref: List[ThreadPoolExecutor] = []
+
+    def handle_interrupt(sig: int, frame: object) -> None:
+        interrupted.set()
+        spinner_stop.set()
+        with write_lock:
+            sys.stderr.write("\n[review] Interrupted, shutting down...\n")
+            sys.stderr.flush()
+        if executor_ref:
+            executor_ref[0].shutdown(wait=False, cancel_futures=True)
+
+    signal.signal(signal.SIGINT, handle_interrupt)
+    signal.signal(signal.SIGTERM, handle_interrupt)
 
     def _clear_line() -> None:
-        sys.stderr.write("\r" + " " * 90 + "\r")
+        sys.stderr.write("\r" + " " * CLEAR_LINE_WIDTH + "\r")
 
     def log(message: str) -> None:
         with write_lock:
@@ -353,7 +448,7 @@ def main() -> int:
                 sys.stderr.write(line)
                 sys.stderr.flush()
             idx += 1
-            time.sleep(0.2)
+            time.sleep(SPINNER_INTERVAL)
         with completed_lock:
             done = completed
         final_line = f"\r[review] Running: {done}/{args.workers} complete ✓"
@@ -369,14 +464,24 @@ def main() -> int:
     log(f"[review] Workers: {args.workers}")
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        executor_ref.append(executor)
         futures = {}
         for worker_id in range(1, args.workers + 1):
-            futures[executor.submit(collect_findings, cmd, worker_id)] = worker_id
+            futures[
+                executor.submit(collect_findings, cmd, worker_id, args.timeout)
+            ] = worker_id
 
         for future in as_completed(futures):
-            worker_id, findings, exit_code, parse_errs = future.result()
+            if interrupted.is_set():
+                break
+            try:
+                worker_id, findings, exit_code, parse_errs, timed_out = future.result()
+            except Exception:
+                continue
             parse_errors += parse_errs
-            if exit_code != 0:
+            if timed_out:
+                timed_out_iters.append(worker_id)
+            elif exit_code != 0:
                 failed_iters.append(worker_id)
             for finding in findings:
                 all_findings.append(finding)
@@ -393,9 +498,39 @@ def main() -> int:
     spinner_stop.set()
     spinner_thread.join(timeout=1)
 
-    grouped, summarize_exit_code, summarize_stderr, summarize_raw = summarize_findings(
-        [finding.text for finding in all_findings if finding.text]
-    )
+    if interrupted.is_set():
+        return 130
+
+    if args.json:
+        # JSON mode: output raw findings without summarization
+        output_data = {
+            "findings": [{"text": f.text, "worker": f.iteration} for f in all_findings],
+            "failed_workers": failed_iters,
+            "timed_out_workers": timed_out_iters,
+            "parse_errors": parse_errors,
+        }
+        print(json.dumps(output_data, indent=2))
+        return 0
+
+    if args.skip_summary:
+        # Skip summarization, create ungrouped findings for display
+        grouped = GroupedFindings(
+            findings=[
+                FindingGroup(
+                    title=f"Worker {f.iteration}",
+                    summary=f.text[:EXCERPT_MAX_LENGTH]
+                    + ("..." if len(f.text) > EXCERPT_MAX_LENGTH else ""),
+                    messages=[],
+                )
+                for f in all_findings
+                if f.text
+            ]
+        )
+        summarize_exit_code, summarize_stderr, summarize_raw = 0, "", ""
+    else:
+        grouped, summarize_exit_code, summarize_stderr, summarize_raw = summarize_findings(
+            [finding.text for finding in all_findings if finding.text]
+        )
     output = render_report(
         grouped=grouped,
         summarize_exit_code=summarize_exit_code,
@@ -403,6 +538,7 @@ def main() -> int:
         summarize_raw=summarize_raw,
         parse_errors=parse_errors,
         failed_iters=failed_iters,
+        timed_out_iters=timed_out_iters,
     )
     print(output)
     return 0
