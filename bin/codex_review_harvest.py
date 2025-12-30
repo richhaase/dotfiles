@@ -8,7 +8,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, List, Optional, Set, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 
 @dataclass
@@ -100,13 +100,56 @@ def collect_findings(cmd: List[str], iteration: int) -> Tuple[List[Finding], int
     return findings, exit_code, parse_errors
 
 
-def normalize(text: str) -> str:
-    return "\n".join(line.rstrip() for line in text.strip().splitlines())
-
-
 def format_blockquote(text: str) -> str:
     lines = text.strip().splitlines() or [""]
     return "\n".join(f"> {line}" for line in lines)
+
+
+GROUP_PROMPT = """# Codex Review Harvest Summarizer
+
+You are grouping results from repeated Codex review runs.
+
+Input: a JSON array of strings, each string is an agent_message from a review run.
+
+Task:
+- Cluster messages that describe the same underlying issue.
+- Create a short, precise title per group.
+- Keep groups distinct; do not merge different issues.
+- If something is unique, keep it as its own group.
+
+Output format (Markdown only, no extra prose):
+1. **<Short issue title>**
+   - Summary: <1-2 sentences>
+   - Messages:
+     - <short excerpt from message 1>
+     - <short excerpt from message 2>
+
+Rules:
+- Use a numbered list for groups.
+- Keep excerpts under ~200 characters each.
+- Preserve file paths, flags, branch names, and commands in excerpts when present.
+- If the input is empty, output: "No findings captured."
+"""
+
+
+def summarize_findings(messages: List[str]) -> Tuple[str, int, str]:
+    if not messages:
+        return "No findings captured.", 0, ""
+
+    prompt = GROUP_PROMPT.rstrip()
+    payload = json.dumps(messages, ensure_ascii=True)
+    full_prompt = f"{prompt}\n\nINPUT JSON:\n{payload}\n"
+
+    proc = subprocess.run(
+        ["codex", "exec", "--color", "never", "-"],
+        input=full_prompt,
+        text=True,
+        capture_output=True,
+    )
+    output = proc.stdout.strip()
+    if not output:
+        output = "No findings captured."
+    return output, proc.returncode, proc.stderr.strip()
 
 
 def render_markdown(
@@ -116,14 +159,15 @@ def render_markdown(
     max_iters: int,
     total_iters: int,
     findings: List[Finding],
-    unique_texts: List[str],
     parse_errors: int,
     failed_iters: List[int],
+    grouped_output: str,
+    summarize_exit_code: int,
+    summarize_stderr: str,
 ) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cmd_str = " ".join(shlex.quote(part) for part in cmd)
     total_findings = len(findings)
-    unique_count = len(unique_texts)
 
     lines: List[str] = []
     lines.append("# Codex Review Harvest")
@@ -132,44 +176,22 @@ def render_markdown(
     lines.append(f"- Base: {base}")
     lines.append(f"- Command: `{cmd_str}`")
     lines.append(f"- Iterations: {total_iters} (min {min_iters}, max {max_iters})")
-    lines.append(f"- Findings: {total_findings} total, {unique_count} unique")
+    lines.append(f"- Findings: {total_findings} total")
     if parse_errors:
         lines.append(f"- Parse errors: {parse_errors}")
     if failed_iters:
         joined = ", ".join(str(i) for i in failed_iters)
         lines.append(f"- Failed iterations: {joined}")
+    if summarize_exit_code != 0:
+        lines.append(f"- Summarize exit code: {summarize_exit_code}")
+        if summarize_stderr:
+            lines.append(f"- Summarize stderr: {summarize_stderr}")
 
     lines.append("")
-    lines.append("## Unique Findings")
-    if not unique_texts:
-        lines.append("")
-        lines.append("No findings captured.")
-    else:
-        for idx, text in enumerate(unique_texts, start=1):
-            lines.append("")
-            lines.append(f"{idx}.")
-            lines.append(format_blockquote(text))
-
+    lines.append("## Findings")
+    lines.append(grouped_output)
     lines.append("")
-    lines.append("## Findings By Iteration")
-    if not findings:
-        lines.append("")
-        lines.append("No findings captured.")
-    else:
-        for iteration in range(1, total_iters + 1):
-            iter_findings = [f for f in findings if f.iteration == iteration]
-            lines.append("")
-            lines.append(f"### Iteration {iteration}")
-            if not iter_findings:
-                lines.append("")
-                lines.append("No findings captured.")
-                continue
-            for idx, finding in enumerate(iter_findings, start=1):
-                lines.append("")
-                lines.append(f"{idx}.")
-                lines.append(format_blockquote(finding.text))
 
-    lines.append("")
     return "\n".join(lines)
 
 
@@ -184,8 +206,6 @@ def main() -> int:
 
     cmd = build_command(args.base, args.output_schema)
     all_findings: List[Finding] = []
-    unique_seen: Set[str] = set()
-    unique_ordered: List[str] = []
     parse_errors = 0
     failed_iters: List[int] = []
 
@@ -210,39 +230,27 @@ def main() -> int:
         if exit_code != 0:
             failed_iters.append(iteration)
 
-        new_unique = 0
         for finding in findings:
             all_findings.append(finding)
-            norm = normalize(finding.text)
-            if norm and norm not in unique_seen:
-                unique_seen.add(norm)
-                unique_ordered.append(finding.text)
-                new_unique += 1
 
         if not args.quiet:
             if findings:
                 for finding in findings:
-                    text = normalize(finding.text)
-                    if text:
+                    if finding.text:
                         print(
-                            f"[codex-review-harvest] agent_message: {text}",
+                            f"[codex-review-harvest] agent_message: {finding.text}",
                             file=sys.stderr,
                         )
             else:
                 print("[codex-review-harvest] agent_message: (none)", file=sys.stderr)
             print(
-                f"[codex-review-harvest] Iteration {iteration} done (new unique findings: {new_unique}).",
+                f"[codex-review-harvest] Iteration {iteration} done.",
                 file=sys.stderr,
             )
 
-        if iteration >= args.min_iters and new_unique == 0:
-            if not args.quiet:
-                print(
-                    "[codex-review-harvest] Early stop: no new unique findings.",
-                    file=sys.stderr,
-                )
-            break
-
+    grouped_output, summarize_exit_code, summarize_stderr = summarize_findings(
+        [finding.text for finding in all_findings if finding.text]
+    )
     output = render_markdown(
         cmd=cmd,
         base=args.base,
@@ -250,9 +258,11 @@ def main() -> int:
         max_iters=args.max_iters,
         total_iters=total_iters,
         findings=all_findings,
-        unique_texts=unique_ordered,
         parse_errors=parse_errors,
         failed_iters=failed_iters,
+        grouped_output=grouped_output,
+        summarize_exit_code=summarize_exit_code,
+        summarize_stderr=summarize_stderr,
     )
     print(output)
     return 0
