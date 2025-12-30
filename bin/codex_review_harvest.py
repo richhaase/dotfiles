@@ -1,17 +1,64 @@
 #!/usr/bin/env python3
-# Usage: codex_review_harvest.py [--min N] [--max N] [--base BRANCH]
+# Usage: codex_review_harvest.py [--workers N] [--base BRANCH]
 
 import argparse
 import json
+import os
 import shlex
 import subprocess
 import sys
+import textwrap
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Iterable, List, Optional, Tuple
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Terminal formatting utilities
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class Colors:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    CYAN = "\033[36m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    RED = "\033[31m"
+    MAGENTA = "\033[35m"
+    WHITE = "\033[97m"
+
+    @classmethod
+    def disable(cls) -> None:
+        for attr in dir(cls):
+            if attr.isupper() and not attr.startswith("_"):
+                setattr(cls, attr, "")
+
+
+def get_terminal_width() -> int:
+    try:
+        return os.get_terminal_size().columns
+    except OSError:
+        return 80
+
+
+def get_ruler(width: int, char: str = "─") -> str:
+    return f"{Colors.DIM}{char * width}{Colors.RESET}"
+
+
+def wrap_text(text: str, width: int, initial_indent: str = "", subsequent_indent: str = "") -> str:
+    """Wrap text to width with proper indentation."""
+    return textwrap.fill(
+        text,
+        width=width,
+        initial_indent=initial_indent,
+        subsequent_indent=subsequent_indent or initial_indent,
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
 
 
 @dataclass
@@ -23,7 +70,7 @@ class Finding:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run codex review iteratively, parse JSONL output, and summarize findings as Markdown."
+            "Run codex review in parallel, parse JSONL output, and summarize findings."
         )
     )
     parser.add_argument(
@@ -97,11 +144,6 @@ def collect_findings(
     return worker_id, findings, exit_code, parse_errors
 
 
-def format_blockquote(text: str) -> str:
-    lines = text.strip().splitlines() or [""]
-    return "\n".join(f"> {line}" for line in lines)
-
-
 GROUP_PROMPT = """# Codex Review Harvest Summarizer
 
 You are grouping results from repeated Codex review runs.
@@ -114,24 +156,28 @@ Task:
 - Keep groups distinct; do not merge different issues.
 - If something is unique, keep it as its own group.
 
-Output format (Markdown only, no extra prose):
-1. **<Short issue title>**
-   - Summary: <1-2 sentences>
-   - Messages:
-     - <short excerpt from message 1>
-     - <short excerpt from message 2>
+Output format (JSON only, no extra prose):
+{
+  "findings": [
+    {
+      "title": "Short issue title",
+      "summary": "1-2 sentence summary.",
+      "messages": ["short excerpt 1", "short excerpt 2"]
+    }
+  ]
+}
 
 Rules:
-- Use a numbered list for groups.
+- Return ONLY valid JSON.
 - Keep excerpts under ~200 characters each.
 - Preserve file paths, flags, branch names, and commands in excerpts when present.
-- If the input is empty, output: "No findings captured."
+- If the input is empty, return: {"findings": []}
 """
 
 
-def summarize_findings(messages: List[str]) -> Tuple[str, int, str]:
+def summarize_findings(messages: List[str]) -> Tuple[dict, int, str, str]:
     if not messages:
-        return "No findings captured.", 0, ""
+        return {"findings": []}, 0, "", ""
 
     prompt = GROUP_PROMPT.rstrip()
     payload = json.dumps(messages, ensure_ascii=True)
@@ -144,54 +190,127 @@ def summarize_findings(messages: List[str]) -> Tuple[str, int, str]:
         capture_output=True,
     )
     output = proc.stdout.strip()
+    stderr = proc.stderr.strip()
     if not output:
-        output = "No findings captured."
-    return output, proc.returncode, proc.stderr.strip()
+        return {"findings": []}, proc.returncode, stderr, output
+    try:
+        data = json.loads(output)
+    except json.JSONDecodeError:
+        return (
+            {"findings": []},
+            1,
+            "Failed to parse summarizer JSON output.",
+            output,
+        )
+    return data, proc.returncode, stderr, output
 
 
-def render_markdown(
-    cmd: List[str],
-    base: str,
-    workers: int,
-    findings: List[Finding],
-    parse_errors: int,
-    failed_iters: List[int],
-    grouped_output: str,
+def render_report(
+    grouped: dict,
     summarize_exit_code: int,
     summarize_stderr: str,
+    summarize_raw: str,
+    parse_errors: int,
+    failed_iters: List[int],
 ) -> str:
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cmd_str = " ".join(shlex.quote(part) for part in cmd)
-    total_findings = len(findings)
+    c = Colors
+    width = min(get_terminal_width(), 90)
+
+    findings = grouped.get("findings")
+    if not isinstance(findings, list):
+        findings = []
 
     lines: List[str] = []
-    lines.append("# Codex Review Harvest")
-    lines.append("")
-    lines.append(f"- Timestamp: {now}")
-    lines.append(f"- Base: {base}")
-    lines.append(f"- Command: `{cmd_str}`")
-    lines.append(f"- Workers: {workers}")
-    lines.append(f"- Findings: {total_findings} total")
+
+    # Handle summarizer errors
+    if summarize_exit_code != 0:
+        lines.append("")
+        lines.append(f"{c.RED}✗ Summarizer Error{c.RESET}")
+        lines.append(get_ruler(width))
+        lines.append(f"  Exit code: {summarize_exit_code}")
+        if summarize_stderr:
+            lines.append(f"  Stderr: {summarize_stderr}")
+        if summarize_raw:
+            lines.append(f"\n  {c.DIM}Raw output:{c.RESET}")
+            for line in summarize_raw.splitlines()[:10]:
+                lines.append(f"  {c.DIM}{line}{c.RESET}")
+        return "\n".join(lines)
+
+    # Warnings (show early so they're not hidden)
+    warnings: List[str] = []
     if parse_errors:
-        lines.append(f"- Parse errors: {parse_errors}")
+        warnings.append(f"JSONL parse errors: {parse_errors}")
     if failed_iters:
         joined = ", ".join(str(i) for i in failed_iters)
-        lines.append(f"- Failed iterations: {joined}")
-    if summarize_exit_code != 0:
-        lines.append(f"- Summarize exit code: {summarize_exit_code}")
-        if summarize_stderr:
-            lines.append(f"- Summarize stderr: {summarize_stderr}")
+        warnings.append(f"Failed workers: {joined}")
+
+    if warnings:
+        lines.append("")
+        lines.append(f"{c.YELLOW}⚠ Warnings{c.RESET}")
+        lines.append(get_ruler(width))
+        for warning in warnings:
+            lines.append(f"  {c.YELLOW}•{c.RESET} {warning}")
+        lines.append("")
+
+    # No findings case
+    if not findings:
+        lines.append("")
+        lines.append(f"{c.GREEN}✓ Review Complete{c.RESET}")
+        lines.append(get_ruler(width))
+        lines.append(f"  {c.DIM}No findings captured.{c.RESET}")
+        return "\n".join(lines)
+
+    # Header
+    lines.append("")
+    finding_word = "finding" if len(findings) == 1 else "findings"
+    lines.append(f"{c.CYAN}{c.BOLD}📋 {len(findings)} {finding_word}{c.RESET}")
+    lines.append(get_ruler(width, "━"))
+
+    # Render each finding
+    for idx, finding in enumerate(findings, start=1):
+        title = str(finding.get("title", "")).strip() or "Untitled"
+        summary = str(finding.get("summary", "")).strip()
+        messages = finding.get("messages")
+        if not isinstance(messages, list):
+            messages = []
+
+        lines.append("")
+        lines.append(f"{c.YELLOW}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}")
+        lines.append(get_ruler(width))
+
+        # Summary
+        if summary:
+            wrapped = wrap_text(summary, width - 3, initial_indent="   ", subsequent_indent="   ")
+            lines.append(wrapped)
+
+        # Messages
+        if messages:
+            lines.append("")
+            lines.append(f"   {c.DIM}Evidence:{c.RESET}")
+            for message in messages:
+                message_text = str(message).strip()
+                if message_text:
+                    wrapped = wrap_text(
+                        message_text,
+                        width - 5,
+                        initial_indent=f"   {c.DIM}•{c.RESET} ",
+                        subsequent_indent="     ",
+                    )
+                    lines.append(wrapped)
 
     lines.append("")
-    lines.append("## Findings")
-    lines.append(grouped_output)
-    lines.append("")
+    lines.append(get_ruler(width, "━"))
 
     return "\n".join(lines)
 
 
 def main() -> int:
     args = parse_args()
+
+    # Disable colors if stdout is not a TTY
+    if not sys.stdout.isatty():
+        Colors.disable()
+
     if args.workers < 1:
         print("--workers must be >= 1", file=sys.stderr)
         return 2
@@ -283,19 +402,16 @@ def main() -> int:
     spinner_stop.set()
     spinner_thread.join(timeout=1)
 
-    grouped_output, summarize_exit_code, summarize_stderr = summarize_findings(
+    grouped, summarize_exit_code, summarize_stderr, summarize_raw = summarize_findings(
         [finding.text for finding in all_findings if finding.text]
     )
-    output = render_markdown(
-        cmd=cmd,
-        base=args.base,
-        workers=args.workers,
-        findings=all_findings,
-        parse_errors=parse_errors,
-        failed_iters=failed_iters,
-        grouped_output=grouped_output,
+    output = render_report(
+        grouped=grouped,
         summarize_exit_code=summarize_exit_code,
         summarize_stderr=summarize_stderr,
+        summarize_raw=summarize_raw,
+        parse_errors=parse_errors,
+        failed_iters=failed_iters,
     )
     print(output)
     return 0
