@@ -550,7 +550,7 @@ def render_report(
     lines.append(get_ruler(width, "━"))
 
     # Timing stats
-    if wall_clock_duration or summarizer_duration:
+    if wall_clock_duration is not None or summarizer_duration is not None:
         lines.append("")
         lines.append(f"{c.DIM}Timing:{c.RESET}")
 
@@ -559,7 +559,7 @@ def render_report(
                 f"  {c.DIM}workers: {format_duration(wall_clock_duration)}{c.RESET}"
             )
 
-        if summarizer_duration is not None and summarizer_duration > 0:
+        if summarizer_duration is not None:
             lines.append(
                 f"  {c.DIM}summarizer: {format_duration(summarizer_duration)}{c.RESET}"
             )
