@@ -3,22 +3,17 @@
 # Env: REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
 
 import argparse
+import asyncio
 import json
-import logging
 import os
 import shlex
 import shutil
 import signal
-import subprocess
 import sys
 import textwrap
-import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
-from typing import Iterable, List, Tuple, TypedDict
-
-logger = logging.getLogger(__name__)
+from dataclasses import dataclass, field
+from typing import List, Tuple, TypedDict
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants
@@ -30,7 +25,6 @@ DEFAULT_BASE_REF = os.environ.get("REVIEW_BASE_REF", "main")
 DEFAULT_RETRIES = int(os.environ.get("REVIEW_RETRIES", 1))
 MAX_REPORT_WIDTH = 90
 SPINNER_INTERVAL = 0.2
-CLEAR_LINE_WIDTH = 90
 MAX_RAW_OUTPUT_LINES = 10
 
 
@@ -91,34 +85,9 @@ def wrap_text(
     )
 
 
-class SpinnerHandler(logging.Handler):
-    """Logging handler that coordinates with spinner output."""
-
-    def __init__(
-        self,
-        write_lock: threading.Lock,
-        spinner_state: dict,
-        spinner_stop: threading.Event,
-        spinner_enabled: bool,
-    ):
-        super().__init__()
-        self.write_lock = write_lock
-        self.spinner_state = spinner_state
-        self.spinner_stop = spinner_stop
-        self.spinner_enabled = spinner_enabled
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            with self.write_lock:
-                if self.spinner_enabled:
-                    sys.stderr.write("\r" + " " * CLEAR_LINE_WIDTH + "\r")
-                sys.stderr.write(msg + "\n")
-                if self.spinner_enabled and not self.spinner_stop.is_set():
-                    sys.stderr.write(self.spinner_state.get("line", ""))
-                sys.stderr.flush()
-        except Exception:
-            self.handleError(record)
+# ─────────────────────────────────────────────────────────────────────────────
+# Data structures
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -130,16 +99,11 @@ class Finding:
 @dataclass
 class WorkerResult:
     worker_id: int
-    findings: List["Finding"]
+    findings: List[Finding]
     exit_code: int
     parse_errors: int
     timed_out: bool
     duration_seconds: float
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Type definitions for structured data
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 class FindingGroup(TypedDict):
@@ -158,6 +122,34 @@ class AggregatedFinding(TypedDict):
     workers: List[int]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared state for async coordination
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class ReviewState:
+    """Shared state for coordinating async tasks."""
+
+    completed: int = 0
+    total_workers: int = 0
+    interrupted: bool = False
+    spinner_stop: asyncio.Event = field(default_factory=asyncio.Event)
+    verbose: bool = False
+
+    def log(self, msg: str, force: bool = False) -> None:
+        """Log a message, clearing spinner line first if needed."""
+        if sys.stderr.isatty():
+            sys.stderr.write("\r" + " " * 90 + "\r")
+        sys.stderr.write(f"[review] {msg}\n")
+        sys.stderr.flush()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Core functions
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 def aggregate_findings(findings: List[Finding]) -> List[AggregatedFinding]:
     """Aggregate findings by text, tracking which workers found each."""
     seen: dict[str, List[int]] = {}
@@ -172,11 +164,6 @@ def aggregate_findings(findings: List[Finding]) -> List[AggregatedFinding]:
         AggregatedFinding(text=text, workers=sorted(workers))
         for text, workers in seen.items()
     ]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Dependency validation
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 def check_dependencies() -> bool:
@@ -230,75 +217,72 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_command(base: str) -> List[str]:
-    cmd = ["codex", "exec", "--json", "--color", "never", "review", "--base", base]
-    return cmd
+    return ["codex", "exec", "--json", "--color", "never", "review", "--base", base]
 
 
-def iter_json_lines(proc: subprocess.Popen) -> Iterable[dict]:
-    assert proc.stdout is not None
-    for raw in proc.stdout:
-        line = raw.strip()
-        if not line:
-            continue
-        try:
-            yield json.loads(line)
-        except json.JSONDecodeError:
-            # Ignore non-JSON lines; caller will count parse errors based on None.
-            yield {"__parse_error__": True, "raw": line}
-
-
-def collect_findings(
-    cmd: List[str], worker_id: int, timeout: int = DEFAULT_TIMEOUT
+async def collect_findings(
+    cmd: List[str],
+    worker_id: int,
+    timeout: int,
+    state: ReviewState,
 ) -> WorkerResult:
-    """Collect findings from a single worker."""
+    """Collect findings from a single worker using async subprocess."""
     start_time = time.monotonic()
     parse_errors = 0
     findings: List[Finding] = []
-    timeout_event = threading.Event()
-    timed_out_flag = threading.Event()
+    timed_out = False
 
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
         start_new_session=True,
     )
 
-    def watchdog() -> None:
-        """Kill process if timeout exceeded."""
-        if timeout_event.wait(timeout=timeout):
-            return  # Completed normally
-        timed_out_flag.set()
+    try:
+        async def read_output() -> None:
+            nonlocal parse_errors
+            assert proc.stdout is not None
+            async for raw_line in proc.stdout:
+                line = raw_line.decode().strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    parse_errors += 1
+                    continue
+
+                item = event.get("item")
+                if isinstance(item, dict) and item.get("type") == "agent_message":
+                    text = item.get("text")
+                    if text:
+                        findings.append(Finding(text=text, iteration=worker_id))
+                        if state.verbose:
+                            state.log(f"worker {worker_id}: {text}")
+
+        await asyncio.wait_for(read_output(), timeout=timeout)
+        await proc.wait()
+        exit_code = proc.returncode or 0
+
+    except asyncio.TimeoutError:
+        timed_out = True
+        exit_code = -1
         try:
             os.killpg(proc.pid, signal.SIGKILL)
         except OSError:
-            pass  # Process already dead
+            pass
+        await proc.wait()
 
-    watchdog_thread = threading.Thread(target=watchdog, daemon=True)
-    watchdog_thread.start()
+    except asyncio.CancelledError:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        await proc.wait()
+        raise
 
-    try:
-        for event in iter_json_lines(proc):
-            if event.get("__parse_error__"):
-                parse_errors += 1
-                continue
-
-            item = event.get("item")
-            if isinstance(item, dict) and item.get("type") == "agent_message":
-                text = item.get("text")
-                if text:
-                    findings.append(Finding(text=text, iteration=worker_id))
-    finally:
-        timeout_event.set()  # Signal watchdog to stop
-
-    exit_code = proc.wait()
     duration = time.monotonic() - start_time
-    timed_out = timed_out_flag.is_set()
-
-    if timed_out:
-        exit_code = -1
 
     return WorkerResult(
         worker_id=worker_id,
@@ -310,37 +294,67 @@ def collect_findings(
     )
 
 
-def collect_findings_with_retry(
+async def collect_findings_with_retry(
     cmd: List[str],
     worker_id: int,
     timeout: int,
     retries: int,
-    stop_event: threading.Event | None = None,
+    state: ReviewState,
 ) -> WorkerResult:
     """Collect findings with retry on failure or timeout."""
     result: WorkerResult | None = None
+
     for attempt in range(retries + 1):
-        if stop_event and stop_event.is_set():
+        if state.interrupted:
             break
-        result = collect_findings(cmd, worker_id, timeout)
+
+        result = await collect_findings(cmd, worker_id, timeout, state)
+
         if result.exit_code == 0:
             return result
+
         if attempt < retries:
             delay = 2**attempt
-            if result.timed_out:
-                reason = "timed out"
-            else:
-                reason = f"exit {result.exit_code}"
-            logger.warning(
-                f"worker {worker_id} {reason}, "
-                f"retry {attempt + 1}/{retries} in {delay}s"
-            )
-            if stop_event and stop_event.wait(timeout=delay):
-                break  # Interrupted during backoff
-            elif not stop_event:
-                time.sleep(delay)
-    assert result is not None  # Always at least one iteration
+            reason = "timed out" if result.timed_out else f"exit {result.exit_code}"
+            state.log(f"worker {worker_id} {reason}, retry {attempt + 1}/{retries} in {delay}s")
+
+            try:
+                await asyncio.sleep(delay)
+            except asyncio.CancelledError:
+                break
+
+    assert result is not None
     return result
+
+
+async def run_spinner(state: ReviewState) -> None:
+    """Async spinner task."""
+    if not sys.stderr.isatty():
+        return
+
+    frames = "|/-\\"
+    idx = 0
+
+    while not state.spinner_stop.is_set():
+        frame = frames[idx % len(frames)]
+        line = f"\r[review] Running: {state.completed}/{state.total_workers} complete {frame}"
+        sys.stderr.write(line)
+        sys.stderr.flush()
+        idx += 1
+
+        try:
+            await asyncio.wait_for(
+                state.spinner_stop.wait(),
+                timeout=SPINNER_INTERVAL,
+            )
+            break
+        except asyncio.TimeoutError:
+            pass
+
+    # Final state
+    final = f"\r[review] Running: {state.completed}/{state.total_workers} complete ✓\n"
+    sys.stderr.write(final)
+    sys.stderr.flush()
 
 
 GROUP_PROMPT = """# Codex Review Summarizer
@@ -377,13 +391,10 @@ Rules:
 """
 
 
-def summarize_findings(
+async def summarize_findings(
     aggregated: List[AggregatedFinding],
 ) -> Tuple[GroupedFindings, int, str, str, float]:
-    """Summarize findings using LLM.
-
-    Returns: (grouped, exit_code, stderr, raw_output, duration_seconds)
-    """
+    """Summarize findings using LLM (async version)."""
     if not aggregated:
         return GroupedFindings(findings=[]), 0, "", "", 0.0
 
@@ -392,18 +403,22 @@ def summarize_findings(
     payload = json.dumps(aggregated, ensure_ascii=True)
     full_prompt = f"{prompt}\n\nINPUT JSON:\n{payload}\n"
 
-    proc = subprocess.run(
-        ["codex", "exec", "--color", "never", "-"],
-        input=full_prompt,
-        text=True,
-        capture_output=True,
+    proc = await asyncio.create_subprocess_exec(
+        "codex", "exec", "--color", "never", "-",
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
+
+    stdout_bytes, stderr_bytes = await proc.communicate(input=full_prompt.encode())
     duration = time.monotonic() - start_time
 
-    output = proc.stdout.strip()
-    stderr = proc.stderr.strip()
+    output = stdout_bytes.decode().strip()
+    stderr = stderr_bytes.decode().strip()
+
     if not output:
-        return GroupedFindings(findings=[]), proc.returncode, stderr, output, duration
+        return GroupedFindings(findings=[]), proc.returncode or 0, stderr, output, duration
+
     try:
         data: GroupedFindings = json.loads(output)
     except json.JSONDecodeError:
@@ -414,7 +429,8 @@ def summarize_findings(
             output,
             duration,
         )
-    return data, proc.returncode, stderr, output, duration
+
+    return data, proc.returncode or 0, stderr, output, duration
 
 
 def render_report(
@@ -452,7 +468,7 @@ def render_report(
                 lines.append(f"  {c.DIM}{line}{c.RESET}")
         return "\n".join(lines)
 
-    # Warnings (show early so they're not hidden)
+    # Warnings
     warnings: List[str] = []
     if parse_errors:
         warnings.append(f"JSONL parse errors: {parse_errors}")
@@ -502,14 +518,12 @@ def render_report(
         lines.append(f"{c.YELLOW}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}{confidence}")
         lines.append(get_ruler(width))
 
-        # Summary
         if summary:
             wrapped = wrap_text(
                 summary, width - 3, initial_indent="   ", subsequent_indent="   "
             )
             lines.append(wrapped)
 
-        # Messages
         if messages:
             lines.append("")
             lines.append(f"   {c.DIM}Evidence:{c.RESET}")
@@ -553,137 +567,80 @@ def render_report(
     return "\n".join(lines)
 
 
-def main() -> int:
-    args = parse_args()
+async def async_main(args: argparse.Namespace) -> int:
+    """Async entry point."""
+    state = ReviewState(
+        total_workers=args.workers,
+        verbose=args.verbose,
+    )
 
-    # Disable colors if stdout is not a TTY
-    if not sys.stdout.isatty():
-        Colors.disable()
+    # Set up signal handlers
+    loop = asyncio.get_running_loop()
 
-    if not check_dependencies():
-        return 1
+    def handle_interrupt() -> None:
+        state.interrupted = True
+        state.spinner_stop.set()
+        sys.stderr.write("\n[review] Interrupted, shutting down...\n")
+        sys.stderr.flush()
 
-    if args.workers < 1:
-        print("--workers must be >= 1", file=sys.stderr)
-        return 2
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, handle_interrupt)
 
     cmd = build_command(args.base)
+    cmd_str = " ".join(shlex.quote(part) for part in cmd)
+
+    state.log(f"Command: {cmd_str}")
+    state.log(f"Workers: {args.workers}")
+
+    # Start spinner
+    spinner_task = asyncio.create_task(run_spinner(state))
+
+    # Run workers concurrently
+    async def run_worker(worker_id: int) -> WorkerResult:
+        result = await collect_findings_with_retry(
+            cmd, worker_id, args.timeout, args.retries, state
+        )
+        state.completed += 1
+        return result
+
+    tasks = [run_worker(i) for i in range(1, args.workers + 1)]
+
+    try:
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+    except asyncio.CancelledError:
+        state.spinner_stop.set()
+        await spinner_task
+        return 130
+
+    state.spinner_stop.set()
+    await spinner_task
+
+    if state.interrupted:
+        return 130
+
+    # Process results
     all_findings: List[Finding] = []
     parse_errors = 0
     failed_iters: List[int] = []
     timed_out_iters: List[int] = []
     worker_durations: dict[int, float] = {}
 
-    cmd_str = " ".join(shlex.quote(part) for part in cmd)
+    for result in results:
+        if isinstance(result, Exception):
+            state.log(f"Worker exception: {result}")
+            continue
 
-    completed = 0
-    completed_lock = threading.Lock()
-    spinner_stop = threading.Event()
-    spinner_enabled = sys.stderr.isatty()
-    spinner_state = {"line": ""}
-    write_lock = threading.Lock()
-    interrupted = threading.Event()
-    executor_ref: List[ThreadPoolExecutor] = []
+        parse_errors += result.parse_errors
+        worker_durations[result.worker_id] = result.duration_seconds
 
-    def handle_interrupt(sig: int, frame: object) -> None:
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
-        signal.signal(signal.SIGTERM, signal.SIG_DFL)
-        interrupted.set()
-        spinner_stop.set()
-        with write_lock:
-            sys.stderr.write("\n[review] Interrupted, shutting down...\n")
-            sys.stderr.flush()
-        if executor_ref:
-            executor_ref[0].shutdown(wait=False, cancel_futures=True)
+        if result.timed_out:
+            timed_out_iters.append(result.worker_id)
+        elif result.exit_code != 0:
+            failed_iters.append(result.worker_id)
 
-    signal.signal(signal.SIGINT, handle_interrupt)
-    signal.signal(signal.SIGTERM, handle_interrupt)
+        all_findings.extend(result.findings)
 
-    # Set up logging with spinner-aware handler
-    handler = SpinnerHandler(write_lock, spinner_state, spinner_stop, spinner_enabled)
-    handler.setFormatter(logging.Formatter("[review] %(message)s"))
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-
-    def spinner() -> None:
-        if not spinner_enabled:
-            return
-        frames = "|/-\\"
-        idx = 0
-        while not spinner_stop.is_set():
-            with completed_lock:
-                done = completed
-            frame = frames[idx % len(frames)]
-            line = f"\r[review] Running: {done}/{args.workers} complete {frame}"
-            with write_lock:
-                spinner_state["line"] = line
-                sys.stderr.write(line)
-                sys.stderr.flush()
-            idx += 1
-            time.sleep(SPINNER_INTERVAL)
-        with completed_lock:
-            done = completed
-        final_line = f"\r[review] Running: {done}/{args.workers} complete ✓"
-        with write_lock:
-            spinner_state["line"] = final_line
-            sys.stderr.write(final_line + "\n")
-            sys.stderr.flush()
-
-    spinner_thread = threading.Thread(target=spinner, daemon=True)
-    spinner_thread.start()
-
-    logger.info(f"Command: {cmd_str}")
-    logger.info(f"Workers: {args.workers}")
-
-    with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        executor_ref.append(executor)
-        futures = {}
-        for worker_id in range(1, args.workers + 1):
-            futures[
-                executor.submit(
-                    collect_findings_with_retry,
-                    cmd,
-                    worker_id,
-                    args.timeout,
-                    args.retries,
-                    interrupted,
-                )
-            ] = worker_id
-
-        for future in as_completed(futures):
-            if interrupted.is_set():
-                break
-            try:
-                result: WorkerResult = future.result()
-            except Exception as e:
-                logger.warning(f"worker {futures[future]} exception: {e}")
-                continue
-            parse_errors += result.parse_errors
-            worker_durations[result.worker_id] = result.duration_seconds
-            if result.timed_out:
-                timed_out_iters.append(result.worker_id)
-            elif result.exit_code != 0:
-                failed_iters.append(result.worker_id)
-            for finding in result.findings:
-                all_findings.append(finding)
-            dur_str = format_duration(result.duration_seconds)
-            if result.findings:
-                for finding in result.findings:
-                    if finding.text:
-                        logger.debug(f"worker {result.worker_id} ({dur_str}): {finding.text}")
-            else:
-                logger.debug(f"worker {result.worker_id} ({dur_str}): (no findings)")
-            with completed_lock:
-                completed += 1
-
-    spinner_stop.set()
-    spinner_thread.join(timeout=1)
-
-    if interrupted.is_set():
-        logger.removeHandler(handler)
-        return 130
-
-    # Summarization
+    # Summarize
     aggregated = aggregate_findings(all_findings)
     (
         grouped,
@@ -691,7 +648,7 @@ def main() -> int:
         summarize_stderr,
         summarize_raw,
         summarizer_duration,
-    ) = summarize_findings(aggregated)
+    ) = await summarize_findings(aggregated)
 
     # Output
     if args.json:
@@ -708,9 +665,7 @@ def main() -> int:
                 "workers": {
                     "durations": worker_durations,
                     "total_seconds": sum(worker_durs) if worker_durs else 0,
-                    "avg_seconds": sum(worker_durs) / len(worker_durs)
-                    if worker_durs
-                    else 0,
+                    "avg_seconds": sum(worker_durs) / len(worker_durs) if worker_durs else 0,
                     "min_seconds": min(worker_durs) if worker_durs else 0,
                     "max_seconds": max(worker_durs) if worker_durs else 0,
                 },
@@ -724,7 +679,6 @@ def main() -> int:
                 "raw_output": summarize_raw,
             }
         print(json.dumps(output_data, indent=2))
-        logger.removeHandler(handler)
         return 0
 
     output = render_report(
@@ -740,8 +694,23 @@ def main() -> int:
         total_workers=args.workers,
     )
     print(output)
-    logger.removeHandler(handler)
     return 0
+
+
+def main() -> int:
+    args = parse_args()
+
+    if not sys.stdout.isatty():
+        Colors.disable()
+
+    if not check_dependencies():
+        return 1
+
+    if args.workers < 1:
+        print("--workers must be >= 1", file=sys.stderr)
+        return 2
+
+    return asyncio.run(async_main(args))
 
 
 if __name__ == "__main__":
