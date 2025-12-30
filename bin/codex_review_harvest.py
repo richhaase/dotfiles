@@ -6,6 +6,9 @@ import json
 import shlex
 import subprocess
 import sys
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Iterable, List, Optional, Tuple
@@ -24,18 +27,10 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument(
-        "--min",
-        dest="min_iters",
+        "--workers",
         type=int,
         default=5,
-        help="Minimum iterations (default: 5)",
-    )
-    parser.add_argument(
-        "--max",
-        dest="max_iters",
-        type=int,
-        default=25,
-        help="Maximum iterations (default: 25)",
+        help="Parallel review runs to execute (default: 5)",
     )
     parser.add_argument(
         "--base", default="main", help="Base ref for review command (default: main)"
@@ -73,7 +68,9 @@ def iter_json_lines(proc: subprocess.Popen) -> Iterable[dict]:
             yield {"__parse_error__": True, "raw": line}
 
 
-def collect_findings(cmd: List[str], iteration: int) -> Tuple[List[Finding], int, int]:
+def collect_findings(
+    cmd: List[str], worker_id: int
+) -> Tuple[int, List[Finding], int, int]:
     parse_errors = 0
     findings: List[Finding] = []
 
@@ -94,10 +91,10 @@ def collect_findings(cmd: List[str], iteration: int) -> Tuple[List[Finding], int
         if isinstance(item, dict) and item.get("type") == "agent_message":
             text = item.get("text")
             if text:
-                findings.append(Finding(text=text, iteration=iteration))
+                findings.append(Finding(text=text, iteration=worker_id))
 
     exit_code = proc.wait()
-    return findings, exit_code, parse_errors
+    return worker_id, findings, exit_code, parse_errors
 
 
 def format_blockquote(text: str) -> str:
@@ -155,9 +152,7 @@ def summarize_findings(messages: List[str]) -> Tuple[str, int, str]:
 def render_markdown(
     cmd: List[str],
     base: str,
-    min_iters: int,
-    max_iters: int,
-    total_iters: int,
+    workers: int,
     findings: List[Finding],
     parse_errors: int,
     failed_iters: List[int],
@@ -175,7 +170,7 @@ def render_markdown(
     lines.append(f"- Timestamp: {now}")
     lines.append(f"- Base: {base}")
     lines.append(f"- Command: `{cmd_str}`")
-    lines.append(f"- Iterations: {total_iters} (min {min_iters}, max {max_iters})")
+    lines.append(f"- Workers: {workers}")
     lines.append(f"- Findings: {total_findings} total")
     if parse_errors:
         lines.append(f"- Parse errors: {parse_errors}")
@@ -197,11 +192,8 @@ def render_markdown(
 
 def main() -> int:
     args = parse_args()
-    if args.min_iters < 1:
-        print("--min must be >= 1", file=sys.stderr)
-        return 2
-    if args.max_iters < args.min_iters:
-        print("--max must be >= --min", file=sys.stderr)
+    if args.workers < 1:
+        print("--workers must be >= 1", file=sys.stderr)
         return 2
 
     cmd = build_command(args.base, args.output_schema)
@@ -209,42 +201,87 @@ def main() -> int:
     parse_errors = 0
     failed_iters: List[int] = []
 
-    total_iters = 0
     cmd_str = " ".join(shlex.quote(part) for part in cmd)
-    print(f"[codex-review-harvest] Command: {cmd_str}", file=sys.stderr)
-    print(
-        f"[codex-review-harvest] Iterations: min={args.min_iters} max={args.max_iters}",
-        file=sys.stderr,
-    )
-    for iteration in range(1, args.max_iters + 1):
-        total_iters = iteration
-        print(
-            f"[codex-review-harvest] Iteration {iteration} starting...",
-            file=sys.stderr,
+
+    completed = 0
+    completed_lock = threading.Lock()
+    spinner_stop = threading.Event()
+    spinner_enabled = sys.stderr.isatty()
+    spinner_state = {"line": ""}
+    write_lock = threading.Lock()
+
+    def _clear_line() -> None:
+        sys.stderr.write("\r" + " " * 90 + "\r")
+
+    def log(message: str) -> None:
+        with write_lock:
+            if spinner_enabled:
+                _clear_line()
+            sys.stderr.write(message + "\n")
+            if spinner_enabled and not spinner_stop.is_set():
+                sys.stderr.write(spinner_state["line"])
+            sys.stderr.flush()
+
+    def spinner() -> None:
+        if not spinner_enabled:
+            return
+        frames = "|/-\\"
+        idx = 0
+        while not spinner_stop.is_set():
+            with completed_lock:
+                done = completed
+            frame = frames[idx % len(frames)]
+            line = (
+                f"\r[codex-review-harvest] Running: {done}/{args.workers} complete {frame}"
+            )
+            with write_lock:
+                spinner_state["line"] = line
+                sys.stderr.write(line)
+                sys.stderr.flush()
+            idx += 1
+            time.sleep(0.2)
+        with completed_lock:
+            done = completed
+        final_line = (
+            f"\r[codex-review-harvest] Running: {done}/{args.workers} complete ✓"
         )
-        findings, exit_code, parse_errs = collect_findings(cmd, iteration)
-        parse_errors += parse_errs
+        with write_lock:
+            spinner_state["line"] = final_line
+            sys.stderr.write(final_line + "\n")
+            sys.stderr.flush()
 
-        if exit_code != 0:
-            failed_iters.append(iteration)
+    spinner_thread = threading.Thread(target=spinner, daemon=True)
+    spinner_thread.start()
 
-        for finding in findings:
-            all_findings.append(finding)
+    log(f"[codex-review-harvest] Command: {cmd_str}")
+    log(f"[codex-review-harvest] Workers: {args.workers}")
 
-        if args.verbose:
-            if findings:
-                for finding in findings:
-                    if finding.text:
-                        print(
-                            f"[codex-review-harvest] agent_message: {finding.text}",
-                            file=sys.stderr,
-                        )
-            else:
-                print("[codex-review-harvest] agent_message: (none)", file=sys.stderr)
-        print(
-            f"[codex-review-harvest] Iteration {iteration} done.",
-            file=sys.stderr,
-        )
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        futures = {}
+        for worker_id in range(1, args.workers + 1):
+            futures[executor.submit(collect_findings, cmd, worker_id)] = worker_id
+
+        for future in as_completed(futures):
+            worker_id, findings, exit_code, parse_errs = future.result()
+            parse_errors += parse_errs
+            if exit_code != 0:
+                failed_iters.append(worker_id)
+            for finding in findings:
+                all_findings.append(finding)
+            if args.verbose:
+                if findings:
+                    for finding in findings:
+                        if finding.text:
+                            log(
+                                f"[codex-review-harvest] agent_message: {finding.text}"
+                            )
+                else:
+                    log("[codex-review-harvest] agent_message: (none)")
+            with completed_lock:
+                completed += 1
+
+    spinner_stop.set()
+    spinner_thread.join(timeout=1)
 
     grouped_output, summarize_exit_code, summarize_stderr = summarize_findings(
         [finding.text for finding in all_findings if finding.text]
@@ -252,9 +289,7 @@ def main() -> int:
     output = render_markdown(
         cmd=cmd,
         base=args.base,
-        min_iters=args.min_iters,
-        max_iters=args.max_iters,
-        total_iters=total_iters,
+        workers=args.workers,
         findings=all_findings,
         parse_errors=parse_errors,
         failed_iters=failed_iters,
