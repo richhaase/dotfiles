@@ -120,8 +120,9 @@ class FindingGroup(TypedDict):
     worker_count: int
 
 
-class GroupedFindings(TypedDict):
+class GroupedFindings(TypedDict, total=False):
     findings: List[FindingGroup]
+    info: List[FindingGroup]
 
 
 class AggregatedFinding(TypedDict):
@@ -387,6 +388,14 @@ Output format (JSON only, no extra prose):
       "messages": ["short excerpt 1", "short excerpt 2"],
       "worker_count": 3
     }
+  ],
+  "info": [
+    {
+      "title": "Informational note",
+      "summary": "1-2 sentence summary.",
+      "messages": ["short excerpt 1", "short excerpt 2"],
+      "worker_count": 3
+    }
   ]
 }
 
@@ -395,7 +404,8 @@ Rules:
 - Keep excerpts under ~200 characters each.
 - Preserve file paths, flags, branch names, and commands in excerpts when present.
 - worker_count = number of unique workers that reported any message in this cluster.
-- If the input is empty, return: {"findings": []}
+- Put non-actionable outcomes (e.g., "no diffs", "no changes to review") in "info".
+- If the input is empty, return: {"findings": [], "info": []}
 """
 
 
@@ -460,6 +470,9 @@ def render_report(
     findings = grouped.get("findings")
     if not isinstance(findings, list):
         findings = []
+    info = grouped.get("info")
+    if not isinstance(info, list):
+        info = []
 
     lines: List[str] = []
 
@@ -496,15 +509,15 @@ def render_report(
             lines.append(f"  {c.YELLOW}•{c.RESET} {warning}")
         lines.append("")
 
-    # No findings case
-    if not findings:
+    # No findings/info case
+    if not findings and not info:
         lines.append("")
         lines.append(f"{c.GREEN}✓ Review Complete{c.RESET}")
         lines.append(get_ruler(width))
         lines.append(f"  {c.DIM}No findings captured.{c.RESET}")
         return "\n".join(lines)
 
-    # Header
+    # Findings header
     lines.append("")
     finding_word = "finding" if len(findings) == 1 else "findings"
     lines.append(f"{c.CYAN}{c.BOLD}📋 {len(findings)} {finding_word}{c.RESET}")
@@ -546,6 +559,46 @@ def render_report(
                         subsequent_indent="     ",
                     )
                     lines.append(wrapped)
+
+    if info:
+        lines.append("")
+        lines.append(f"{c.MAGENTA}{c.BOLD}ℹ Info{c.RESET}")
+        lines.append(get_ruler(width, "━"))
+        for idx, item in enumerate(info, start=1):
+            title = str(item.get("title", "")).strip() or "Info"
+            summary = str(item.get("summary", "")).strip()
+            messages = item.get("messages")
+            if not isinstance(messages, list):
+                messages = []
+
+            lines.append("")
+            worker_count = item.get("worker_count", 0)
+            if total_workers and worker_count:
+                confidence = f" {c.DIM}({worker_count}/{total_workers} workers){c.RESET}"
+            else:
+                confidence = ""
+            lines.append(f"{c.MAGENTA}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}{confidence}")
+            lines.append(get_ruler(width))
+
+            if summary:
+                wrapped = wrap_text(
+                    summary, width - 3, initial_indent="   ", subsequent_indent="   "
+                )
+                lines.append(wrapped)
+
+            if messages:
+                lines.append("")
+                lines.append(f"   {c.DIM}Evidence:{c.RESET}")
+                for message in messages:
+                    message_text = str(message).strip()
+                    if message_text:
+                        wrapped = wrap_text(
+                            message_text,
+                            width - 5,
+                            initial_indent=f"   {c.DIM}•{c.RESET} ",
+                            subsequent_indent="     ",
+                        )
+                        lines.append(wrapped)
 
     lines.append("")
     lines.append(get_ruler(width, "━"))
@@ -696,6 +749,7 @@ async def async_main(args: argparse.Namespace) -> int:
     if args.json:
         output_data = {
             "findings": grouped.get("findings", []),
+            "info": grouped.get("info", []),
             "total_workers": args.workers,
             "warnings": {
                 "failed_workers": failed_iters,
