@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: review.py [--reviewers N] [--base BRANCH] [--timeout SECS] [--retries N] [-n|--dry-run]
+# Usage: code_review.py [-r N] [-b BRANCH] [-t SECS] [-R N] [-v] [-l|--local]
 # Env: REVIEW_REVIEWERS, REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
 # Exit: 0=no findings, 1=findings, 2=error, 130=interrupted
 
@@ -311,6 +311,7 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument(
+        "-r",
         "--reviewers",
         dest="reviewers",
         type=int,
@@ -318,32 +319,36 @@ def parse_args() -> argparse.Namespace:
         help=f"Parallel review runs to execute (default: {DEFAULT_REVIEWERS})",
     )
     parser.add_argument(
+        "-b",
         "--base",
         default=DEFAULT_BASE_REF,
         help=f"Base ref for review command (default: {DEFAULT_BASE_REF})",
     )
     parser.add_argument(
+        "-v",
         "--verbose",
         action="store_true",
         help="Print agent_message entries as they arrive (default: false).",
     )
     parser.add_argument(
+        "-t",
         "--timeout",
         type=int,
         default=DEFAULT_TIMEOUT,
         help=f"Timeout in seconds per reviewer (default: {DEFAULT_TIMEOUT})",
     )
     parser.add_argument(
+        "-R",
         "--retries",
         type=int,
         default=DEFAULT_RETRIES,
         help=f"Retry failed reviewers N times (default: {DEFAULT_RETRIES})",
     )
     parser.add_argument(
-        "--dry-run",
-        "-n",
+        "-l",
+        "--local",
         action="store_true",
-        help="Preview the PR comment body without posting",
+        help="Skip posting findings to a PR comment",
     )
     return parser.parse_args()
 
@@ -632,11 +637,7 @@ def render_report(
     findings = grouped.get("findings")
     if not isinstance(findings, list):
         findings = []
-    info = grouped.get("info")
-    if not isinstance(info, list):
-        info = []
-    if not include_info:
-        info = []
+    info: List[FindingGroup] = []
 
     lines: List[str] = []
 
@@ -674,11 +675,10 @@ def render_report(
         lines.append("")
 
     # No findings/info case
-    if not findings and not info:
+    if not findings:
         lines.append("")
-        lines.append(f"{c.GREEN}✓ Review Complete{c.RESET}")
-        lines.append(get_ruler(width))
-        lines.append(f"  {c.DIM}No findings captured.{c.RESET}")
+        lines.append(f"{c.GREEN}{c.BOLD}LGTM{c.RESET}")
+        lines.append("")
         return "\n".join(lines)
 
     # Findings header
@@ -723,46 +723,6 @@ def render_report(
                         subsequent_indent="     ",
                     )
                     lines.append(wrapped)
-
-    if info:
-        lines.append("")
-        lines.append(f"{c.MAGENTA}{c.BOLD}ℹ Info{c.RESET}")
-        lines.append(get_ruler(width, "━"))
-        for idx, item in enumerate(info, start=1):
-            title = str(item.get("title", "")).strip() or "Info"
-            summary = str(item.get("summary", "")).strip()
-            messages = item.get("messages")
-            if not isinstance(messages, list):
-                messages = []
-
-            lines.append("")
-            reviewer_count = item.get("reviewer_count", item.get("worker_count", 0))
-            if total_reviewers and reviewer_count:
-                confidence = f" {c.DIM}({reviewer_count}/{total_reviewers} reviewers){c.RESET}"
-            else:
-                confidence = ""
-            lines.append(f"{c.MAGENTA}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}{confidence}")
-            lines.append(get_ruler(width))
-
-            if summary:
-                wrapped = wrap_text(
-                    summary, width - 3, initial_indent="   ", subsequent_indent="   "
-                )
-                lines.append(wrapped)
-
-            if messages:
-                lines.append("")
-                lines.append(f"   {c.DIM}Evidence:{c.RESET}")
-                for message in messages:
-                    message_text = str(message).strip()
-                    if message_text:
-                        wrapped = wrap_text(
-                            message_text,
-                            width - 5,
-                            initial_indent=f"   {c.DIM}•{c.RESET} ",
-                            subsequent_indent="     ",
-                        )
-                        lines.append(wrapped)
 
     lines.append("")
     lines.append(get_ruler(width, "━"))
@@ -944,10 +904,16 @@ async def async_main(args: argparse.Namespace) -> int:
         aggregated=aggregated,
     )
 
-    if args.dry_run:
-        print("\n[review] PR comment preview (dry run):\n")
-        print(comment_body)
+    if args.local:
+        state.log("Local mode enabled; skipping PR comment.")
         return EXIT_FINDINGS
+
+    print("\n[review] PR comment preview:\n")
+    width = min(get_terminal_width(), MAX_REPORT_WIDTH)
+    divider = get_ruler(width, "━")
+    print(divider)
+    print(comment_body)
+    print(divider)
 
     if not check_gh_available():
         return EXIT_ERROR
@@ -957,6 +923,7 @@ async def async_main(args: argparse.Namespace) -> int:
         state.log("No open PR found for current branch.")
         return EXIT_ERROR
 
+    print("")
     try:
         response = input(f"Post findings to PR #{pr_number}? [y/N]: ").strip().lower()
     except EOFError:
