@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Usage: review.py [--workers N] [--base BRANCH] [--timeout SECS] [--retries N] [--json]
-# Env: REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
+# Usage: review.py [--reviewers N] [--base BRANCH] [--timeout SECS] [--retries N] [-n|--dry-run]
+# Env: REVIEW_REVIEWERS, REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
 # Exit: 0=no findings, 1=findings, 2=error, 130=interrupted
 
 import argparse
@@ -10,6 +10,7 @@ import os
 import shlex
 import shutil
 import signal
+import subprocess
 import sys
 import textwrap
 import time
@@ -20,7 +21,7 @@ from typing import List, Tuple, TypedDict
 # Constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-DEFAULT_WORKERS = int(os.environ.get("REVIEW_WORKERS", 5))
+DEFAULT_REVIEWERS = int(os.environ.get("REVIEW_REVIEWERS", os.environ.get("REVIEW_WORKERS", 5)))
 DEFAULT_TIMEOUT = int(os.environ.get("REVIEW_TIMEOUT", 300))
 DEFAULT_BASE_REF = os.environ.get("REVIEW_BASE_REF", "main")
 DEFAULT_RETRIES = int(os.environ.get("REVIEW_RETRIES", 1))
@@ -104,8 +105,8 @@ class Finding:
 
 
 @dataclass
-class WorkerResult:
-    worker_id: int
+class ReviewerResult:
+    reviewer_id: int
     findings: List[Finding]
     exit_code: int
     parse_errors: int
@@ -117,7 +118,8 @@ class FindingGroup(TypedDict):
     title: str
     summary: str
     messages: List[str]
-    worker_count: int
+    reviewer_count: int
+    sources: List[int]
 
 
 class GroupedFindings(TypedDict, total=False):
@@ -127,7 +129,7 @@ class GroupedFindings(TypedDict, total=False):
 
 class AggregatedFinding(TypedDict):
     text: str
-    workers: List[int]
+    reviewers: List[int]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -140,7 +142,7 @@ class ReviewState:
     """Shared state for coordinating async tasks."""
 
     completed: int = 0
-    total_workers: int = 0
+    total_reviewers: int = 0
     interrupted: bool = False
     spinner_stop: asyncio.Event = field(default_factory=asyncio.Event)
     verbose: bool = False
@@ -160,7 +162,7 @@ class ReviewState:
 
 
 def aggregate_findings(findings: List[Finding]) -> List[AggregatedFinding]:
-    """Aggregate findings by text, tracking which workers found each."""
+    """Aggregate findings by text, tracking which reviewers found each."""
     seen: dict[str, List[int]] = {}
     for f in findings:
         normalized = f.text.strip()
@@ -170,8 +172,8 @@ def aggregate_findings(findings: List[Finding]) -> List[AggregatedFinding]:
             if f.iteration not in seen[normalized]:
                 seen[normalized].append(f.iteration)
     return [
-        AggregatedFinding(text=text, workers=sorted(workers))
-        for text, workers in seen.items()
+        AggregatedFinding(text=text, reviewers=sorted(reviewers))
+        for text, reviewers in seen.items()
     ]
 
 
@@ -183,6 +185,140 @@ def check_dependencies() -> bool:
     return True
 
 
+def check_gh_available() -> bool:
+    if shutil.which("gh") is None:
+        print("Error: 'gh' not found in PATH", file=sys.stderr)
+        return False
+    return True
+
+
+def get_current_pr_number() -> str | None:
+    """Return the PR number for the current branch, or None if not found."""
+    result = subprocess.run(
+        ["gh", "pr", "view", "--json", "number", "--jq", ".number"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    pr_number = result.stdout.strip()
+    return pr_number or None
+
+
+def strip_ansi(text: str) -> str:
+    cleaned = []
+    in_escape = False
+    for char in text:
+        if in_escape:
+            if char == "m":
+                in_escape = False
+            continue
+        if char == "\x1b":
+            in_escape = True
+            continue
+        cleaned.append(char)
+    return "".join(cleaned)
+
+
+def collect_source_indices(groups: List[FindingGroup]) -> List[int]:
+    seen: set[int] = set()
+    indices: List[int] = []
+    for group in groups:
+        sources = group.get("sources", [])
+        if not isinstance(sources, list):
+            continue
+        for source in sources:
+            if isinstance(source, int) and source not in seen:
+                seen.add(source)
+                indices.append(source)
+    return indices
+
+
+def format_raw_findings(
+    aggregated: List[AggregatedFinding],
+    source_indices: List[int],
+    total_reviewers: int,
+    include_header: bool = True,
+) -> str:
+    if not source_indices:
+        return ""
+
+    lines: List[str] = []
+    if include_header:
+        lines.append("## Raw findings (verbatim)")
+
+    for idx, source in enumerate(source_indices, start=1):
+        if source < 0 or source >= len(aggregated):
+            continue
+        entry = aggregated[source]
+        reviewers = entry.get("reviewers", [])
+        reviewer_count = len(reviewers) if isinstance(reviewers, list) else 0
+        lines.append("")
+        lines.append(f"{idx}. ({reviewer_count}/{total_reviewers} reviewers)")
+        lines.append("```")
+        lines.append(str(entry.get("text", "")).rstrip())
+        lines.append("```")
+
+    return "\n".join(lines).rstrip()
+
+
+def render_comment_markdown(
+    grouped: GroupedFindings,
+    total_reviewers: int,
+    aggregated: List[AggregatedFinding],
+) -> str:
+    findings = grouped.get("findings")
+    if not isinstance(findings, list):
+        findings = []
+
+    lines: List[str] = []
+    lines.append("## Findings")
+
+    for idx, finding in enumerate(findings, start=1):
+        title = str(finding.get("title", "")).strip() or "Untitled"
+        summary = str(finding.get("summary", "")).strip()
+        messages = finding.get("messages")
+        if not isinstance(messages, list):
+            messages = []
+
+        reviewer_count = finding.get("reviewer_count", finding.get("worker_count", 0))
+        if reviewer_count:
+            confidence = f" ({reviewer_count}/{total_reviewers} reviewers)"
+        else:
+            confidence = ""
+
+        lines.append("")
+        lines.append(f"{idx}. **{title}**{confidence}")
+
+        if summary:
+            lines.append("")
+            lines.append(summary)
+
+        if messages:
+            lines.append("")
+            lines.append("Evidence:")
+            for message in messages:
+                message_text = str(message).strip()
+                if message_text:
+                    lines.append(f"- {message_text}")
+
+    raw_indices = collect_source_indices(findings)
+    raw_section = format_raw_findings(
+        aggregated, raw_indices, total_reviewers, include_header=False
+    )
+    if raw_section:
+        lines.append("")
+        lines.append("_Expand for verbatim findings._")
+        lines.append("<details>")
+        lines.append("<summary>Raw findings (verbatim)</summary>")
+        lines.append("")
+        lines.append(raw_section)
+        lines.append("</details>")
+
+    return "\n".join(lines).strip()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -190,10 +326,11 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument(
-        "--workers",
+        "--reviewers",
+        dest="reviewers",
         type=int,
-        default=DEFAULT_WORKERS,
-        help=f"Parallel review runs to execute (default: {DEFAULT_WORKERS})",
+        default=DEFAULT_REVIEWERS,
+        help=f"Parallel review runs to execute (default: {DEFAULT_REVIEWERS})",
     )
     parser.add_argument(
         "--base",
@@ -209,18 +346,19 @@ def parse_args() -> argparse.Namespace:
         "--timeout",
         type=int,
         default=DEFAULT_TIMEOUT,
-        help=f"Timeout in seconds per worker (default: {DEFAULT_TIMEOUT})",
+        help=f"Timeout in seconds per reviewer (default: {DEFAULT_TIMEOUT})",
     )
     parser.add_argument(
         "--retries",
         type=int,
         default=DEFAULT_RETRIES,
-        help=f"Retry failed workers N times (default: {DEFAULT_RETRIES})",
+        help=f"Retry failed reviewers N times (default: {DEFAULT_RETRIES})",
     )
     parser.add_argument(
-        "--json",
+        "--dry-run",
+        "-n",
         action="store_true",
-        help="Output JSON instead of formatted report",
+        help="Preview the PR comment body without posting",
     )
     return parser.parse_args()
 
@@ -231,11 +369,11 @@ def build_command(base: str) -> List[str]:
 
 async def collect_findings(
     cmd: List[str],
-    worker_id: int,
+    reviewer_id: int,
     timeout: int,
     state: ReviewState,
-) -> WorkerResult:
-    """Collect findings from a single worker using async subprocess."""
+) -> ReviewerResult:
+    """Collect findings from a single reviewer using async subprocess."""
     start_time = time.monotonic()
     parse_errors = 0
     findings: List[Finding] = []
@@ -266,9 +404,9 @@ async def collect_findings(
                 if isinstance(item, dict) and item.get("type") == "agent_message":
                     text = item.get("text")
                     if text:
-                        findings.append(Finding(text=text, iteration=worker_id))
+                        findings.append(Finding(text=text, iteration=reviewer_id))
                         if state.verbose:
-                            state.log(f"worker {worker_id}: {text}")
+                            state.log(f"reviewer {reviewer_id}: {text}")
 
         await asyncio.wait_for(read_output(), timeout=timeout)
         await proc.wait()
@@ -293,8 +431,8 @@ async def collect_findings(
 
     duration = time.monotonic() - start_time
 
-    return WorkerResult(
-        worker_id=worker_id,
+    return ReviewerResult(
+        reviewer_id=reviewer_id,
         findings=findings,
         exit_code=exit_code,
         parse_errors=parse_errors,
@@ -305,19 +443,19 @@ async def collect_findings(
 
 async def collect_findings_with_retry(
     cmd: List[str],
-    worker_id: int,
+    reviewer_id: int,
     timeout: int,
     retries: int,
     state: ReviewState,
-) -> WorkerResult:
+) -> ReviewerResult:
     """Collect findings with retry on failure or timeout."""
-    result: WorkerResult | None = None
+    result: ReviewerResult | None = None
 
     for attempt in range(retries + 1):
         if state.interrupted:
             break
 
-        result = await collect_findings(cmd, worker_id, timeout, state)
+        result = await collect_findings(cmd, reviewer_id, timeout, state)
 
         if result.exit_code == 0:
             return result
@@ -325,7 +463,7 @@ async def collect_findings_with_retry(
         if attempt < retries:
             delay = 2**attempt
             reason = "timed out" if result.timed_out else f"exit {result.exit_code}"
-            state.log(f"worker {worker_id} {reason}, retry {attempt + 1}/{retries} in {delay}s")
+            state.log(f"reviewer {reviewer_id} {reason}, retry {attempt + 1}/{retries} in {delay}s")
 
             try:
                 await asyncio.sleep(delay)
@@ -346,7 +484,7 @@ async def run_spinner(state: ReviewState) -> None:
 
     while not state.spinner_stop.is_set():
         frame = frames[idx % len(frames)]
-        line = f"\r[review] Running: {state.completed}/{state.total_workers} complete {frame}"
+        line = f"\r[review] Running: {state.completed}/{state.total_reviewers} complete {frame}"
         sys.stderr.write(line)
         sys.stderr.flush()
         idx += 1
@@ -361,7 +499,33 @@ async def run_spinner(state: ReviewState) -> None:
             pass
 
     # Final state
-    final = f"\r[review] Running: {state.completed}/{state.total_workers} complete ✓\n"
+    final = f"\r[review] Running: {state.completed}/{state.total_reviewers} complete ✓\n"
+    sys.stderr.write(final)
+    sys.stderr.flush()
+
+
+async def run_phase_spinner(label: str, stop: asyncio.Event) -> None:
+    """Show a spinner for a single phase with a custom label."""
+    if not sys.stderr.isatty():
+        return
+
+    frames = "|/-\\"
+    idx = 0
+
+    while not stop.is_set():
+        frame = frames[idx % len(frames)]
+        line = f"\r[review] {label} {frame}"
+        sys.stderr.write(line)
+        sys.stderr.flush()
+        idx += 1
+
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=SPINNER_INTERVAL)
+            break
+        except asyncio.TimeoutError:
+            pass
+
+    final = f"\r[review] {label} ✓\n"
     sys.stderr.write(final)
     sys.stderr.flush()
 
@@ -370,14 +534,16 @@ GROUP_PROMPT = """# Codex Review Summarizer
 
 You are grouping results from repeated Codex review runs.
 
-Input: a JSON array of objects, each with "text" (the finding) and "workers" (list of worker IDs that found it).
+Input: a JSON array of objects, each with "id" (input identifier), "text" (the finding),
+and "reviewers" (list of reviewer IDs that found it).
 
 Task:
 - Cluster messages that describe the same underlying issue.
 - Create a short, precise title per group.
 - Keep groups distinct; do not merge different issues.
 - If something is unique, keep it as its own group.
-- Sum up unique worker IDs across clustered messages for worker_count.
+- Sum up unique reviewer IDs across clustered messages for reviewer_count.
+- Track which input ids are represented in each group via "sources".
 
 Output format (JSON only, no extra prose):
 {
@@ -386,7 +552,8 @@ Output format (JSON only, no extra prose):
       "title": "Short issue title",
       "summary": "1-2 sentence summary.",
       "messages": ["short excerpt 1", "short excerpt 2"],
-      "worker_count": 3
+      "reviewer_count": 3,
+      "sources": [0, 2]
     }
   ],
   "info": [
@@ -394,7 +561,8 @@ Output format (JSON only, no extra prose):
       "title": "Informational note",
       "summary": "1-2 sentence summary.",
       "messages": ["short excerpt 1", "short excerpt 2"],
-      "worker_count": 3
+      "reviewer_count": 3,
+      "sources": [1]
     }
   ]
 }
@@ -402,8 +570,10 @@ Output format (JSON only, no extra prose):
 Rules:
 - Return ONLY valid JSON.
 - Keep excerpts under ~200 characters each.
-- Preserve file paths, flags, branch names, and commands in excerpts when present.
-- worker_count = number of unique workers that reported any message in this cluster.
+- Preserve file paths, line numbers, flags, branch names, and commands in excerpts when present.
+- If a message includes a file path with line numbers, keep that exact location text in the excerpt.
+- "sources" must include all input ids represented in each group.
+- reviewer_count = number of unique reviewers that reported any message in this cluster.
 - Put non-actionable outcomes (e.g., "no diffs", "no changes to review") in "info".
 - If the input is empty, return: {"findings": [], "info": []}
 """
@@ -418,7 +588,11 @@ async def summarize_findings(
 
     start_time = time.monotonic()
     prompt = GROUP_PROMPT.rstrip()
-    payload = json.dumps(aggregated, ensure_ascii=True)
+    payload = json.dumps(
+        [{"id": idx, "text": item["text"], "reviewers": item["reviewers"]}
+         for idx, item in enumerate(aggregated)],
+        ensure_ascii=True,
+    )
     full_prompt = f"{prompt}\n\nINPUT JSON:\n{payload}\n"
 
     proc = await asyncio.create_subprocess_exec(
@@ -460,9 +634,12 @@ def render_report(
     failed_iters: List[int],
     timed_out_iters: List[int] | None = None,
     wall_clock_duration: float | None = None,
-    worker_durations: dict[int, float] | None = None,
+    reviewer_durations: dict[int, float] | None = None,
     summarizer_duration: float | None = None,
-    total_workers: int | None = None,
+    total_reviewers: int | None = None,
+    include_info: bool = True,
+    include_warnings: bool = True,
+    include_timing: bool = True,
 ) -> str:
     c = Colors
     width = min(get_terminal_width(), MAX_REPORT_WIDTH)
@@ -472,6 +649,8 @@ def render_report(
         findings = []
     info = grouped.get("info")
     if not isinstance(info, list):
+        info = []
+    if not include_info:
         info = []
 
     lines: List[str] = []
@@ -496,12 +675,12 @@ def render_report(
         warnings.append(f"JSONL parse errors: {parse_errors}")
     if failed_iters:
         joined = ", ".join(str(i) for i in failed_iters)
-        warnings.append(f"Failed workers: {joined}")
+        warnings.append(f"Failed reviewers: {joined}")
     if timed_out_iters:
         joined = ", ".join(str(i) for i in timed_out_iters)
-        warnings.append(f"Timed out workers: {joined}")
+        warnings.append(f"Timed out reviewers: {joined}")
 
-    if warnings:
+    if include_warnings and warnings:
         lines.append("")
         lines.append(f"{c.YELLOW}⚠ Warnings{c.RESET}")
         lines.append(get_ruler(width))
@@ -532,9 +711,9 @@ def render_report(
             messages = []
 
         lines.append("")
-        worker_count = finding.get("worker_count", 0)
-        if total_workers and worker_count:
-            confidence = f" {c.DIM}({worker_count}/{total_workers} workers){c.RESET}"
+        reviewer_count = finding.get("reviewer_count", finding.get("worker_count", 0))
+        if total_reviewers and reviewer_count:
+            confidence = f" {c.DIM}({reviewer_count}/{total_reviewers} reviewers){c.RESET}"
         else:
             confidence = ""
         lines.append(f"{c.YELLOW}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}{confidence}")
@@ -572,9 +751,9 @@ def render_report(
                 messages = []
 
             lines.append("")
-            worker_count = item.get("worker_count", 0)
-            if total_workers and worker_count:
-                confidence = f" {c.DIM}({worker_count}/{total_workers} workers){c.RESET}"
+            reviewer_count = item.get("reviewer_count", item.get("worker_count", 0))
+            if total_reviewers and reviewer_count:
+                confidence = f" {c.DIM}({reviewer_count}/{total_reviewers} reviewers){c.RESET}"
             else:
                 confidence = ""
             lines.append(f"{c.MAGENTA}{c.BOLD}{idx}.{c.RESET} {c.BOLD}{title}{c.RESET}{confidence}")
@@ -606,20 +785,20 @@ def render_report(
     # Timing stats
     has_timing = (
         wall_clock_duration is not None
-        or worker_durations
+        or reviewer_durations
         or summarizer_duration is not None
     )
-    if has_timing:
+    if include_timing and has_timing:
         lines.append("")
         lines.append(f"{c.DIM}Timing:{c.RESET}")
 
         if wall_clock_duration is not None:
             lines.append(
-                f"  {c.DIM}workers: {format_duration(wall_clock_duration)}{c.RESET}"
+                f"  {c.DIM}reviewers: {format_duration(wall_clock_duration)}{c.RESET}"
             )
 
-        if worker_durations:
-            durations = list(worker_durations.values())
+        if reviewer_durations:
+            durations = list(reviewer_durations.values())
             avg = sum(durations) / len(durations)
             lines.append(
                 f"  {c.DIM}  min {format_duration(min(durations))} / "
@@ -644,7 +823,7 @@ def render_report(
 async def async_main(args: argparse.Namespace) -> int:
     """Async entry point."""
     state = ReviewState(
-        total_workers=args.workers,
+        total_reviewers=args.reviewers,
         verbose=args.verbose,
     )
 
@@ -669,25 +848,25 @@ async def async_main(args: argparse.Namespace) -> int:
     cmd_str = " ".join(shlex.quote(part) for part in cmd)
 
     state.log(f"Command: {cmd_str}")
-    state.log(f"Workers: {args.workers}")
+    state.log(f"Reviewers: {args.reviewers}")
 
     # Start spinner
     spinner_task = asyncio.create_task(run_spinner(state))
 
     # Track wall-clock time
-    workers_start = time.monotonic()
+    reviewers_start = time.monotonic()
 
-    # Run workers concurrently
-    async def run_worker(worker_id: int) -> WorkerResult:
+    # Run reviewers concurrently
+    async def run_reviewer(reviewer_id: int) -> ReviewerResult:
         result = await collect_findings_with_retry(
-            cmd, worker_id, args.timeout, args.retries, state
+            cmd, reviewer_id, args.timeout, args.retries, state
         )
         state.completed += 1
         return result
 
     # Create tasks and store references for cancellation
     state.tasks = [
-        asyncio.create_task(run_worker(i)) for i in range(1, args.workers + 1)
+        asyncio.create_task(run_reviewer(i)) for i in range(1, args.reviewers + 1)
     ]
 
     try:
@@ -697,7 +876,7 @@ async def async_main(args: argparse.Namespace) -> int:
         await spinner_task
         return EXIT_INTERRUPTED
 
-    workers_duration = time.monotonic() - workers_start
+    reviewers_duration = time.monotonic() - reviewers_start
 
     state.spinner_stop.set()
     await spinner_task
@@ -710,33 +889,37 @@ async def async_main(args: argparse.Namespace) -> int:
     parse_errors = 0
     failed_iters: List[int] = []
     timed_out_iters: List[int] = []
-    worker_durations: dict[int, float] = {}
+    reviewer_durations: dict[int, float] = {}
     exception_count = 0
 
     for result in results:
         if isinstance(result, Exception):
-            state.log(f"Worker exception: {result}")
+            state.log(f"Reviewer exception: {result}")
             exception_count += 1
             continue
 
         parse_errors += result.parse_errors
-        worker_durations[result.worker_id] = result.duration_seconds
+        reviewer_durations[result.reviewer_id] = result.duration_seconds
 
         if result.timed_out:
-            timed_out_iters.append(result.worker_id)
+            timed_out_iters.append(result.reviewer_id)
         elif result.exit_code != 0:
-            failed_iters.append(result.worker_id)
+            failed_iters.append(result.reviewer_id)
 
         all_findings.extend(result.findings)
 
-    # Check if all workers failed
+    # Check if all reviewers failed
     total_failures = len(failed_iters) + len(timed_out_iters) + exception_count
-    if total_failures >= args.workers:
-        state.log("All workers failed")
+    if total_failures >= args.reviewers:
+        state.log("All reviewers failed")
         return EXIT_ERROR
 
     # Summarize
     aggregated = aggregate_findings(all_findings)
+    summarizer_stop = asyncio.Event()
+    summarizer_spinner = asyncio.create_task(
+        run_phase_spinner("Summarizing:", summarizer_stop)
+    )
     (
         grouped,
         summarize_exit_code,
@@ -744,41 +927,10 @@ async def async_main(args: argparse.Namespace) -> int:
         summarize_raw,
         summarizer_duration,
     ) = await summarize_findings(aggregated)
+    summarizer_stop.set()
+    await summarizer_spinner
 
     # Output
-    if args.json:
-        output_data = {
-            "findings": grouped.get("findings", []),
-            "info": grouped.get("info", []),
-            "total_workers": args.workers,
-            "warnings": {
-                "failed_workers": failed_iters,
-                "timed_out_workers": timed_out_iters,
-                "parse_errors": parse_errors,
-            },
-            "timing": {
-                "workers_seconds": workers_duration,
-                "worker_stats": {
-                    "min": min(worker_durations.values()) if worker_durations else 0,
-                    "avg": sum(worker_durations.values()) / len(worker_durations) if worker_durations else 0,
-                    "max": max(worker_durations.values()) if worker_durations else 0,
-                },
-                "summarizer_seconds": summarizer_duration,
-                "total_seconds": workers_duration + (summarizer_duration or 0),
-            },
-        }
-        if summarize_exit_code != 0:
-            output_data["summarizer_error"] = {
-                "exit_code": summarize_exit_code,
-                "stderr": summarize_stderr,
-                "raw_output": summarize_raw,
-            }
-        print(json.dumps(output_data, indent=2))
-        if summarize_exit_code != 0:
-            return EXIT_ERROR
-        findings = grouped.get("findings", [])
-        return EXIT_FINDINGS if findings else EXIT_NO_FINDINGS
-
     output = render_report(
         grouped=grouped,
         summarize_exit_code=summarize_exit_code,
@@ -787,17 +939,62 @@ async def async_main(args: argparse.Namespace) -> int:
         parse_errors=parse_errors,
         failed_iters=failed_iters,
         timed_out_iters=timed_out_iters,
-        wall_clock_duration=workers_duration,
-        worker_durations=worker_durations,
+        wall_clock_duration=reviewers_duration,
+        reviewer_durations=reviewer_durations,
         summarizer_duration=summarizer_duration,
-        total_workers=args.workers,
+        total_reviewers=args.reviewers,
     )
     print(output)
 
     if summarize_exit_code != 0:
         return EXIT_ERROR
     findings = grouped.get("findings", [])
-    return EXIT_FINDINGS if findings else EXIT_NO_FINDINGS
+
+    if not findings:
+        return EXIT_NO_FINDINGS
+
+    comment_body = render_comment_markdown(
+        grouped=grouped,
+        total_reviewers=args.reviewers,
+        aggregated=aggregated,
+    )
+
+    if args.dry_run:
+        print("\n[review] PR comment preview (dry run):\n")
+        print(comment_body)
+        return EXIT_FINDINGS
+
+    if not check_gh_available():
+        return EXIT_ERROR
+
+    pr_number = get_current_pr_number()
+    if not pr_number:
+        state.log("No open PR found for current branch.")
+        return EXIT_ERROR
+
+    try:
+        response = input(f"Post findings to PR #{pr_number}? [y/N]: ").strip().lower()
+    except EOFError:
+        response = ""
+
+    if response not in ("y", "yes"):
+        state.log("Skipped posting findings.")
+        return EXIT_FINDINGS
+
+    result = subprocess.run(
+        ["gh", "pr", "comment", pr_number, "--body-file", "-"],
+        input=comment_body,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or "unknown error"
+        state.log(f"Failed to post comment: {stderr}")
+        return EXIT_ERROR
+
+    state.log(f"Posted findings to PR #{pr_number}.")
+    return EXIT_FINDINGS
 
 
 def main() -> int:
@@ -809,8 +1006,8 @@ def main() -> int:
     if not check_dependencies():
         return EXIT_ERROR
 
-    if args.workers < 1:
-        print("--workers must be >= 1", file=sys.stderr)
+    if args.reviewers < 1:
+        print("--reviewers must be >= 1", file=sys.stderr)
         return EXIT_ERROR
 
     return asyncio.run(async_main(args))
