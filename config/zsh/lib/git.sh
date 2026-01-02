@@ -20,8 +20,10 @@ alias gsup='git submodule update'
 alias grv='git remote --verbose'
 
 # Git worktree aliases
+alias wt='wt.py'
 alias lswt='git worktree list'
 alias rmwt='git worktree remove'
+alias cdwt='cd "$(wt pick)"'
 
 # Git worktree management - create worktree
 mkwt() {

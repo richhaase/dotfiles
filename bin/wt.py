@@ -1,0 +1,518 @@
+#!/usr/bin/env python3
+# Usage: wt.py <subcommand> [options]
+# Subcommands: co, ls, rm, pick, roots
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from contextlib import contextmanager
+import fcntl
+from dataclasses import dataclass
+from typing import Iterable, List, Optional
+
+
+STATE_DIR = os.path.join(os.path.expanduser("~"), ".local", "state", "wt")
+ROOTS_FILE = os.path.join(STATE_DIR, "roots.json")
+LOCK_FILE = os.path.join(STATE_DIR, "roots.lock")
+LOCK_TIMEOUT_SECONDS = 5
+
+
+class WTError(RuntimeError):
+    pass
+
+
+@dataclass
+class RootEntry:
+    path: str
+    branch: str
+
+
+@dataclass
+class WorktreeEntry:
+    root: str
+    path: str
+    branch: Optional[str]
+
+
+def run_git(args: List[str], *, cwd: Optional[str] = None, check: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=check,
+    )
+
+
+def ensure_state_dir() -> None:
+    os.makedirs(STATE_DIR, exist_ok=True)
+
+
+@contextmanager
+def locked_roots():
+    ensure_state_dir()
+    start = time.time()
+    with open(LOCK_FILE, "w", encoding="utf-8") as handle:
+        while True:
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.time() - start > LOCK_TIMEOUT_SECONDS:
+                    raise WTError("timed out waiting for roots lock")
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def load_roots() -> List[RootEntry]:
+    if not os.path.exists(ROOTS_FILE):
+        return []
+    try:
+        with open(ROOTS_FILE, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise WTError(f"failed to read roots: {exc}") from exc
+    roots_raw = data.get("roots", [])
+    roots = []
+    for item in roots_raw:
+        path = str(item.get("path", "")).strip()
+        branch = str(item.get("branch", "")).strip() or "main"
+        if path:
+            roots.append(RootEntry(path=os.path.realpath(path), branch=branch))
+    return roots
+
+
+def save_roots(roots: Iterable[RootEntry]) -> None:
+    ensure_state_dir()
+    tmp_path = f"{ROOTS_FILE}.tmp"
+    data = {"roots": [entry.__dict__ for entry in roots]}
+    with open(tmp_path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+    os.replace(tmp_path, ROOTS_FILE)
+
+
+def with_roots_lock(fn):
+    def wrapper(*args, **kwargs):
+        with locked_roots():
+            return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def git_default_branch(root: str) -> str:
+    try:
+        result = run_git(
+            ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+            cwd=root,
+        )
+        ref = result.stdout.strip()
+        if ref:
+            return ref.split("/", 1)[-1]
+    except subprocess.CalledProcessError:
+        pass
+    try:
+        result = run_git(["config", "--get", "init.defaultBranch"], cwd=root)
+        ref = result.stdout.strip()
+        if ref:
+            return ref
+    except subprocess.CalledProcessError:
+        pass
+    try:
+        result = run_git(["symbolic-ref", "--quiet", "--short", "HEAD"], cwd=root)
+        ref = result.stdout.strip()
+        if ref:
+            return ref
+    except subprocess.CalledProcessError:
+        pass
+    return "main"
+
+
+def normalize_repo_root(path: str) -> str:
+    try:
+        result = run_git(["rev-parse", "--show-toplevel"], cwd=path)
+    except subprocess.CalledProcessError as exc:
+        raise WTError(f"{path} is not a git repository") from exc
+    return os.path.realpath(result.stdout.strip())
+
+
+def ensure_worktrees_excluded(common_dir: str) -> None:
+    info_dir = os.path.join(common_dir, "info")
+    exclude_path = os.path.join(info_dir, "exclude")
+    os.makedirs(info_dir, exist_ok=True)
+    try:
+        with open(exclude_path, "r", encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except OSError:
+        lines = []
+    if ".worktrees/" not in lines:
+        with open(exclude_path, "a", encoding="utf-8") as handle:
+            handle.write(".worktrees/\n")
+
+
+def parse_worktree_list(output: str) -> List[dict]:
+    entries = []
+    current: dict = {}
+    for line in output.splitlines():
+        if not line.strip():
+            if current:
+                entries.append(current)
+                current = {}
+            continue
+        key, _, value = line.partition(" ")
+        current[key] = value
+    if current:
+        entries.append(current)
+    return entries
+
+
+def list_worktrees(root: str) -> List[WorktreeEntry]:
+    try:
+        result = run_git(["worktree", "list", "--porcelain"], cwd=root)
+    except subprocess.CalledProcessError as exc:
+        raise WTError(f"failed to list worktrees for {root}") from exc
+    entries = []
+    for item in parse_worktree_list(result.stdout):
+        path = item.get("worktree")
+        if not path:
+            continue
+        branch_ref = item.get("branch")
+        branch = None
+        if branch_ref:
+            if branch_ref.startswith("refs/heads/"):
+                branch = branch_ref[len("refs/heads/") :]
+            else:
+                branch = branch_ref
+        entries.append(WorktreeEntry(root=root, path=os.path.realpath(path), branch=branch))
+    return entries
+
+
+def list_all_worktrees(roots: Iterable[RootEntry]) -> List[WorktreeEntry]:
+    worktrees: List[WorktreeEntry] = []
+    for root in roots:
+        try:
+            worktrees.extend(list_worktrees(root.path))
+        except WTError as exc:
+            print(f"wt: {exc}", file=sys.stderr)
+    return worktrees
+
+
+def require_fzf() -> None:
+    if not shutil.which("fzf"):
+        raise WTError("fzf not found in PATH")
+
+
+def select_with_fzf(lines: List[str]) -> Optional[str]:
+    if not lines:
+        return None
+    require_fzf()
+    proc = subprocess.run(
+        ["fzf", "--with-nth=2,3", "--delimiter=\t"],
+        input="\n".join(lines),
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip()
+
+
+def pick_worktree(roots: Iterable[RootEntry]) -> Optional[WorktreeEntry]:
+    worktrees = list_all_worktrees(roots)
+    lines = []
+    by_path = {}
+    for entry in worktrees:
+        repo = os.path.basename(entry.root)
+        branch = entry.branch or "(detached)"
+        line = f"{entry.path}\t{repo}\t{branch}"
+        lines.append(line)
+        by_path[entry.path] = entry
+    selected = select_with_fzf(lines)
+    if not selected:
+        return None
+    path = selected.split("\t", 1)[0]
+    return by_path.get(path)
+
+
+def pick_root(roots: Iterable[RootEntry]) -> Optional[RootEntry]:
+    lines = []
+    by_path = {}
+    for entry in roots:
+        repo = os.path.basename(entry.path)
+        line = f"{entry.path}\t{repo}\t{entry.branch}"
+        lines.append(line)
+        by_path[entry.path] = entry
+    selected = select_with_fzf(lines)
+    if not selected:
+        return None
+    path = selected.split("\t", 1)[0]
+    return by_path.get(path)
+
+
+@with_roots_lock
+def update_roots(update_fn):
+    roots = load_roots()
+    updated = update_fn(roots)
+    if updated is None:
+        updated = roots
+    save_roots(updated)
+    return updated
+
+
+def add_root_entry(path: str, branch: Optional[str]) -> RootEntry:
+    root_path = normalize_repo_root(path)
+    branch_value = branch or git_default_branch(root_path)
+    return RootEntry(path=root_path, branch=branch_value)
+
+
+def ensure_root_registered(root_path: str) -> None:
+    def updater(roots: List[RootEntry]) -> List[RootEntry]:
+        resolved = os.path.realpath(root_path)
+        for entry in roots:
+            if entry.path == resolved:
+                return roots
+        entry = add_root_entry(resolved, None)
+        return roots + [entry]
+
+    update_roots(updater)
+
+
+def format_ls_rows(entries: List[WorktreeEntry]) -> List[str]:
+    rows = []
+    repo_width = 0
+    branch_width = 0
+    for entry in entries:
+        repo = os.path.basename(entry.root)
+        branch = entry.branch or "-"
+        repo_width = max(repo_width, len(repo))
+        branch_width = max(branch_width, len(branch))
+    header = f"{'REPO'.ljust(repo_width)}  {'BRANCH'.ljust(branch_width)}  PATH"
+    rows.append(header)
+    for entry in entries:
+        repo = os.path.basename(entry.root)
+        branch = entry.branch or "-"
+        rows.append(f"{repo.ljust(repo_width)}  {branch.ljust(branch_width)}  {entry.path}")
+    return rows
+
+
+def format_roots_rows(entries: List[RootEntry]) -> List[str]:
+    return [f"{entry.path}\t{entry.branch}" for entry in entries]
+
+
+def cmd_roots(args: argparse.Namespace) -> int:
+    if args.list:
+        roots = load_roots()
+        if not roots:
+            return 0
+        for line in format_roots_rows(roots):
+            print(line)
+        return 0
+    if args.add:
+        entry = add_root_entry(args.add, args.branch)
+
+        def updater(roots: List[RootEntry]) -> List[RootEntry]:
+            existing = [r for r in roots if r.path != entry.path]
+            return existing + [entry]
+
+        update_roots(updater)
+        return 0
+    if args.delete is not None:
+        def updater(roots: List[RootEntry]) -> List[RootEntry]:
+            target = args.delete
+            if not target:
+                selected = pick_root(roots)
+                if not selected:
+                    return roots
+                target = selected.path
+            target = os.path.realpath(target)
+            return [r for r in roots if r.path != target]
+
+        update_roots(updater)
+        return 0
+    raise WTError("roots requires one of -a, -d, or -l")
+
+
+def cmd_ls(_: argparse.Namespace) -> int:
+    def prune_missing(roots: List[RootEntry]) -> List[RootEntry]:
+        return [r for r in roots if os.path.exists(r.path)]
+
+    roots = update_roots(prune_missing)
+    entries = list_all_worktrees(roots)
+    if not entries:
+        return 0
+    for line in format_ls_rows(entries):
+        print(line)
+    return 0
+
+
+def cmd_pick(_: argparse.Namespace) -> int:
+    roots = load_roots()
+    entry = pick_worktree(roots)
+    if not entry:
+        return 1
+    print(entry.path)
+    return 0
+
+
+def cmd_co(args: argparse.Namespace) -> int:
+    try:
+        run_git(["rev-parse", "--is-inside-work-tree"])
+    except subprocess.CalledProcessError as exc:
+        raise WTError("not inside a git repository") from exc
+
+    branch = args.branch.strip().rstrip("/")
+    if not branch:
+        raise WTError("branch name cannot be empty")
+
+    common_dir = run_git(["rev-parse", "--git-common-dir"]).stdout.strip()
+    root = os.path.realpath(os.path.join(common_dir, ".."))
+    ensure_root_registered(root)
+    ensure_worktrees_excluded(common_dir)
+
+    wt_path = args.path
+    if not wt_path:
+        branch_dir = branch.split("/")[-1] or branch
+        wt_path = os.path.join(root, ".worktrees", branch_dir)
+    wt_path = os.path.realpath(wt_path)
+
+    if os.path.exists(wt_path) and not os.path.isdir(wt_path):
+        raise WTError(f"{wt_path} exists and is not a directory")
+    if os.path.isdir(wt_path) and os.listdir(wt_path):
+        raise WTError(f"{wt_path} exists and is not empty")
+    os.makedirs(os.path.dirname(wt_path), exist_ok=True)
+
+    force_flag: List[str] = []
+    worktrees = list_worktrees(root)
+    if any(entry.branch == branch for entry in worktrees):
+        force_flag = ["--force"]
+
+    if run_git(["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=root, check=False).returncode == 0:
+        run_git(["worktree", "add", *force_flag, wt_path, branch], cwd=root)
+    elif run_git(
+        ["ls-remote", "--exit-code", "--heads", "origin", branch],
+        cwd=root,
+        check=False,
+    ).returncode == 0:
+        run_git(["fetch", "origin", branch], cwd=root)
+        run_git(["branch", "--track", branch, f"origin/{branch}"], cwd=root)
+        run_git(["worktree", "add", *force_flag, wt_path, branch], cwd=root)
+    else:
+        run_git(["worktree", "add", *force_flag, "-b", branch, wt_path], cwd=root)
+
+    try:
+        resolved = run_git(["rev-parse", "--show-toplevel"], cwd=wt_path).stdout.strip()
+    except subprocess.CalledProcessError:
+        resolved = wt_path
+    print(resolved)
+    return 0
+
+
+def is_branch_merged(root: str, branch: str, base_branch: str) -> bool:
+    try:
+        result = run_git(["branch", "--merged", base_branch], cwd=root)
+    except subprocess.CalledProcessError:
+        return False
+    merged = [line.strip().lstrip("* ").strip() for line in result.stdout.splitlines()]
+    return branch in merged
+
+
+def cmd_rm(args: argparse.Namespace) -> int:
+    roots = load_roots()
+    entry: Optional[WorktreeEntry] = None
+    if args.path:
+        target = os.path.realpath(args.path)
+        for item in list_all_worktrees(roots):
+            if item.path == target:
+                entry = item
+                break
+        if not entry:
+            raise WTError(f"worktree not found for {args.path}")
+    else:
+        entry = pick_worktree(roots)
+    if not entry:
+        return 1
+
+    root = entry.root
+    branch = entry.branch
+    default_branch = git_default_branch(root)
+
+    if branch and branch != default_branch and is_branch_merged(root, branch, default_branch):
+        run_git(["worktree", "remove", entry.path], cwd=root)
+        run_git(["branch", "-d", branch], cwd=root)
+        return 0
+
+    if branch == default_branch:
+        run_git(["worktree", "remove", entry.path], cwd=root)
+        return 0
+
+    prompt_branch = branch or "(detached)"
+    response = input(
+        f"Branch {prompt_branch} is not merged into {default_branch}. "
+        "Do nothing or force delete? [d/f] "
+    ).strip().lower()
+    if response != "f":
+        return 0
+    run_git(["worktree", "remove", "--force", entry.path], cwd=root)
+    if branch:
+        run_git(["branch", "-D", branch], cwd=root)
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Worktree utility")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    roots = sub.add_parser("roots", help="manage registered roots")
+    roots_group = roots.add_mutually_exclusive_group(required=True)
+    roots_group.add_argument("-a", "--add", metavar="PATH", help="add a repo root")
+    roots_group.add_argument(
+        "-d",
+        "--delete",
+        nargs="?",
+        const="",
+        metavar="PATH",
+        help="delete a repo root",
+    )
+    roots_group.add_argument("-l", "--list", action="store_true", help="list repo roots")
+    roots.add_argument("--branch", help="default branch for the root")
+    roots.set_defaults(func=cmd_roots)
+
+    ls = sub.add_parser("ls", help="list worktrees")
+    ls.set_defaults(func=cmd_ls)
+
+    co = sub.add_parser("co", help="create a worktree")
+    co.add_argument("branch", help="branch name")
+    co.add_argument("path", nargs="?", help="worktree path")
+    co.set_defaults(func=cmd_co)
+
+    rm = sub.add_parser("rm", help="remove a worktree")
+    rm.add_argument("path", nargs="?", help="worktree path")
+    rm.set_defaults(func=cmd_rm)
+
+    pick = sub.add_parser("pick", help="pick a worktree")
+    pick.set_defaults(func=cmd_pick)
+
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    try:
+        return args.func(args)
+    except WTError as exc:
+        print(f"wt: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
