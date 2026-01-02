@@ -461,3 +461,9 @@ resources:
         manager: brew
         name: gemini-cli
       installed_at: "2025-12-29T12:08:25-07:00"
+    - type: package
+      id: brew:actionlint
+      metadata:
+        manager: brew
+        name: actionlint
+      installed_at: "2025-12-31T11:19:35-07:00"
