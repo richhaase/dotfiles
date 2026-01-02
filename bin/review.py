@@ -206,21 +206,6 @@ def get_current_pr_number() -> str | None:
     return pr_number or None
 
 
-def strip_ansi(text: str) -> str:
-    cleaned = []
-    in_escape = False
-    for char in text:
-        if in_escape:
-            if char == "m":
-                in_escape = False
-            continue
-        if char == "\x1b":
-            in_escape = True
-            continue
-        cleaned.append(char)
-    return "".join(cleaned)
-
-
 def collect_source_indices(groups: List[FindingGroup]) -> List[int]:
     seen: set[int] = set()
     indices: List[int] = []
