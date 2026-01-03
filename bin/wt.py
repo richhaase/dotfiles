@@ -436,11 +436,23 @@ def cmd_roots(args: argparse.Namespace) -> int:
     raise WTError("roots requires one of -a, -d, or -l")
 
 
-def cmd_ls(_: argparse.Namespace) -> int:
+def cmd_ls(args: argparse.Namespace) -> int:
     def prune_missing(roots: List[RootEntry]) -> List[RootEntry]:
         return [r for r in roots if os.path.exists(r.path)]
 
     roots = update_roots(prune_missing)
+
+    if args.root:
+        target = args.root
+        resolved = os.path.realpath(target) if os.path.exists(target) else None
+        filtered = [
+            r for r in roots
+            if r.path == resolved or os.path.basename(r.path) == target
+        ]
+        if not filtered:
+            raise WTError(f"no registered root matches '{target}'")
+        roots = filtered
+
     entries = list_all_worktrees(roots)
     if not entries:
         return 0
@@ -586,6 +598,7 @@ def build_parser() -> argparse.ArgumentParser:
     roots.set_defaults(func=cmd_roots)
 
     ls = sub.add_parser("ls", help="list worktrees")
+    ls.add_argument("root", nargs="?", help="filter by repo root (path or name)")
     ls.set_defaults(func=cmd_ls)
 
     co = sub.add_parser("co", help="create a worktree")
