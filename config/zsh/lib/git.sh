@@ -23,7 +23,13 @@ alias grv='git remote --verbose'
 alias wt='wt.py'
 alias lswt='git worktree list'
 alias rmwt='git worktree remove'
-alias cdwt='cd "$(wt pick)"'
+cdwt() {
+  local wt_path
+  wt_path="$(wt pick)"
+  if [ -n "$wt_path" ]; then
+    cd "$wt_path"
+  fi
+}
 
 # Git worktree management - create worktree
 mkwt() {
