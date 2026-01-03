@@ -21,6 +21,47 @@ STATE_DIR = os.path.join(os.path.expanduser("~"), ".local", "state", "wt")
 ROOTS_FILE = os.path.join(STATE_DIR, "roots.json")
 LOCK_FILE = os.path.join(STATE_DIR, "roots.lock")
 LOCK_TIMEOUT_SECONDS = 5
+HOME_DIR = os.path.expanduser("~")
+
+
+class Colors:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    CYAN = "\033[36m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    MAGENTA = "\033[35m"
+
+    _enabled = True
+
+    @classmethod
+    def disable(cls) -> None:
+        cls._enabled = False
+
+    @classmethod
+    def wrap(cls, text: str, *codes: str) -> str:
+        if not cls._enabled:
+            return text
+        return "".join(codes) + text + cls.RESET
+
+
+def shorten_path(path: str) -> str:
+    if path.startswith(HOME_DIR):
+        return "~" + path[len(HOME_DIR):]
+    return path
+
+
+def truncate(text: str, width: int, left: bool = False) -> str:
+    if len(text) <= width or width <= 3:
+        return text[:width] if not left else text[-width:]
+    if left:
+        return "..." + text[-(width - 3):]
+    return text[:width - 3] + "..."
+
+
+def get_terminal_width() -> int:
+    return shutil.get_terminal_size((80, 24)).columns
 
 
 class WTError(RuntimeError):
@@ -287,25 +328,79 @@ def ensure_root_registered(root_path: str) -> None:
 
 
 def format_ls_rows(entries: List[WorktreeEntry]) -> List[str]:
-    rows = []
-    repo_width = 0
-    branch_width = 0
+    term_width = get_terminal_width()
+    gap = 2
+
+    # Calculate column widths based on content
+    repo_width = max((len(os.path.basename(e.root)) for e in entries), default=4)
+    branch_width = max((len(e.branch or "-") for e in entries), default=6)
+
+    # Cap widths to leave room for path
+    max_repo = min(repo_width, 30)
+    max_branch = min(branch_width, 40)
+    path_width = max(20, term_width - max_repo - max_branch - gap * 2)
+
+    # Header
+    header = (
+        Colors.wrap("REPO".ljust(max_repo), Colors.DIM, Colors.CYAN)
+        + " " * gap
+        + Colors.wrap("BRANCH".ljust(max_branch), Colors.DIM, Colors.GREEN)
+        + " " * gap
+        + Colors.wrap("PATH", Colors.DIM)
+    )
+    rows = [header]
+
     for entry in entries:
-        repo = os.path.basename(entry.root)
-        branch = entry.branch or "-"
-        repo_width = max(repo_width, len(repo))
-        branch_width = max(branch_width, len(branch))
-    header = f"{'REPO'.ljust(repo_width)}  {'BRANCH'.ljust(branch_width)}  PATH"
-    rows.append(header)
-    for entry in entries:
-        repo = os.path.basename(entry.root)
-        branch = entry.branch or "-"
-        rows.append(f"{repo.ljust(repo_width)}  {branch.ljust(branch_width)}  {entry.path}")
+        repo = truncate(os.path.basename(entry.root), max_repo)
+        branch_raw = entry.branch or "-"
+        branch_display = truncate(branch_raw, max_branch)
+        path_short = shorten_path(entry.path)
+        path_display = truncate(path_short, path_width, left=True)
+
+        # Color branches: yellow for main/master, magenta for detached, green otherwise
+        if branch_raw in ("main", "master"):
+            branch_color = Colors.YELLOW
+        elif branch_raw == "-":
+            branch_color = Colors.MAGENTA
+        else:
+            branch_color = Colors.GREEN
+
+        row = (
+            Colors.wrap(repo.ljust(max_repo), Colors.CYAN)
+            + " " * gap
+            + Colors.wrap(branch_display.ljust(max_branch), branch_color)
+            + " " * gap
+            + Colors.wrap(path_display, Colors.DIM)
+        )
+        rows.append(row)
+
     return rows
 
 
 def format_roots_rows(entries: List[RootEntry]) -> List[str]:
-    return [f"{entry.path}\t{entry.branch}" for entry in entries]
+    if not entries:
+        return []
+
+    term_width = get_terminal_width()
+    gap = 2
+
+    path_width = max((len(shorten_path(e.path)) for e in entries), default=4)
+    branch_width = max((len(e.branch) for e in entries), default=6)
+
+    max_path = min(path_width, term_width - branch_width - gap - 10)
+
+    rows = []
+    for entry in entries:
+        path_short = shorten_path(entry.path)
+        path_display = truncate(path_short, max_path, left=True)
+        row = (
+            Colors.wrap(path_display.ljust(max_path), Colors.DIM)
+            + " " * gap
+            + Colors.wrap(entry.branch, Colors.YELLOW)
+        )
+        rows.append(row)
+
+    return rows
 
 
 def cmd_roots(args: argparse.Namespace) -> int:
@@ -447,7 +542,10 @@ def cmd_rm(args: argparse.Namespace) -> int:
 
     if branch and branch != default_branch and is_branch_merged(root, branch, default_branch):
         run_git(["worktree", "remove", entry.path], cwd=root)
-        run_git(["branch", "-d", branch], cwd=root)
+        result = run_git(["branch", "-d", branch], cwd=root, check=False)
+        if result.returncode != 0:
+            msg = result.stderr.strip() or "branch deletion failed"
+            print(f"wt: warning: {msg}", file=sys.stderr)
         return 0
 
     if branch == default_branch:
@@ -469,6 +567,7 @@ def cmd_rm(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Worktree utility")
+    parser.add_argument("--no-color", action="store_true", help="disable colored output")
     sub = parser.add_subparsers(dest="command", required=True)
 
     roots = sub.add_parser("roots", help="manage registered roots")
@@ -507,6 +606,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.no_color or not sys.stdout.isatty():
+        Colors.disable()
+
     try:
         return args.func(args)
     except WTError as exc:
