@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Usage: wt.py <subcommand> [options]
-# Subcommands: co, ls, rm, pick, roots
+# Subcommands: co, ls, rm, pick, roots, which, info
 
 from __future__ import annotations
 
@@ -407,6 +407,12 @@ def cmd_roots(args: argparse.Namespace) -> int:
     if args.list:
         roots = load_roots()
         if not roots:
+            if getattr(args, "json", False):
+                print("[]")
+            return 0
+        if getattr(args, "json", False):
+            data = [{"path": r.path, "branch": r.branch} for r in roots]
+            print(json.dumps(data, indent=2))
             return 0
         for line in format_roots_rows(roots):
             print(line)
@@ -455,7 +461,18 @@ def cmd_ls(args: argparse.Namespace) -> int:
 
     entries = list_all_worktrees(roots)
     if not entries:
+        if args.json:
+            print("[]")
         return 0
+
+    if args.json:
+        data = [
+            {"root": e.root, "path": e.path, "branch": e.branch}
+            for e in entries
+        ]
+        print(json.dumps(data, indent=2))
+        return 0
+
     for line in format_ls_rows(entries):
         print(line)
     return 0
@@ -551,7 +568,10 @@ def cmd_rm(args: argparse.Namespace) -> int:
     root = entry.root
     branch = entry.branch
     default_branch = git_default_branch(root)
+    force = getattr(args, "force", False)
+    delete_branch = getattr(args, "delete_branch", False)
 
+    # Merged branch: safe to remove worktree and delete branch
     if branch and branch != default_branch and is_branch_merged(root, branch, default_branch):
         run_git(["worktree", "remove", entry.path], cwd=root)
         result = run_git(["branch", "-d", branch], cwd=root, check=False)
@@ -560,8 +580,16 @@ def cmd_rm(args: argparse.Namespace) -> int:
             print(f"wt: warning: {msg}", file=sys.stderr)
         return 0
 
+    # Default branch: just remove worktree, never delete the branch
     if branch == default_branch:
         run_git(["worktree", "remove", entry.path], cwd=root)
+        return 0
+
+    # Unmerged branch: requires --force or interactive confirmation
+    if force:
+        run_git(["worktree", "remove", "--force", entry.path], cwd=root)
+        if delete_branch and branch:
+            run_git(["branch", "-D", branch], cwd=root)
         return 0
 
     prompt_branch = branch or "(detached)"
@@ -574,6 +602,66 @@ def cmd_rm(args: argparse.Namespace) -> int:
     run_git(["worktree", "remove", "--force", entry.path], cwd=root)
     if branch:
         run_git(["branch", "-D", branch], cwd=root)
+    return 0
+
+
+def cmd_which(_: argparse.Namespace) -> int:
+    try:
+        run_git(["rev-parse", "--is-inside-work-tree"])
+    except subprocess.CalledProcessError:
+        return 1
+    try:
+        common_dir = run_git(["rev-parse", "--git-common-dir"]).stdout.strip()
+        root = os.path.realpath(os.path.join(common_dir, ".."))
+        print(root)
+        return 0
+    except subprocess.CalledProcessError:
+        return 1
+
+
+def cmd_info(args: argparse.Namespace) -> int:
+    path = args.path or os.getcwd()
+    path = os.path.realpath(path)
+
+    try:
+        run_git(["rev-parse", "--is-inside-work-tree"], cwd=path)
+    except subprocess.CalledProcessError as exc:
+        raise WTError(f"{path} is not inside a git repository") from exc
+
+    try:
+        toplevel = run_git(["rev-parse", "--show-toplevel"], cwd=path).stdout.strip()
+        toplevel = os.path.realpath(toplevel)
+    except subprocess.CalledProcessError as exc:
+        raise WTError(f"could not determine worktree toplevel") from exc
+
+    try:
+        common_dir = run_git(["rev-parse", "--git-common-dir"], cwd=path).stdout.strip()
+        root = os.path.realpath(os.path.join(common_dir, ".."))
+    except subprocess.CalledProcessError as exc:
+        raise WTError(f"could not determine git common dir") from exc
+
+    # Find matching worktree entry
+    worktrees = list_worktrees(root)
+    entry = None
+    for wt in worktrees:
+        if wt.path == toplevel:
+            entry = wt
+            break
+
+    if not entry:
+        raise WTError(f"could not find worktree info for {toplevel}")
+
+    default_branch = git_default_branch(root)
+    is_main = entry.path == root
+
+    data = {
+        "root": entry.root,
+        "path": entry.path,
+        "branch": entry.branch,
+        "default_branch": default_branch,
+        "is_main_worktree": is_main,
+    }
+    print(json.dumps(data, indent=2))
     return 0
 
 
@@ -595,10 +683,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     roots_group.add_argument("-l", "--list", action="store_true", help="list repo roots")
     roots.add_argument("--branch", help="default branch for the root")
+    roots.add_argument("--json", action="store_true", help="output as JSON (with -l)")
     roots.set_defaults(func=cmd_roots)
 
     ls = sub.add_parser("ls", help="list worktrees")
     ls.add_argument("root", nargs="?", help="filter by repo root (path or name)")
+    ls.add_argument("--json", action="store_true", help="output as JSON")
     ls.set_defaults(func=cmd_ls)
 
     co = sub.add_parser("co", help="create a worktree")
@@ -608,10 +698,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     rm = sub.add_parser("rm", help="remove a worktree")
     rm.add_argument("path", nargs="?", help="worktree path")
+    rm.add_argument("-f", "--force", action="store_true", help="force remove without prompting")
+    rm.add_argument("-D", "--delete-branch", action="store_true", help="also delete the branch (with --force)")
     rm.set_defaults(func=cmd_rm)
 
     pick = sub.add_parser("pick", help="pick a worktree")
     pick.set_defaults(func=cmd_pick)
+
+    which = sub.add_parser("which", help="print root of current worktree")
+    which.set_defaults(func=cmd_which)
+
+    info = sub.add_parser("info", help="show JSON info about a worktree")
+    info.add_argument("path", nargs="?", help="worktree path (default: current directory)")
+    info.set_defaults(func=cmd_info)
 
     return parser
 
