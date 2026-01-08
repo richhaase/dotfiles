@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: code_review.py [-r N] [-b BASE] [-t SECS] [-R N] [-v] [-l|--local] [-B BRANCH]
+# Usage: code_review.py [-r N] [-b BASE] [-t SECS] [-R N] [-v] [-l|--local] [-B WORKTREE_BRANCH]
 # Env: REVIEW_REVIEWERS, REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
 # Exit: 0=no findings, 1=findings, 2=error, 130=interrupted
 
@@ -453,8 +453,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-B",
-        "--branch",
-        dest="review_branch",
+        "--worktree-branch",
+        dest="worktree_branch",
         metavar="BRANCH",
         help="Review a branch in a temporary worktree (worktree is cleaned up after review)",
     )
@@ -880,14 +880,14 @@ def render_report(
 async def async_main(args: argparse.Namespace) -> int:
     """Async entry point."""
     # Handle worktree-based review
-    if args.review_branch:
+    if args.worktree_branch:
         return await run_review_in_worktree(args)
     return await run_review(args, cwd=None)
 
 
 async def run_review_in_worktree(args: argparse.Namespace) -> int:
     """Run review in a temporary worktree for the specified branch."""
-    branch = args.review_branch
+    branch = args.worktree_branch
     print(f"[review] Creating temporary worktree for branch '{branch}'...", file=sys.stderr)
 
     try:
