@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: code_review.py [-r N] [-b BASE] [-t SECS] [-R N] [-v] [-l|--local] [-B WORKTREE_BRANCH]
+# Usage: code_review.py [-r N] [-b BASE] [-t SECS] [-R N] [-v] [-l|--local] [-B WORKTREE_BRANCH] [-y|--yes] [-n|--no]
 # Env: REVIEW_REVIEWERS, REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
 # Exit: 0=no findings, 1=findings, 2=error, 130=interrupted
 
@@ -255,17 +255,23 @@ def confirm_and_execute_pr_action(
     state: ReviewState,
     local_mode: bool,
     local_skip_message: str,
+    auto_yes: bool = False,
+    auto_no: bool = False,
 ) -> Tuple[bool, Optional[str]]:
     """
     Preview, confirm, and execute a PR action.
 
     Returns (executed, error_message).
     - (True, None) = action executed successfully
-    - (False, None) = skipped (local mode, no PR, or user declined)
+    - (False, None) = skipped (local mode, no PR, user declined, or auto_no)
     - (False, "error") = failed with error message
     """
     if local_mode:
         state.log(local_skip_message)
+        return False, None
+
+    if auto_no:
+        state.log(action.skip_message)
         return False, None
 
     # Preview
@@ -284,15 +290,19 @@ def confirm_and_execute_pr_action(
         state.log("No open PR found for current branch.")
         return False, None
 
-    # Confirm
-    print("")
-    try:
-        prompt = action.prompt_template.format(pr=pr_number)
-        response = input(f"{prompt} [y/N]: ").strip().lower()
-    except EOFError:
-        response = ""
+    # Confirm (or auto-confirm with -y)
+    if auto_yes:
+        confirmed = True
+    else:
+        print("")
+        try:
+            prompt = action.prompt_template.format(pr=pr_number)
+            response = input(f"{prompt} [y/N]: ").strip().lower()
+        except EOFError:
+            response = ""
+        confirmed = response in ("y", "yes")
 
-    if response not in ("y", "yes"):
+    if not confirmed:
         state.log(action.skip_message)
         return False, None
 
@@ -579,6 +589,21 @@ def parse_args() -> argparse.Namespace:
         dest="worktree_branch",
         metavar="BRANCH",
         help="Review a branch in a temporary worktree (worktree is cleaned up after review)",
+    )
+
+    # Mutually exclusive auto-submit options
+    submit_group = parser.add_mutually_exclusive_group()
+    submit_group.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Automatically submit review without prompting",
+    )
+    submit_group.add_argument(
+        "-n",
+        "--no",
+        action="store_true",
+        help="Automatically skip submitting review without prompting",
     )
     return parser.parse_args()
 
@@ -1180,6 +1205,8 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
             state=state,
             local_mode=args.local,
             local_skip_message="Local mode enabled; skipping PR approval.",
+            auto_yes=args.yes,
+            auto_no=args.no,
         )
 
         if error:
@@ -1209,6 +1236,8 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
         state=state,
         local_mode=args.local,
         local_skip_message="Local mode enabled; skipping PR comment.",
+        auto_yes=args.yes,
+        auto_no=args.no,
     )
 
     if error:
