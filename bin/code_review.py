@@ -374,6 +374,7 @@ async def collect_findings(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         start_new_session=True,
+        limit=100 * 1024 * 1024,  # 100MB line limit for large JSON output
     )
 
     try:
