@@ -17,7 +17,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Generator, List, Optional, Tuple, TypedDict
+from typing import Callable, Generator, List, Optional, Tuple, TypedDict
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants
@@ -208,11 +208,11 @@ def get_current_pr_number() -> str | None:
     return pr_number or None
 
 
-def approve_pr(pr_number: str, comment_body: str) -> Tuple[bool, str]:
-    """Approve a PR with the given comment body. Returns (success, error_message)."""
+def post_pr_comment(pr_number: str, body: str) -> Tuple[bool, str]:
+    """Post a comment to a PR. Returns (success, error_message)."""
     result = subprocess.run(
-        ["gh", "pr", "review", pr_number, "--approve", "--body-file", "-"],
-        input=comment_body,
+        ["gh", "pr", "comment", pr_number, "--body-file", "-"],
+        input=body,
         text=True,
         capture_output=True,
         check=False,
@@ -221,6 +221,88 @@ def approve_pr(pr_number: str, comment_body: str) -> Tuple[bool, str]:
         stderr = result.stderr.strip() or "unknown error"
         return False, stderr
     return True, ""
+
+
+def approve_pr(pr_number: str, body: str) -> Tuple[bool, str]:
+    """Approve a PR with the given body. Returns (success, error_message)."""
+    result = subprocess.run(
+        ["gh", "pr", "review", pr_number, "--approve", "--body-file", "-"],
+        input=body,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or "unknown error"
+        return False, stderr
+    return True, ""
+
+
+@dataclass
+class PRAction:
+    """Configuration for a PR action (comment or approval)."""
+
+    body: str
+    preview_label: str  # e.g., "PR comment preview" or "Approval comment preview"
+    prompt_template: str  # e.g., "Post findings to PR #{pr}?" or "Approve PR #{pr}?"
+    success_template: str  # e.g., "Posted findings to PR #{pr}."
+    skip_message: str  # e.g., "Skipped posting findings."
+    execute: "Callable[[str, str], Tuple[bool, str]]"  # fn(pr_number, body) -> (ok, err)
+
+
+def confirm_and_execute_pr_action(
+    action: PRAction,
+    state: ReviewState,
+    local_mode: bool,
+    local_skip_message: str,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Preview, confirm, and execute a PR action.
+
+    Returns (executed, error_message).
+    - (True, None) = action executed successfully
+    - (False, None) = skipped (local mode, no PR, or user declined)
+    - (False, "error") = failed with error message
+    """
+    if local_mode:
+        state.log(local_skip_message)
+        return False, None
+
+    # Preview
+    print(f"\n[review] {action.preview_label}:\n")
+    width = min(get_terminal_width(), MAX_REPORT_WIDTH)
+    divider = get_ruler(width, "━")
+    print(divider)
+    print(action.body)
+    print(divider)
+
+    if not check_gh_available():
+        return False, "gh not available"
+
+    pr_number = get_current_pr_number()
+    if not pr_number:
+        state.log("No open PR found for current branch.")
+        return False, None
+
+    # Confirm
+    print("")
+    try:
+        prompt = action.prompt_template.format(pr=pr_number)
+        response = input(f"{prompt} [y/N]: ").strip().lower()
+    except EOFError:
+        response = ""
+
+    if response not in ("y", "yes"):
+        state.log(action.skip_message)
+        return False, None
+
+    # Execute
+    success, error = action.execute(pr_number, action.body)
+    if not success:
+        return False, error
+
+    state.log(action.success_template.format(pr=pr_number))
+    return True, None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1078,97 +1160,61 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
 
     if not findings:
         # LGTM flow - approve the PR
-        if args.local:
-            state.log("Local mode enabled; skipping PR approval.")
-            return EXIT_NO_FINDINGS
-
         lgtm_body = render_lgtm_markdown(
             total_reviewers=args.reviewers,
             successful_reviewers=successful_reviewers,
             reviewer_durations=reviewer_durations,
         )
 
-        print("\n[review] Approval comment preview:\n")
-        width = min(get_terminal_width(), MAX_REPORT_WIDTH)
-        divider = get_ruler(width, "━")
-        print(divider)
-        print(lgtm_body)
-        print(divider)
+        action = PRAction(
+            body=lgtm_body,
+            preview_label="Approval comment preview",
+            prompt_template="Approve PR #{pr}?",
+            success_template="Approved PR #{pr}.",
+            skip_message="Skipped approving PR.",
+            execute=approve_pr,
+        )
 
-        if not check_gh_available():
-            return EXIT_ERROR
+        executed, error = confirm_and_execute_pr_action(
+            action=action,
+            state=state,
+            local_mode=args.local,
+            local_skip_message="Local mode enabled; skipping PR approval.",
+        )
 
-        pr_number = get_current_pr_number()
-        if not pr_number:
-            state.log("No open PR found for current branch.")
-            return EXIT_NO_FINDINGS
-
-        print("")
-        try:
-            response = input(f"Approve PR #{pr_number}? [y/N]: ").strip().lower()
-        except EOFError:
-            response = ""
-
-        if response not in ("y", "yes"):
-            state.log("Skipped approving PR.")
-            return EXIT_NO_FINDINGS
-
-        success, error = approve_pr(pr_number, lgtm_body)
-        if not success:
+        if error:
             state.log(f"Failed to approve PR: {error}")
             return EXIT_ERROR
 
-        state.log(f"Approved PR #{pr_number}.")
         return EXIT_NO_FINDINGS
 
+    # Findings flow - post comment to PR
     comment_body = render_comment_markdown(
         grouped=grouped,
         total_reviewers=args.reviewers,
         aggregated=aggregated,
     )
 
-    if args.local:
-        state.log("Local mode enabled; skipping PR comment.")
-        return EXIT_FINDINGS
-
-    print("\n[review] PR comment preview:\n")
-    width = min(get_terminal_width(), MAX_REPORT_WIDTH)
-    divider = get_ruler(width, "━")
-    print(divider)
-    print(comment_body)
-    print(divider)
-
-    if not check_gh_available():
-        return EXIT_ERROR
-
-    pr_number = get_current_pr_number()
-    if not pr_number:
-        state.log("No open PR found for current branch.")
-        return EXIT_ERROR
-
-    print("")
-    try:
-        response = input(f"Post findings to PR #{pr_number}? [y/N]: ").strip().lower()
-    except EOFError:
-        response = ""
-
-    if response not in ("y", "yes"):
-        state.log("Skipped posting findings.")
-        return EXIT_FINDINGS
-
-    result = subprocess.run(
-        ["gh", "pr", "comment", pr_number, "--body-file", "-"],
-        input=comment_body,
-        text=True,
-        capture_output=True,
-        check=False,
+    action = PRAction(
+        body=comment_body,
+        preview_label="PR comment preview",
+        prompt_template="Post findings to PR #{pr}?",
+        success_template="Posted findings to PR #{pr}.",
+        skip_message="Skipped posting findings.",
+        execute=post_pr_comment,
     )
-    if result.returncode != 0:
-        stderr = result.stderr.strip() or "unknown error"
-        state.log(f"Failed to post comment: {stderr}")
+
+    executed, error = confirm_and_execute_pr_action(
+        action=action,
+        state=state,
+        local_mode=args.local,
+        local_skip_message="Local mode enabled; skipping PR comment.",
+    )
+
+    if error:
+        state.log(f"Failed to post comment: {error}")
         return EXIT_ERROR
 
-    state.log(f"Posted findings to PR #{pr_number}.")
     return EXIT_FINDINGS
 
 
