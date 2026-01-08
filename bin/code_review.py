@@ -208,6 +208,21 @@ def get_current_pr_number() -> str | None:
     return pr_number or None
 
 
+def approve_pr(pr_number: str, comment_body: str) -> Tuple[bool, str]:
+    """Approve a PR with the given comment body. Returns (success, error_message)."""
+    result = subprocess.run(
+        ["gh", "pr", "review", pr_number, "--approve", "--body-file", "-"],
+        input=comment_body,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or "unknown error"
+        return False, stderr
+    return True, ""
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Worktree management
 # ─────────────────────────────────────────────────────────────────────────────
@@ -347,6 +362,31 @@ def format_raw_findings(
         lines.append("```")
 
     return "\n".join(lines).rstrip()
+
+
+def render_lgtm_markdown(
+    total_reviewers: int,
+    successful_reviewers: int,
+    reviewer_durations: dict[int, float] | None = None,
+) -> str:
+    """Render LGTM approval comment markdown."""
+    lines: List[str] = []
+    lines.append("## LGTM :white_check_mark:")
+    lines.append("")
+    lines.append(f"**{successful_reviewers} of {total_reviewers} reviewers found no issues.**")
+    lines.append("")
+
+    if reviewer_durations:
+        lines.append("<details>")
+        lines.append("<summary>Reviewer details</summary>")
+        lines.append("")
+        for reviewer_id in sorted(reviewer_durations.keys()):
+            duration = reviewer_durations[reviewer_id]
+            lines.append(f"- Reviewer {reviewer_id}: completed in {format_duration(duration)}")
+        lines.append("")
+        lines.append("</details>")
+
+    return "\n".join(lines).strip()
 
 
 def render_comment_markdown(
@@ -1033,7 +1073,52 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
         return EXIT_ERROR
     findings = grouped.get("findings", [])
 
+    # Calculate successful reviewers (exclude failed and timed out)
+    successful_reviewers = args.reviewers - len(failed_iters) - len(timed_out_iters)
+
     if not findings:
+        # LGTM flow - approve the PR
+        if args.local:
+            state.log("Local mode enabled; skipping PR approval.")
+            return EXIT_NO_FINDINGS
+
+        lgtm_body = render_lgtm_markdown(
+            total_reviewers=args.reviewers,
+            successful_reviewers=successful_reviewers,
+            reviewer_durations=reviewer_durations,
+        )
+
+        print("\n[review] Approval comment preview:\n")
+        width = min(get_terminal_width(), MAX_REPORT_WIDTH)
+        divider = get_ruler(width, "━")
+        print(divider)
+        print(lgtm_body)
+        print(divider)
+
+        if not check_gh_available():
+            return EXIT_ERROR
+
+        pr_number = get_current_pr_number()
+        if not pr_number:
+            state.log("No open PR found for current branch.")
+            return EXIT_NO_FINDINGS
+
+        print("")
+        try:
+            response = input(f"Approve PR #{pr_number}? [y/N]: ").strip().lower()
+        except EOFError:
+            response = ""
+
+        if response not in ("y", "yes"):
+            state.log("Skipped approving PR.")
+            return EXIT_NO_FINDINGS
+
+        success, error = approve_pr(pr_number, lgtm_body)
+        if not success:
+            state.log(f"Failed to approve PR: {error}")
+            return EXIT_ERROR
+
+        state.log(f"Approved PR #{pr_number}.")
         return EXIT_NO_FINDINGS
 
     comment_body = render_comment_markdown(
