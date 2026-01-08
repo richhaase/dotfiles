@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: code_review.py [-r N] [-b BRANCH] [-t SECS] [-R N] [-v] [-l|--local]
+# Usage: code_review.py [-r N] [-b BASE] [-t SECS] [-R N] [-v] [-l|--local] [-B BRANCH]
 # Env: REVIEW_REVIEWERS, REVIEW_WORKERS, REVIEW_TIMEOUT, REVIEW_BASE_REF, REVIEW_RETRIES
 # Exit: 0=no findings, 1=findings, 2=error, 130=interrupted
 
@@ -14,8 +14,10 @@ import subprocess
 import sys
 import textwrap
 import time
+import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import List, Tuple, TypedDict
+from typing import Generator, List, Optional, Tuple, TypedDict
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants
@@ -206,6 +208,105 @@ def get_current_pr_number() -> str | None:
     return pr_number or None
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Worktree management
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def get_git_root() -> Optional[str]:
+    """Get the root directory of the current git repository."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def get_git_common_dir() -> Optional[str]:
+    """Get the git common directory (shared across worktrees)."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--git-common-dir"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return os.path.realpath(result.stdout.strip())
+
+
+def ensure_worktrees_excluded(common_dir: str) -> None:
+    """Add .worktrees/ to .git/info/exclude if not already present."""
+    info_dir = os.path.join(common_dir, "info")
+    exclude_path = os.path.join(info_dir, "exclude")
+    os.makedirs(info_dir, exist_ok=True)
+    try:
+        with open(exclude_path, "r", encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except OSError:
+        lines = []
+    if ".worktrees/" not in lines:
+        with open(exclude_path, "a", encoding="utf-8") as handle:
+            handle.write(".worktrees/\n")
+
+
+@contextmanager
+def temporary_worktree(branch: str) -> Generator[str, None, None]:
+    """
+    Create a temporary worktree for the given branch and yield the path.
+
+    The worktree is placed in .worktrees/ inside the repo root.
+    On cleanup, only the worktree is removed - the branch is left intact.
+    """
+    # Get repo root from common dir to handle being called from a worktree
+    common_dir = get_git_common_dir()
+    if not common_dir:
+        raise RuntimeError("Not inside a git repository")
+
+    # The repo root is the parent of the git common dir
+    repo_root = os.path.realpath(os.path.join(common_dir, ".."))
+
+    # Ensure .worktrees/ is in .git/info/exclude
+    ensure_worktrees_excluded(common_dir)
+
+    # Create unique worktree directory name
+    worktree_id = uuid.uuid4().hex[:8]
+    safe_branch = branch.replace("/", "-")
+    worktree_name = f"review-{safe_branch}-{worktree_id}"
+    worktrees_dir = os.path.join(repo_root, ".worktrees")
+    worktree_path = os.path.join(worktrees_dir, worktree_name)
+
+    os.makedirs(worktrees_dir, exist_ok=True)
+
+    # Create the worktree
+    result = subprocess.run(
+        ["git", "worktree", "add", worktree_path, branch],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip()
+        raise RuntimeError(f"Failed to create worktree for branch '{branch}': {stderr}")
+
+    try:
+        yield worktree_path
+    finally:
+        # Remove the worktree only - do NOT delete the branch
+        subprocess.run(
+            ["git", "worktree", "remove", "--force", worktree_path],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+
 def collect_source_indices(groups: List[FindingGroup]) -> List[int]:
     seen: set[int] = set()
     indices: List[int] = []
@@ -350,6 +451,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip posting findings to a PR comment",
     )
+    parser.add_argument(
+        "-B",
+        "--branch",
+        dest="review_branch",
+        metavar="BRANCH",
+        help="Review a branch in a temporary worktree (worktree is cleaned up after review)",
+    )
     return parser.parse_args()
 
 
@@ -362,6 +470,7 @@ async def collect_findings(
     reviewer_id: int,
     timeout: int,
     state: ReviewState,
+    cwd: Optional[str] = None,
 ) -> ReviewerResult:
     """Collect findings from a single reviewer using async subprocess."""
     start_time = time.monotonic()
@@ -375,6 +484,7 @@ async def collect_findings(
         stderr=asyncio.subprocess.STDOUT,
         start_new_session=True,
         limit=100 * 1024 * 1024,  # 100MB line limit for large JSON output
+        cwd=cwd,
     )
 
     try:
@@ -438,6 +548,7 @@ async def collect_findings_with_retry(
     timeout: int,
     retries: int,
     state: ReviewState,
+    cwd: Optional[str] = None,
 ) -> ReviewerResult:
     """Collect findings with retry on failure or timeout."""
     result: ReviewerResult | None = None
@@ -446,7 +557,7 @@ async def collect_findings_with_retry(
         if state.interrupted:
             break
 
-        result = await collect_findings(cmd, reviewer_id, timeout, state)
+        result = await collect_findings(cmd, reviewer_id, timeout, state, cwd=cwd)
 
         if result.exit_code == 0:
             return result
@@ -768,6 +879,30 @@ def render_report(
 
 async def async_main(args: argparse.Namespace) -> int:
     """Async entry point."""
+    # Handle worktree-based review
+    if args.review_branch:
+        return await run_review_in_worktree(args)
+    return await run_review(args, cwd=None)
+
+
+async def run_review_in_worktree(args: argparse.Namespace) -> int:
+    """Run review in a temporary worktree for the specified branch."""
+    branch = args.review_branch
+    print(f"[review] Creating temporary worktree for branch '{branch}'...", file=sys.stderr)
+
+    try:
+        with temporary_worktree(branch) as worktree_path:
+            print(f"[review] Worktree created at: {worktree_path}", file=sys.stderr)
+            result = await run_review(args, cwd=worktree_path)
+            print(f"[review] Cleaning up worktree...", file=sys.stderr)
+            return result
+    except RuntimeError as e:
+        print(f"[review] Error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+
+
+async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int:
+    """Run the review process, optionally in a specific directory."""
     state = ReviewState(
         total_reviewers=args.reviewers,
         verbose=args.verbose,
@@ -795,6 +930,8 @@ async def async_main(args: argparse.Namespace) -> int:
 
     state.log(f"Command: {cmd_str}")
     state.log(f"Reviewers: {args.reviewers}")
+    if cwd:
+        state.log(f"Working directory: {cwd}")
 
     # Start spinner
     spinner_task = asyncio.create_task(run_spinner(state))
@@ -805,7 +942,7 @@ async def async_main(args: argparse.Namespace) -> int:
     # Run reviewers concurrently
     async def run_reviewer(reviewer_id: int) -> ReviewerResult:
         result = await collect_findings_with_retry(
-            cmd, reviewer_id, args.timeout, args.retries, state
+            cmd, reviewer_id, args.timeout, args.retries, state, cwd=cwd
         )
         state.completed += 1
         return result
