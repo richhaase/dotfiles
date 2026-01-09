@@ -271,6 +271,57 @@ def approve_pr(pr_number: str, body: str) -> Tuple[bool, str]:
 
 
 @dataclass
+class CIStatus:
+    """Result of checking CI status for a PR."""
+
+    all_passed: bool
+    pending: List[str]
+    failed: List[str]
+    error: Optional[str] = None
+
+
+def check_ci_status(pr_number: str) -> CIStatus:
+    """Check CI status for a PR. Returns CIStatus with check details."""
+    result = subprocess.run(
+        ["gh", "pr", "checks", pr_number, "--json", "name,state,conclusion"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or "unknown error"
+        return CIStatus(all_passed=False, pending=[], failed=[], error=stderr)
+
+    try:
+        checks = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return CIStatus(
+            all_passed=False, pending=[], failed=[], error="Failed to parse CI status"
+        )
+
+    if not checks:
+        # No CI checks configured - allow approval
+        return CIStatus(all_passed=True, pending=[], failed=[])
+
+    pending: List[str] = []
+    failed: List[str] = []
+
+    for check in checks:
+        name = check.get("name", "unknown")
+        state = check.get("state", "").upper()
+        conclusion = check.get("conclusion", "").upper()
+
+        if state in ("PENDING", "QUEUED", "IN_PROGRESS", "WAITING"):
+            pending.append(name)
+        elif conclusion not in ("SUCCESS", "SKIPPED", "NEUTRAL"):
+            # FAILURE, CANCELLED, TIMED_OUT, ACTION_REQUIRED, STALE, etc.
+            failed.append(name)
+
+    all_passed = len(pending) == 0 and len(failed) == 0
+    return CIStatus(all_passed=all_passed, pending=pending, failed=failed)
+
+
+@dataclass
 class PRAction:
     """Configuration for a PR action (comment or approval)."""
 
@@ -1244,6 +1295,42 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
             successful_reviewers=successful_reviewers,
             reviewer_comments=reviewer_comments,
         )
+
+        # Check CI status before approving (skip in local mode or auto-no mode)
+        if not args.local and not args.no:
+            if not check_gh_available():
+                return EXIT_ERROR
+
+            pr_number = get_current_pr_number(args.worktree_branch)
+            if pr_number:
+                ci_status = check_ci_status(pr_number)
+
+                if ci_status.error:
+                    state.log(f"Failed to check CI status: {ci_status.error}", style="error")
+                    return EXIT_ERROR
+
+                if not ci_status.all_passed:
+                    # CI has issues - report LGTM but don't approve
+                    state.log(
+                        f"{c.GREEN}{c.BOLD}LGTM{c.RESET} - No issues found by reviewers.",
+                        style="success",
+                    )
+                    print("")
+
+                    if ci_status.failed:
+                        failed_str = ", ".join(ci_status.failed)
+                        state.log(
+                            f"Cannot approve PR #{pr_number}: CI checks failed ({failed_str})",
+                            style="warning",
+                        )
+                    if ci_status.pending:
+                        pending_str = ", ".join(ci_status.pending)
+                        state.log(
+                            f"Cannot approve PR #{pr_number}: CI checks pending ({pending_str})",
+                            style="warning",
+                        )
+
+                    return EXIT_NO_FINDINGS
 
         action = PRAction(
             body=lgtm_body,
