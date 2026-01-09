@@ -465,22 +465,22 @@ def format_raw_findings(
 def render_lgtm_markdown(
     total_reviewers: int,
     successful_reviewers: int,
-    reviewer_durations: dict[int, float] | None = None,
+    reviewer_comments: dict[int, str] | None = None,
 ) -> str:
     """Render LGTM approval comment markdown."""
     lines: List[str] = []
     lines.append("## LGTM :white_check_mark:")
     lines.append("")
     lines.append(f"**{successful_reviewers} of {total_reviewers} reviewers found no issues.**")
-    lines.append("")
 
-    if reviewer_durations:
-        lines.append("<details>")
-        lines.append("<summary>Reviewer details</summary>")
+    if reviewer_comments:
         lines.append("")
-        for reviewer_id in sorted(reviewer_durations.keys()):
-            duration = reviewer_durations[reviewer_id]
-            lines.append(f"- Reviewer {reviewer_id}: completed in {format_duration(duration)}")
+        lines.append("<details>")
+        lines.append("<summary>Reviewer comments</summary>")
+        lines.append("")
+        for reviewer_id in sorted(reviewer_comments.keys()):
+            comment = reviewer_comments[reviewer_id]
+            lines.append(f"- **Reviewer {reviewer_id}:** {comment}")
         lines.append("")
         lines.append("</details>")
 
@@ -1191,10 +1191,14 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
 
     if not findings:
         # LGTM flow - approve the PR
+        # Build reviewer comments from findings (each reviewer's last message)
+        reviewer_comments: dict[int, str] = {}
+        for finding in all_findings:
+            reviewer_comments[finding.iteration] = finding.text
         lgtm_body = render_lgtm_markdown(
             total_reviewers=args.reviewers,
             successful_reviewers=successful_reviewers,
-            reviewer_durations=reviewer_durations,
+            reviewer_comments=reviewer_comments,
         )
 
         action = PRAction(
