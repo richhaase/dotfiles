@@ -283,7 +283,7 @@ class CIStatus:
 def check_ci_status(pr_number: str) -> CIStatus:
     """Check CI status for a PR. Returns CIStatus with check details."""
     result = subprocess.run(
-        ["gh", "pr", "checks", pr_number, "--json", "name,state,conclusion"],
+        ["gh", "pr", "checks", pr_number, "--json", "name,bucket"],
         capture_output=True,
         text=True,
         check=False,
@@ -308,13 +308,13 @@ def check_ci_status(pr_number: str) -> CIStatus:
 
     for check in checks:
         name = check.get("name", "unknown")
-        state = check.get("state", "").upper()
-        conclusion = check.get("conclusion", "").upper()
+        bucket = check.get("bucket", "").lower()
 
-        if state in ("PENDING", "QUEUED", "IN_PROGRESS", "WAITING"):
+        # bucket values: pass, fail, pending, skipping, cancel
+        if bucket == "pending":
             pending.append(name)
-        elif conclusion not in ("SUCCESS", "SKIPPED", "NEUTRAL"):
-            # FAILURE, CANCELLED, TIMED_OUT, ACTION_REQUIRED, STALE, etc.
+        elif bucket not in ("pass", "skipping"):
+            # fail, cancel, or unknown
             failed.append(name)
 
     all_passed = len(pending) == 0 and len(failed) == 0
