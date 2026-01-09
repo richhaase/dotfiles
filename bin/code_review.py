@@ -194,10 +194,14 @@ def check_gh_available() -> bool:
     return True
 
 
-def get_current_pr_number() -> str | None:
-    """Return the PR number for the current branch, or None if not found."""
+def get_current_pr_number(branch: str | None = None) -> str | None:
+    """Return the PR number for the given branch (or current branch), or None if not found."""
+    cmd = ["gh", "pr", "view"]
+    if branch:
+        cmd.append(branch)
+    cmd.extend(["--json", "number", "--jq", ".number"])
     result = subprocess.run(
-        ["gh", "pr", "view", "--json", "number", "--jq", ".number"],
+        cmd,
         capture_output=True,
         text=True,
         check=False,
@@ -257,6 +261,7 @@ def confirm_and_execute_pr_action(
     local_skip_message: str,
     auto_yes: bool = False,
     auto_no: bool = False,
+    branch: str | None = None,
 ) -> Tuple[bool, Optional[str]]:
     """
     Preview, confirm, and execute a PR action.
@@ -285,9 +290,10 @@ def confirm_and_execute_pr_action(
     if not check_gh_available():
         return False, "gh not available"
 
-    pr_number = get_current_pr_number()
+    pr_number = get_current_pr_number(branch)
     if not pr_number:
-        state.log("No open PR found for current branch.")
+        branch_desc = f"branch '{branch}'" if branch else "current branch"
+        state.log(f"No open PR found for {branch_desc}.")
         return False, None
 
     # Confirm (or auto-confirm with -y)
@@ -1207,6 +1213,7 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
             local_skip_message="Local mode enabled; skipping PR approval.",
             auto_yes=args.yes,
             auto_no=args.no,
+            branch=args.worktree_branch,
         )
 
         if error:
@@ -1238,6 +1245,7 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
         local_skip_message="Local mode enabled; skipping PR comment.",
         auto_yes=args.yes,
         auto_no=args.no,
+        branch=args.worktree_branch,
     )
 
     if error:
