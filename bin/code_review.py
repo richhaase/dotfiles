@@ -53,12 +53,43 @@ class Colors:
     RED = "\033[31m"
     MAGENTA = "\033[35m"
     WHITE = "\033[97m"
+    BLUE = "\033[34m"
 
     @classmethod
     def disable(cls) -> None:
         for attr in dir(cls):
             if attr.isupper() and not attr.startswith("_"):
                 setattr(cls, attr, "")
+
+
+# Braille spinner frames for smoother animation
+SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+
+def log_styled(
+    msg: str,
+    style: str = "info",
+    prefix: str = "review",
+    clear_line: bool = True,
+) -> None:
+    """Print a styled log message to stderr."""
+    c = Colors
+    styles = {
+        "info": c.CYAN,
+        "success": c.GREEN,
+        "warning": c.YELLOW,
+        "error": c.RED,
+        "dim": c.DIM,
+        "phase": c.MAGENTA + c.BOLD,
+    }
+    color = styles.get(style, c.CYAN)
+
+    if clear_line and sys.stderr.isatty():
+        sys.stderr.write("\r" + " " * 100 + "\r")
+
+    tag = f"{c.DIM}[{c.RESET}{color}{prefix}{c.RESET}{c.DIM}]{c.RESET}"
+    sys.stderr.write(f"{tag} {msg}\n")
+    sys.stderr.flush()
 
 
 def get_terminal_width() -> int:
@@ -150,12 +181,9 @@ class ReviewState:
     verbose: bool = False
     tasks: List[asyncio.Task] = field(default_factory=list)
 
-    def log(self, msg: str, force: bool = False) -> None:
-        """Log a message, clearing spinner line first if needed."""
-        if sys.stderr.isatty():
-            sys.stderr.write("\r" + " " * 90 + "\r")
-        sys.stderr.write(f"[review] {msg}\n")
-        sys.stderr.flush()
+    def log(self, msg: str, style: str = "info") -> None:
+        """Log a styled message, clearing spinner line first if needed."""
+        log_styled(msg, style=style)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -182,14 +210,14 @@ def aggregate_findings(findings: List[Finding]) -> List[AggregatedFinding]:
 def check_dependencies() -> bool:
     """Check that required external tools are available."""
     if shutil.which("codex") is None:
-        print("Error: 'codex' not found in PATH", file=sys.stderr)
+        log_styled("'codex' not found in PATH", style="error")
         return False
     return True
 
 
 def check_gh_available() -> bool:
     if shutil.which("gh") is None:
-        print("Error: 'gh' not found in PATH", file=sys.stderr)
+        log_styled("'gh' not found in PATH", style="error")
         return False
     return True
 
@@ -271,16 +299,19 @@ def confirm_and_execute_pr_action(
     - (False, None) = skipped (local mode, no PR, user declined, or auto_no)
     - (False, "error") = failed with error message
     """
+    c = Colors
     if local_mode:
-        state.log(local_skip_message)
+        state.log(local_skip_message, style="dim")
         return False, None
 
     if auto_no:
-        state.log(action.skip_message)
+        state.log(action.skip_message, style="dim")
         return False, None
 
     # Preview
-    print(f"\n[review] {action.preview_label}:\n")
+    print("")
+    log_styled(f"{c.BOLD}{action.preview_label}{c.RESET}", style="phase", clear_line=False)
+    print("")
     width = min(get_terminal_width(), MAX_REPORT_WIDTH)
     divider = get_ruler(width, "━")
     print(divider)
@@ -293,7 +324,7 @@ def confirm_and_execute_pr_action(
     pr_number = get_current_pr_number(branch)
     if not pr_number:
         branch_desc = f"branch '{branch}'" if branch else "current branch"
-        state.log(f"No open PR found for {branch_desc}.")
+        state.log(f"No open PR found for {branch_desc}.", style="warning")
         return False, None
 
     # Confirm (or auto-confirm with -y)
@@ -302,14 +333,14 @@ def confirm_and_execute_pr_action(
     else:
         print("")
         try:
-            prompt = action.prompt_template.format(pr=pr_number)
-            response = input(f"{prompt} [y/N]: ").strip().lower()
+            prompt = action.prompt_template.format(pr=f"{c.BOLD}#{pr_number}{c.RESET}")
+            response = input(f"{c.CYAN}?{c.RESET} {prompt} {c.DIM}[y/N]:{c.RESET} ").strip().lower()
         except EOFError:
             response = ""
         confirmed = response in ("y", "yes")
 
     if not confirmed:
-        state.log(action.skip_message)
+        state.log(action.skip_message, style="dim")
         return False, None
 
     # Execute
@@ -317,7 +348,7 @@ def confirm_and_execute_pr_action(
     if not success:
         return False, error
 
-    state.log(action.success_template.format(pr=pr_number))
+    state.log(action.success_template.format(pr=f"#{pr_number}"), style="success")
     return True, None
 
 
@@ -660,7 +691,13 @@ async def collect_findings(
                     if text:
                         findings.append(Finding(text=text, iteration=reviewer_id))
                         if state.verbose:
-                            state.log(f"reviewer {reviewer_id}: {text}")
+                            # Truncate long messages for terminal display
+                            display = text[:120] + "..." if len(text) > 120 else text
+                            c = Colors
+                            log_styled(
+                                f"{c.DIM}#{reviewer_id}:{c.RESET} {c.DIM}{display}{c.RESET}",
+                                style="dim",
+                            )
 
         await asyncio.wait_for(read_output(), timeout=timeout)
         await proc.wait()
@@ -718,7 +755,7 @@ async def collect_findings_with_retry(
         if attempt < retries:
             delay = 2**attempt
             reason = "timed out" if result.timed_out else f"exit {result.exit_code}"
-            state.log(f"reviewer {reviewer_id} {reason}, retry {attempt + 1}/{retries} in {delay}s")
+            state.log(f"Reviewer #{reviewer_id} {reason}, retry {attempt + 1}/{retries} in {delay}s", style="warning")
 
             try:
                 await asyncio.sleep(delay)
@@ -734,13 +771,15 @@ async def run_spinner(state: ReviewState) -> None:
     if not sys.stderr.isatty():
         return
 
-    frames = "|/-\\"
+    c = Colors
     idx = 0
 
     while not state.spinner_stop.is_set():
-        frame = frames[idx % len(frames)]
-        line = f"\r[review] Running: {state.completed}/{state.total_reviewers} complete {frame}"
-        sys.stderr.write(line)
+        frame = SPINNER_FRAMES[idx % len(SPINNER_FRAMES)]
+        progress = f"{state.completed}/{state.total_reviewers}"
+        tag = f"{c.DIM}[{c.RESET}{c.CYAN}review{c.RESET}{c.DIM}]{c.RESET}"
+        line = f"\r{tag} {c.CYAN}{frame}{c.RESET} Running reviewers {c.DIM}({progress}){c.RESET}"
+        sys.stderr.write(line + " " * 10)
         sys.stderr.flush()
         idx += 1
 
@@ -754,8 +793,10 @@ async def run_spinner(state: ReviewState) -> None:
             pass
 
     # Final state
-    final = f"\r[review] Running: {state.completed}/{state.total_reviewers} complete ✓\n"
-    sys.stderr.write(final)
+    progress = f"{state.completed}/{state.total_reviewers}"
+    tag = f"{c.DIM}[{c.RESET}{c.GREEN}review{c.RESET}{c.DIM}]{c.RESET}"
+    final = f"\r{tag} {c.GREEN}✓{c.RESET} Reviewers complete {c.DIM}({progress}){c.RESET}"
+    sys.stderr.write(final + " " * 10 + "\n")
     sys.stderr.flush()
 
 
@@ -764,13 +805,14 @@ async def run_phase_spinner(label: str, stop: asyncio.Event) -> None:
     if not sys.stderr.isatty():
         return
 
-    frames = "|/-\\"
+    c = Colors
     idx = 0
 
     while not stop.is_set():
-        frame = frames[idx % len(frames)]
-        line = f"\r[review] {label} {frame}"
-        sys.stderr.write(line)
+        frame = SPINNER_FRAMES[idx % len(SPINNER_FRAMES)]
+        tag = f"{c.DIM}[{c.RESET}{c.CYAN}review{c.RESET}{c.DIM}]{c.RESET}"
+        line = f"\r{tag} {c.CYAN}{frame}{c.RESET} {label}"
+        sys.stderr.write(line + " " * 10)
         sys.stderr.flush()
         idx += 1
 
@@ -780,8 +822,9 @@ async def run_phase_spinner(label: str, stop: asyncio.Event) -> None:
         except asyncio.TimeoutError:
             pass
 
-    final = f"\r[review] {label} ✓\n"
-    sys.stderr.write(final)
+    tag = f"{c.DIM}[{c.RESET}{c.GREEN}review{c.RESET}{c.DIM}]{c.RESET}"
+    final = f"\r{tag} {c.GREEN}✓{c.RESET} {label}"
+    sys.stderr.write(final + " " * 10 + "\n")
     sys.stderr.flush()
 
 
@@ -1041,16 +1084,17 @@ async def async_main(args: argparse.Namespace) -> int:
 async def run_review_in_worktree(args: argparse.Namespace) -> int:
     """Run review in a temporary worktree for the specified branch."""
     branch = args.worktree_branch
-    print(f"[review] Creating temporary worktree for branch '{branch}'...", file=sys.stderr)
+    c = Colors
+    log_styled(f"Creating worktree for {c.BOLD}{branch}{c.RESET}", style="info")
 
     try:
         with temporary_worktree(branch) as worktree_path:
-            print(f"[review] Worktree created at: {worktree_path}", file=sys.stderr)
+            log_styled(f"Worktree ready {c.DIM}({worktree_path}){c.RESET}", style="success")
             result = await run_review(args, cwd=worktree_path)
-            print(f"[review] Cleaning up worktree...", file=sys.stderr)
+            log_styled("Cleaning up worktree", style="dim")
             return result
     except RuntimeError as e:
-        print(f"[review] Error: {e}", file=sys.stderr)
+        log_styled(f"Error: {e}", style="error")
         return EXIT_ERROR
 
 
@@ -1063,14 +1107,15 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
 
     # Set up signal handlers
     loop = asyncio.get_running_loop()
+    c = Colors
 
     def handle_interrupt() -> None:
         if state.interrupted:
             return  # Already handling
         state.interrupted = True
         state.spinner_stop.set()
-        sys.stderr.write("\n[review] Interrupted, shutting down...\n")
-        sys.stderr.flush()
+        sys.stderr.write("\n")
+        log_styled("Interrupted, shutting down...", style="warning")
         # Cancel all running tasks
         for task in state.tasks:
             task.cancel()
@@ -1081,10 +1126,9 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
     cmd = build_command(args.base)
     cmd_str = " ".join(shlex.quote(part) for part in cmd)
 
-    state.log(f"Command: {cmd_str}")
-    state.log(f"Reviewers: {args.reviewers}")
-    if cwd:
-        state.log(f"Working directory: {cwd}")
+    state.log(f"Starting review {c.DIM}({args.reviewers} reviewers, base={args.base}){c.RESET}")
+    if state.verbose:
+        state.log(f"{c.DIM}Command: {cmd_str}{c.RESET}", style="dim")
 
     # Start spinner
     spinner_task = asyncio.create_task(run_spinner(state))
@@ -1130,7 +1174,7 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
 
     for result in results:
         if isinstance(result, Exception):
-            state.log(f"Reviewer exception: {result}")
+            state.log(f"Reviewer exception: {result}", style="error")
             exception_count += 1
             continue
 
@@ -1147,14 +1191,14 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
     # Check if all reviewers failed
     total_failures = len(failed_iters) + len(timed_out_iters) + exception_count
     if total_failures >= args.reviewers:
-        state.log("All reviewers failed")
+        state.log("All reviewers failed", style="error")
         return EXIT_ERROR
 
     # Summarize
     aggregated = aggregate_findings(all_findings)
     summarizer_stop = asyncio.Event()
     summarizer_spinner = asyncio.create_task(
-        run_phase_spinner("Summarizing:", summarizer_stop)
+        run_phase_spinner("Summarizing", summarizer_stop)
     )
     (
         grouped,
@@ -1221,7 +1265,7 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
         )
 
         if error:
-            state.log(f"Failed to approve PR: {error}")
+            state.log(f"Failed to approve PR: {error}", style="error")
             return EXIT_ERROR
 
         return EXIT_NO_FINDINGS
@@ -1253,7 +1297,7 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
     )
 
     if error:
-        state.log(f"Failed to post comment: {error}")
+        state.log(f"Failed to post comment: {error}", style="error")
         return EXIT_ERROR
 
     return EXIT_FINDINGS
@@ -1269,7 +1313,7 @@ def main() -> int:
         return EXIT_ERROR
 
     if args.reviewers < 1:
-        print("--reviewers must be >= 1", file=sys.stderr)
+        log_styled("--reviewers must be >= 1", style="error")
         return EXIT_ERROR
 
     return asyncio.run(async_main(args))
