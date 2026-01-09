@@ -4,6 +4,7 @@ expand_directories:
     - .codex
     - .gemini
 ignore_patterns:
+    - __pycache__
     - codex/AGENTS.md
     - /AGENTS.md
     - README.md
