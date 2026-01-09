@@ -1318,17 +1318,29 @@ async def run_review(args: argparse.Namespace, cwd: Optional[str] = None) -> int
                     print("")
 
                     if ci_status.failed:
-                        failed_str = ", ".join(ci_status.failed)
                         state.log(
-                            f"Cannot approve PR #{pr_number}: CI checks failed ({failed_str})",
-                            style="warning",
+                            f"Cannot approve PR: {len(ci_status.failed)} CI check(s) failed",
+                            style="error",
                         )
+                        for check in ci_status.failed[:5]:
+                            state.log(f"  • {check}", style="dim")
+                        if len(ci_status.failed) > 5:
+                            state.log(
+                                f"  ... and {len(ci_status.failed) - 5} more",
+                                style="dim",
+                            )
                     if ci_status.pending:
-                        pending_str = ", ".join(ci_status.pending)
                         state.log(
-                            f"Cannot approve PR #{pr_number}: CI checks pending ({pending_str})",
+                            f"Cannot approve PR: {len(ci_status.pending)} CI check(s) pending",
                             style="warning",
                         )
+                        for check in ci_status.pending[:5]:
+                            state.log(f"  • {check}", style="dim")
+                        if len(ci_status.pending) > 5:
+                            state.log(
+                                f"  ... and {len(ci_status.pending) - 5} more",
+                                style="dim",
+                            )
 
                     return EXIT_NO_FINDINGS
 
