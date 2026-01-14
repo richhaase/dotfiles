@@ -5,3 +5,7 @@ font-feature = liga
 theme = "Solarized Darcula"
 keybind = shift+enter=text:\n
 keybind = global:ctrl+grave_accent=toggle_quick_terminal
+
+# Disable macOS window restoration to prevent restoring previous sessions
+macos-non-native-fullscreen = false
+window-save-state = never
