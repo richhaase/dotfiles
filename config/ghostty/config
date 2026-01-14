@@ -4,3 +4,4 @@ font-feature = calt
 font-feature = liga
 theme = "Solarized Darcula"
 keybind = shift+enter=text:\n
+keybind = global:ctrl+grave_accent=toggle_quick_terminal
