@@ -414,13 +414,6 @@ resources:
         version: ""
       installed_at: "2025-12-29T12:01:28-07:00"
     - type: package
-      id: brew:raycast
-      metadata:
-        manager: brew
-        name: raycast
-        version: ""
-      installed_at: "2025-12-29T12:01:22-07:00"
-    - type: package
       id: cargo:taplo-cli
       metadata:
         manager: cargo
