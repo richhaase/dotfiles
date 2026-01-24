@@ -21,9 +21,6 @@ alias grv='git remote --verbose'
 
 # Git worktree aliases
 alias wt='wt.py'
-alias lswt='wt.py ls'
-alias rmwt='wt.py rm'
-alias roots='wt.py roots'
 cdwt() {
   local wt_path
   wt_path="$(wt pick)"
