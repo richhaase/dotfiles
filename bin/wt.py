@@ -186,20 +186,6 @@ def normalize_repo_root(path: str) -> str:
     return os.path.realpath(result.stdout.strip())
 
 
-def ensure_worktrees_excluded(common_dir: str) -> None:
-    info_dir = os.path.join(common_dir, "info")
-    exclude_path = os.path.join(info_dir, "exclude")
-    os.makedirs(info_dir, exist_ok=True)
-    try:
-        with open(exclude_path, "r", encoding="utf-8") as handle:
-            lines = handle.read().splitlines()
-    except OSError:
-        lines = []
-    if ".worktrees/" not in lines:
-        with open(exclude_path, "a", encoding="utf-8") as handle:
-            handle.write(".worktrees/\n")
-
-
 def parse_worktree_list(output: str) -> List[dict]:
     entries = []
     current: dict = {}
@@ -510,12 +496,13 @@ def cmd_co(args: argparse.Namespace) -> int:
     common_dir = run_git(["rev-parse", "--git-common-dir"]).stdout.strip()
     root = os.path.realpath(os.path.join(common_dir, ".."))
     ensure_root_registered(root)
-    ensure_worktrees_excluded(common_dir)
 
     wt_path = args.path
     if not wt_path:
+        repo_name = os.path.basename(root)
         branch_dir = branch.split("/")[-1] or branch
-        wt_path = os.path.join(root, ".worktrees", branch_dir)
+        parent_dir = os.path.dirname(root)
+        wt_path = os.path.join(parent_dir, f"{repo_name}-{branch_dir}")
     wt_path = os.path.realpath(wt_path)
 
     if os.path.exists(wt_path) and not os.path.isdir(wt_path):
