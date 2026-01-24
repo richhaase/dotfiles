@@ -458,6 +458,16 @@ def cmd_ls(args: argparse.Namespace) -> int:
         if not filtered:
             raise WTError(f"no registered root matches '{target}'")
         roots = filtered
+    elif not args.all:
+        # Default: show only worktrees for current directory's repo
+        try:
+            common_dir = run_git(["rev-parse", "--git-common-dir"]).stdout.strip()
+            current_root = os.path.realpath(os.path.join(common_dir, ".."))
+            roots = [r for r in roots if r.path == current_root]
+            if not roots:
+                raise WTError("current directory's repo is not registered (use wt ls -a for all)")
+        except subprocess.CalledProcessError:
+            raise WTError("not inside a git repository (use wt ls -a for all)")
 
     entries = list_all_worktrees(roots)
     if not entries:
@@ -595,9 +605,9 @@ def cmd_rm(args: argparse.Namespace) -> int:
     prompt_branch = branch or "(detached)"
     response = input(
         f"Branch {prompt_branch} is not merged into {default_branch}. "
-        "Do nothing or force delete? [d/f] "
+        "Force delete? [Y/n] "
     ).strip().lower()
-    if response != "f":
+    if response == "n":
         return 0
     run_git(["worktree", "remove", "--force", entry.path], cwd=root)
     if branch:
@@ -688,6 +698,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ls = sub.add_parser("ls", help="list worktrees")
     ls.add_argument("root", nargs="?", help="filter by repo root (path or name)")
+    ls.add_argument("-a", "--all", action="store_true", help="list worktrees from all registered roots")
     ls.add_argument("--json", action="store_true", help="output as JSON")
     ls.set_defaults(func=cmd_ls)
 
