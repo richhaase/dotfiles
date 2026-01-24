@@ -560,18 +560,57 @@ def is_branch_merged(root: str, branch: str, base_branch: str) -> bool:
 
 
 def cmd_rm(args: argparse.Namespace) -> int:
-    roots = load_roots()
+    # Must be inside a git repository
+    try:
+        run_git(["rev-parse", "--is-inside-work-tree"])
+    except subprocess.CalledProcessError as exc:
+        raise WTError("must be inside a git repository to remove worktrees") from exc
+
+    # Get the root of the current repo
+    try:
+        common_dir = run_git(["rev-parse", "--git-common-dir"]).stdout.strip()
+        current_root = os.path.realpath(os.path.join(common_dir, ".."))
+    except subprocess.CalledProcessError as exc:
+        raise WTError("could not determine git root") from exc
+
+    # Must be on the root worktree, not a child worktree
+    try:
+        toplevel = run_git(["rev-parse", "--show-toplevel"]).stdout.strip()
+        toplevel = os.path.realpath(toplevel)
+    except subprocess.CalledProcessError as exc:
+        raise WTError("could not determine worktree toplevel") from exc
+
+    if toplevel != current_root:
+        raise WTError(f"must be on root worktree to remove worktrees (currently in child worktree)")
+
+    # Only show worktrees from current repo
+    worktrees = list_worktrees(current_root)
+    # Exclude the root worktree itself from deletion choices
+    child_worktrees = [wt for wt in worktrees if wt.path != current_root]
+
     entry: Optional[WorktreeEntry] = None
     if args.path:
         target = os.path.realpath(args.path)
-        for item in list_all_worktrees(roots):
+        for item in child_worktrees:
             if item.path == target:
                 entry = item
                 break
         if not entry:
-            raise WTError(f"worktree not found for {args.path}")
+            raise WTError(f"worktree not found for {args.path} (must be a child of current repo)")
     else:
-        entry = pick_worktree(roots)
+        # Pick from child worktrees only
+        lines = []
+        by_path = {}
+        for wt in child_worktrees:
+            repo = os.path.basename(wt.root)
+            branch = wt.branch or "(detached)"
+            line = f"{wt.path}\t{repo}\t{branch}"
+            lines.append(line)
+            by_path[wt.path] = wt
+        selected = select_with_fzf(lines)
+        if selected:
+            path = selected.split("\t", 1)[0]
+            entry = by_path.get(path)
     if not entry:
         return 1
 
