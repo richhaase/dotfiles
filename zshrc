@@ -145,7 +145,7 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 [ -r "$HOME/.config/zsh/lib/files.sh" ] && source "$HOME/.config/zsh/lib/files.sh"
 [ -r "$HOME/.config/zsh/lib/tools.sh" ] && source "$HOME/.config/zsh/lib/tools.sh"
 [ -r "$HOME/.config/zsh/lib/git.sh" ] && source "$HOME/.config/zsh/lib/git.sh"
-[ -r "$HOME/.config/zsh/lib/aws.sh" ] && source "$HOME/.config/zsh/lib/aws.sh"
+
 
 # ============================================================================
 # Final Hooks
