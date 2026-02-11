@@ -1,455 +1,70 @@
-version: 2
-resources:
-    - type: package
-      id: brew:bat
-      metadata:
-        manager: brew
-        name: bat
-        version: ""
-      installed_at: "2025-12-29T12:00:36-07:00"
-    - type: package
-      id: brew:fd
-      metadata:
-        manager: brew
-        name: fd
-        version: ""
-      installed_at: "2025-12-29T12:00:54-07:00"
-    - type: package
-      id: brew:ripgrep
-      metadata:
-        manager: brew
-        name: ripgrep
-        version: ""
-      installed_at: "2025-12-29T12:01:24-07:00"
-    - type: package
-      id: brew:btop
-      metadata:
-        manager: brew
-        name: btop
-        version: ""
-      installed_at: "2025-12-29T12:00:38-07:00"
-    - type: package
-      id: brew:coreutils
-      metadata:
-        manager: brew
-        name: coreutils
-        version: ""
-      installed_at: "2025-12-29T12:00:44-07:00"
-    - type: package
-      id: brew:curl
-      metadata:
-        manager: brew
-        name: curl
-        version: ""
-      installed_at: "2025-12-29T12:00:45-07:00"
-    - type: package
-      id: brew:docker
-      metadata:
-        manager: brew
-        name: docker
-        version: ""
-      installed_at: "2025-12-29T12:00:48-07:00"
-    - type: package
-      id: brew:editorconfig
-      metadata:
-        manager: brew
-        name: editorconfig
-        version: ""
-      installed_at: "2025-12-29T12:00:51-07:00"
-    - type: package
-      id: brew:eza
-      metadata:
-        manager: brew
-        name: eza
-        version: ""
-      installed_at: "2025-12-29T12:00:52-07:00"
-    - type: package
-      id: brew:fzf
-      metadata:
-        manager: brew
-        name: fzf
-        version: ""
-      installed_at: "2025-12-29T12:00:56-07:00"
-    - type: package
-      id: brew:gcc
-      metadata:
-        manager: brew
-        name: gcc
-        version: ""
-      installed_at: "2025-12-29T12:00:57-07:00"
-    - type: package
-      id: brew:gh
-      metadata:
-        manager: brew
-        name: gh
-        version: ""
-      installed_at: "2025-12-29T12:00:58-07:00"
-    - type: package
-      id: brew:go
-      metadata:
-        manager: brew
-        name: go
-        version: ""
-      installed_at: "2025-12-29T12:01:03-07:00"
-    - type: package
-      id: brew:jq
-      metadata:
-        manager: brew
-        name: jq
-        version: ""
-      installed_at: "2025-12-29T12:01:09-07:00"
-    - type: package
-      id: brew:lazygit
-      metadata:
-        manager: brew
-        name: lazygit
-        version: ""
-      installed_at: "2025-12-29T12:01:12-07:00"
-    - type: package
-      id: brew:helix
-      metadata:
-        manager: brew
-        name: helix
-        version: ""
-      installed_at: "2025-12-29T12:01:08-07:00"
-    - type: package
-      id: brew:node
-      metadata:
-        manager: brew
-        name: node
-        version: ""
-      installed_at: "2025-12-29T12:01:15-07:00"
-    - type: package
-      id: brew:procs
-      metadata:
-        manager: brew
-        name: procs
-        version: ""
-      installed_at: "2025-12-29T12:01:19-07:00"
-    - type: package
-      id: brew:scc
-      metadata:
-        manager: brew
-        name: scc
-        version: ""
-      installed_at: "2025-12-29T12:01:26-07:00"
-    - type: package
-      id: brew:sd
-      metadata:
-        manager: brew
-        name: sd
-        version: ""
-      installed_at: "2025-12-29T12:01:27-07:00"
-    - type: package
-      id: brew:starship
-      metadata:
-        manager: brew
-        name: starship
-        version: ""
-      installed_at: "2025-12-29T12:01:32-07:00"
-    - type: package
-      id: brew:tokei
-      metadata:
-        manager: brew
-        name: tokei
-        version: ""
-      installed_at: "2025-12-29T12:01:34-07:00"
-    - type: package
-      id: brew:wget
-      metadata:
-        manager: brew
-        name: wget
-        version: ""
-      installed_at: "2025-12-29T12:01:39-07:00"
-    - type: package
-      id: brew:xh
-      metadata:
-        manager: brew
-        name: xh
-        version: ""
-      installed_at: "2025-12-29T12:01:40-07:00"
-    - type: package
-      id: brew:yazi
-      metadata:
-        manager: brew
-        name: yazi
-        version: ""
-      installed_at: "2025-12-29T12:01:45-07:00"
-    - type: package
-      id: brew:zoxide
-      metadata:
-        manager: brew
-        name: zoxide
-        version: ""
-      installed_at: "2025-12-29T12:01:47-07:00"
-    - type: package
-      id: brew:awscli
-      metadata:
-        manager: brew
-        name: awscli
-        version: ""
-      installed_at: "2025-12-29T12:00:33-07:00"
-    - type: package
-      id: brew:git-delta
-      metadata:
-        manager: brew
-        name: git-delta
-        version: ""
-      installed_at: "2025-12-29T12:01:02-07:00"
-    - type: package
-      id: brew:duf
-      metadata:
-        manager: brew
-        name: duf
-        version: ""
-      installed_at: "2025-12-29T12:00:49-07:00"
-    - type: package
-      id: brew:dust
-      metadata:
-        manager: brew
-        name: dust
-        version: ""
-      installed_at: "2025-12-29T12:00:50-07:00"
-    - type: package
-      id: brew:git
-      metadata:
-        manager: brew
-        name: git
-        version: ""
-      installed_at: "2025-12-29T12:01:01-07:00"
-    - type: package
-      id: brew:just
-      metadata:
-        manager: brew
-        name: just
-        version: ""
-      installed_at: "2025-12-29T12:01:10-07:00"
-    - type: package
-      id: brew:markdown
-      metadata:
-        manager: brew
-        name: markdown
-        version: ""
-      installed_at: "2025-12-29T12:01:13-07:00"
-    - type: package
-      id: brew:goimports
-      metadata:
-        manager: brew
-        name: goimports
-        version: ""
-      installed_at: "2025-12-29T12:01:04-07:00"
-    - type: package
-      id: brew:goreleaser
-      metadata:
-        manager: brew
-        name: goreleaser
-        version: ""
-      installed_at: "2025-12-29T12:01:07-07:00"
-    - type: package
-      id: brew:codex
-      metadata:
-        manager: brew
-        name: codex
-        version: ""
-      installed_at: "2025-12-29T12:00:43-07:00"
-    - type: package
-      id: brew:uv
-      metadata:
-        manager: brew
-        name: uv
-        version: ""
-      installed_at: "2025-12-29T12:01:37-07:00"
-    - type: package
-      id: brew:ghostty
-      metadata:
-        manager: brew
-        name: ghostty
-        version: ""
-      installed_at: "2025-12-29T12:00:59-07:00"
-    - type: package
-      id: brew:direnv
-      metadata:
-        manager: brew
-        name: direnv
-        version: ""
-      installed_at: "2025-12-29T12:00:46-07:00"
-    - type: package
-      id: brew:python@3.14
-      metadata:
-        manager: brew
-        name: python@3.14
-        version: ""
-      installed_at: "2025-12-29T12:01:21-07:00"
-    - type: package
-      id: brew:ollama
-      metadata:
-        manager: brew
-        name: ollama
-        version: ""
-      installed_at: "2025-12-29T12:01:16-07:00"
-    - type: package
-      id: brew:gopls
-      metadata:
-        manager: brew
-        name: gopls
-        version: ""
-      installed_at: "2025-12-29T12:01:06-07:00"
-    - type: package
-      id: brew:typescript-language-server
-      metadata:
-        manager: brew
-        name: typescript-language-server
-        version: ""
-      installed_at: "2025-12-29T12:01:36-07:00"
-    - type: package
-      id: brew:ruff
-      metadata:
-        manager: brew
-        name: ruff
-        version: ""
-      installed_at: "2025-12-29T12:01:25-07:00"
-    - type: package
-      id: brew:black
-      metadata:
-        manager: brew
-        name: black
-        version: ""
-      installed_at: "2025-12-29T12:00:37-07:00"
-    - type: package
-      id: pnpm:@astrojs/language-server
-      metadata:
-        manager: pnpm
-        name: '@astrojs/language-server'
-        version: ""
-      installed_at: "2025-12-29T12:02:41-07:00"
-    - type: package
-      id: brew:marksman
-      metadata:
-        manager: brew
-        name: marksman
-        version: ""
-      installed_at: "2025-12-29T12:01:14-07:00"
-    - type: package
-      id: brew:terraform-ls
-      metadata:
-        manager: brew
-        name: terraform-ls
-        version: ""
-      installed_at: "2025-12-29T12:01:33-07:00"
-    - type: package
-      id: brew:yaml-language-server
-      metadata:
-        manager: brew
-        name: yaml-language-server
-        version: ""
-      installed_at: "2025-12-29T12:01:42-07:00"
-    - type: package
-      id: brew:prettier
-      metadata:
-        manager: brew
-        name: prettier
-        version: ""
-      installed_at: "2025-12-29T12:01:18-07:00"
-    - type: package
-      id: brew:pyright
-      metadata:
-        manager: brew
-        name: pyright
-        version: ""
-      installed_at: "2025-12-29T12:01:20-07:00"
-    - type: package
-      id: brew:shellcheck
-      metadata:
-        manager: brew
-        name: shellcheck
-        version: ""
-      installed_at: "2025-12-29T12:01:30-07:00"
-    - type: package
-      id: pnpm:eslint
-      metadata:
-        manager: pnpm
-        name: eslint
-        version: ""
-      installed_at: "2025-12-29T12:02:43-07:00"
-    - type: package
-      id: brew:circumflex
-      metadata:
-        manager: brew
-        name: circumflex
-        version: ""
-      installed_at: "2025-12-29T12:00:42-07:00"
-    - type: package
-      id: brew:ccusage
-      metadata:
-        manager: brew
-        name: ccusage
-        version: ""
-      installed_at: "2025-12-29T12:00:39-07:00"
-    - type: package
-      id: brew:atuin
-      metadata:
-        manager: brew
-        name: atuin
-        version: ""
-      installed_at: "2025-12-29T12:00:25-07:00"
-    - type: package
-      id: brew:choose
-      metadata:
-        manager: brew
-        name: choose
-        version: ""
-      installed_at: "2025-12-29T12:00:40-07:00"
-    - type: package
-      id: brew:serpl
-      metadata:
-        manager: brew
-        name: serpl
-        version: ""
-      installed_at: "2025-12-29T12:01:28-07:00"
-    - type: package
-      id: cargo:taplo-cli
-      metadata:
-        manager: cargo
-        name: taplo-cli
-        version: ""
-      installed_at: "2025-12-29T12:02:39-07:00"
-    - type: package
-      id: brew:vscode-langservers-extracted
-      metadata:
-        manager: brew
-        name: vscode-langservers-extracted
-        version: ""
-      installed_at: "2025-12-29T12:01:38-07:00"
-    - type: package
-      id: brew:bash-language-server
-      metadata:
-        manager: brew
-        name: bash-language-server
-        version: ""
-      installed_at: "2025-12-29T12:00:34-07:00"
-    - type: package
-      id: brew:shfmt
-      metadata:
-        manager: brew
-        name: shfmt
-        version: ""
-      installed_at: "2025-12-29T12:01:31-07:00"
-    - type: package
-      id: brew:font-jetbrains-mono-nerd-font
-      metadata:
-        manager: brew
-        name: font-jetbrains-mono-nerd-font
-        version: ""
-      installed_at: "2025-12-29T12:00:55-07:00"
-    - type: package
-      id: brew:gemini-cli
-      metadata:
-        manager: brew
-        name: gemini-cli
-      installed_at: "2025-12-29T12:08:25-07:00"
-    - type: package
-      id: brew:actionlint
-      metadata:
-        manager: brew
-        name: actionlint
-      installed_at: "2025-12-31T11:19:35-07:00"
+version: 3
+packages:
+    brew:
+        - actionlint
+        - atuin
+        - awscli
+        - bash-language-server
+        - bat
+        - black
+        - btop
+        - ccusage
+        - choose
+        - circumflex
+        - codex
+        - coreutils
+        - curl
+        - direnv
+        - docker
+        - duf
+        - dust
+        - editorconfig
+        - eza
+        - fd
+        - font-jetbrains-mono-nerd-font
+        - fzf
+        - gcc
+        - gemini-cli
+        - gh
+        - ghostty
+        - git
+        - git-delta
+        - go
+        - goimports
+        - gopls
+        - goreleaser
+        - helix
+        - jq
+        - just
+        - lazygit
+        - markdown
+        - marksman
+        - node
+        - ollama
+        - prettier
+        - procs
+        - pyright
+        - python@3.14
+        - ripgrep
+        - ruff
+        - scc
+        - sd
+        - serpl
+        - shellcheck
+        - shfmt
+        - starship
+        - terraform-ls
+        - tokei
+        - typescript-language-server
+        - uv
+        - vscode-langservers-extracted
+        - wget
+        - xh
+        - yaml-language-server
+        - yazi
+        - zoxide
+    cargo:
+        - taplo-cli
+    pnpm:
+        - '@astrojs/language-server'
+        - eslint
