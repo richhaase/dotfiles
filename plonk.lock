@@ -9,7 +9,6 @@ packages:
         - black
         - btop
         - ccusage
-        - choose
         - circumflex
         - codex
         - coreutils
