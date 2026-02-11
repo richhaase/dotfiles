@@ -49,7 +49,6 @@ packages:
         - ruff
         - scc
         - sd
-        - serpl
         - shellcheck
         - shfmt
         - starship
