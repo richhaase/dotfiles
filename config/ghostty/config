@@ -3,6 +3,7 @@ font-size = 14
 font-feature = calt
 font-feature = liga
 theme = "Solarized Darcula"
+keybind = alt+backspace=text:\x1b\x7f
 keybind = shift+enter=text:\n
 keybind = global:ctrl+grave_accent=toggle_quick_terminal
 
