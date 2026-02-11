@@ -1,4 +1,4 @@
-format = "$os$username$hostname$directory$git_branch$git_commit$git_state$git_status$direnv$python$nodejs$rust$golang$fill$status$cmd_duration$jobs$shlvl$battery$time\n$character"
+format = "$os$username$hostname$directory$git_branch$git_state$git_status$direnv$python$nodejs$rust$golang$fill$status$cmd_duration$jobs$shlvl$battery$time\n$character"
 add_newline = true
 scan_timeout = 50
 command_timeout = 500
@@ -54,7 +54,7 @@ symbol = " "
 [git_commit]
 format = "[\\($hash$tag\\)]($style) "
 style = "bold purple"
-only_detached = false
+only_detached = true
 tag_disabled = false
 tag_symbol = " 🏷 "
 commit_hash_length = 7
