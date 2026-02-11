@@ -1,58 +1,111 @@
-format = "$directory on $git_branch$git_status $direnv$python$nodejs$rust$golang$status$cmd_duration$jobs\n$character"
+format = "$os$username$hostname$directory$git_branch$git_commit$git_state$git_status$direnv$python$nodejs$rust$golang$fill$status$cmd_duration$jobs$shlvl$battery$time\n$character"
 add_newline = true
 scan_timeout = 50
 command_timeout = 500
 
+[os]
+format = "[$symbol]($style) "
+style = "bold white"
+disabled = false
+
+[os.symbols]
+Macos = ""
+Linux = ""
+Windows = ""
+Ubuntu = ""
+Debian = ""
+Fedora = ""
+Arch = ""
+Alpine = ""
+NixOS = ""
+
+[username]
+format = "[$user]($style)"
+style_user = "bold yellow"
+style_root = "bold red"
+show_always = false
+
+[hostname]
+format = "[@$hostname]($style) "
+style = "bold green"
+ssh_only = true
+ssh_symbol = " "
+
+[shlvl]
+format = "[↕$shlvl]($style) "
+style = "bold yellow"
+threshold = 2
+disabled = false
+
 [directory]
 style = "bold blue"
-truncation_length = 3
-truncate_to_repo = true
-fish_style_pwd_dir_length = 1
+truncation_length = 5
+truncate_to_repo = false
+read_only = " 󰌾"
+
+[fill]
+symbol = " "
 
 [git_branch]
-format = "[$symbol$branch]($style) "
+format = "on [$symbol$branch]($style) "
 style = "bold purple"
-symbol = " "
+symbol = " "
+
+[git_commit]
+format = "[\\($hash$tag\\)]($style) "
+style = "bold purple"
+only_detached = false
+tag_disabled = false
+tag_symbol = " 🏷 "
+commit_hash_length = 7
 
 [git_status]
 format = "[$all_status$ahead_behind]($style) "
 style = "bold red"
-conflicted = "✖"
-staged = "+"
-modified = "!"
-untracked = "?"
-ahead = "⇡${count}"
-behind = "⇣${count}"
-diverged = "⇕"
+conflicted = "✖ "
+staged = "+ "
+modified = "! "
+untracked = "? "
+deleted = "✘ "
+renamed = "» "
+stashed = "$ "
+ahead = "⇡${count} "
+behind = "⇣${count} "
+diverged = "⇕ "
 
 [git_state]
 format = "[($state( $progress_current/$progress_total))]($style) "
 style = "yellow"
 
 [direnv]
-format = "[⛶ direnv](bold cyan) "
+format = "[⛶ direnv]($style) "
+style = "bold cyan"
 disabled = false
 
 [python]
-format = "[($virtualenv )]($style)"
+format = "[$symbol($virtualenv )]($style)"
 style = "bold green"
+symbol = " "
 pyenv_version_name = false
 disabled = false
 
 [nodejs]
-format = "[node $version]($style) "
+format = "[$symbol$version]($style) "
 style = "bold green"
+symbol = " "
 detect_files = ["package.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "package-lock.json"]
 disabled = false
 
 [rust]
-format = "[rust $version]($style) "
+format = "[$symbol$version]($style) "
 style = "bold red"
+symbol = " "
 disabled = false
 
 [golang]
-format = "[go $version]($style) "
+format = "[$symbol$version]($style) "
 style = "bold cyan"
+symbol = " "
 disabled = false
 
 [status]
@@ -65,7 +118,7 @@ recognize_signal_code = true
 
 [cmd_duration]
 min_time = 1500
-format = "[took $duration]($style) "
+format = "[⏱ $duration]($style) "
 style = "dim cyan"
 show_milliseconds = false
 
@@ -75,6 +128,28 @@ style = "bold magenta"
 number_threshold = 1
 symbol_threshold = 1
 disabled = false
+
+[battery]
+format = "[$symbol$percentage]($style) "
+disabled = false
+
+[[battery.display]]
+threshold = 30
+style = "bold red"
+
+[[battery.display]]
+threshold = 60
+style = "bold yellow"
+
+[[battery.display]]
+threshold = 100
+style = "dim green"
+
+[time]
+format = "[$time]($style)"
+style = "dim white"
+disabled = false
+time_format = "%H:%M"
 
 # keep prompt snappy
 [package]
