@@ -111,46 +111,6 @@ mkwt() {
   fi
 }
 
-# Create a git worktree and open a Zellij tab with optional layout
-# Usage: wzt <branch> [layout]
-# For custom worktree paths, use: mkwt <branch> <path> && zt <path> [layout]
-wzt() {
-  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    printf 'Usage: wzt <branch> [layout]\n' >&2
-    return 1
-  fi
-
-  local wt_path layout
-
-  layout="$2"
-
-  if ! wt_path="$(mkwt "$1")"; then
-    return $?
-  fi
-
-  if ! command -v zellij >/dev/null 2>&1; then
-    printf 'wzt: zellij not found in PATH; worktree created at %s\n' "$wt_path" >&2
-    printf '%s\n' "$wt_path"
-    return 0
-  fi
-
-  if [ -n "$layout" ]; then
-    if ! zt "$wt_path" "$layout"; then
-      printf 'wzt: worktree created at %s, but failed to open zellij tab\n' "$wt_path" >&2
-      printf '%s\n' "$wt_path"
-      return 1
-    fi
-  else
-    if ! zt "$wt_path"; then
-      printf 'wzt: worktree created at %s, but failed to open zellij tab\n' "$wt_path" >&2
-      printf '%s\n' "$wt_path"
-      return 1
-    fi
-  fi
-
-  printf '%s\n' "$wt_path"
-}
-
 # Interactive git branch switcher with preview
 gcof() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
