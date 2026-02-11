@@ -142,7 +142,6 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 
 # Load functional modules explicitly (clear order, no wildcard loops)
 [ -r "$HOME/.config/zsh/lib/aliases.sh" ] && source "$HOME/.config/zsh/lib/aliases.sh"
-[ -r "$HOME/.config/zsh/lib/git.sh" ] && source "$HOME/.config/zsh/lib/git.sh"
 
 
 # ============================================================================
