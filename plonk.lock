@@ -1,6 +1,7 @@
 version: 3
 packages:
     brew:
+        - acr
         - actionlint
         - atuin
         - awscli
