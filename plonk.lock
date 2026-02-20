@@ -14,7 +14,6 @@ packages:
         - coreutils
         - curl
         - direnv
-        - docker
         - duf
         - dust
         - editorconfig
