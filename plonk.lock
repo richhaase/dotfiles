@@ -35,6 +35,7 @@ packages:
         - helix
         - jq
         - just
+        - kitty
         - lazygit
         - markdown
         - marksman
