@@ -25,7 +25,6 @@ packages:
         - gcc
         - gemini-cli
         - gh
-        - ghostty
         - git
         - git-delta
         - go
