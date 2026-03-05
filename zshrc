@@ -41,10 +41,6 @@ export BUN_INSTALL="$HOME/.bun"
 [[ -d "$BUN_INSTALL/bin" ]] && path+=("$BUN_INSTALL/bin")
 [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
-# ASDF
-export ASDF_DATA_DIR="$HOME/.asdf"
-[[ -d "$ASDF_DATA_DIR" ]] && path=("$ASDF_DATA_DIR/shims" $path)
-
 # ============================================================================
 # Shell Options
 # ============================================================================
@@ -139,7 +135,6 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 # Initialize Atuin AFTER fzf so Ctrl+R uses Atuin instead of fzf
 (( $+commands[atuin] )) && eval "$(atuin init zsh)"
 
-
 # ============================================================================
 # Custom Configurations
 # ============================================================================
@@ -147,6 +142,11 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 # Load functional modules explicitly (clear order, no wildcard loops)
 [ -r "$HOME/.config/zsh/lib/aliases.sh" ] && source "$HOME/.config/zsh/lib/aliases.sh"
 
+# ============================================================================
+# Local Configurations
+# ============================================================================
+
+[ -r "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
 
 # ============================================================================
 # Final Hooks
