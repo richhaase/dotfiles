@@ -119,6 +119,7 @@ zstyle ':fzf-tab:complete:*:argument-rest' fzf-preview '[ -d "$realpath" ] && ez
 
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
+(( $+commands[fnm] )) && eval "$(fnm env --use-on-cd)"
 
 # ============================================================================
 # FZF Configuration
