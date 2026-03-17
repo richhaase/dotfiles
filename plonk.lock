@@ -34,7 +34,6 @@ packages:
         - goreleaser
         - helix
         - jq
-        - just
         - kitty
         - lazygit
         - markdown
