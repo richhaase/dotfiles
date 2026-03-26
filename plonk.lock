@@ -28,6 +28,7 @@ packages:
         - gh
         - git
         - git-delta
+        - glow
         - go
         - goimports
         - gopls
