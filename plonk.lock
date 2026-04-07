@@ -3,6 +3,7 @@ packages:
     brew:
         - acr
         - actionlint
+        - agent-browser
         - atuin
         - awscli
         - bash-language-server
