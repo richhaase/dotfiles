@@ -54,6 +54,7 @@ packages:
         - shfmt
         - starship
         - terraform-ls
+        - tmux
         - tokei
         - typescript-language-server
         - uv
