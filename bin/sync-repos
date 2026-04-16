@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# sync-repos — clone/update all of the user's GitHub repos with recent activity.
+#
+# Usage: sync-repos [--days N] [--src-dir PATH]
+#   --days N       Activity window in days (default: 45)
+#   --src-dir PATH Target parent dir for clones (default: ~/src)
+
+set -euo pipefail
+
+DAYS=45
+SRC_DIR="$HOME/src"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --days)
+            DAYS="$2"
+            shift 2
+            ;;
+        --src-dir)
+            SRC_DIR="$2"
+            shift 2
+            ;;
+        -h|--help)
+            sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
+        *)
+            echo "sync-repos: unknown argument: $1" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); then
+    echo "sync-repos: --days must be a positive integer" >&2
+    exit 2
+fi
+
+for cmd in gh jq git; do
+    command -v "$cmd" >/dev/null || { echo "sync-repos: missing dependency: $cmd" >&2; exit 1; }
+done
+
+CUTOFF=$(date -u -v-"${DAYS}"d +"%Y-%m-%dT%H:%M:%SZ")
+mkdir -p "$SRC_DIR"
+
+LOGIN=$(gh api user --jq .login)
+echo "sync-repos: user=$LOGIN window=${DAYS}d cutoff=$CUTOFF src=$SRC_DIR"
+echo
+
+REPOS=$(gh repo list "$LOGIN" --no-archived --limit 500 \
+    --json name,nameWithOwner,pushedAt,defaultBranchRef)
+
+cloned=()
+pulled=()
+fetched_only=()
+skipped_inactive=0
+skipped_other=()
+errors=()
+
+while read -r repo; do
+    NAME=$(jq -r .name <<<"$repo")
+    FULL=$(jq -r .nameWithOwner <<<"$repo")
+    PUSHED=$(jq -r .pushedAt <<<"$repo")
+    DEFAULT_BRANCH=$(jq -r '.defaultBranchRef.name // ""' <<<"$repo")
+
+    # Activity check: push time OR most recent event
+    if [[ "$PUSHED" > "$CUTOFF" ]]; then
+        :
+    else
+        LAST_EVENT=$(gh api "/repos/$FULL/events" --jq '.[0].created_at // empty' 2>/dev/null || true)
+        if [[ -z "$LAST_EVENT" ]] || ! [[ "$LAST_EVENT" > "$CUTOFF" ]]; then
+            skipped_inactive=$((skipped_inactive + 1))
+            continue
+        fi
+    fi
+
+    DEST="$SRC_DIR/$NAME"
+
+    if [[ ! -e "$DEST" ]]; then
+        echo "clone  $FULL -> $DEST"
+        if gh repo clone "$FULL" "$DEST" -- --quiet; then
+            cloned+=("$NAME")
+        else
+            errors+=("$NAME (clone failed)")
+        fi
+        continue
+    fi
+
+    if [[ ! -d "$DEST/.git" ]]; then
+        skipped_other+=("$NAME (exists but not a git repo)")
+        continue
+    fi
+
+    echo "fetch  $FULL"
+    if ! git -C "$DEST" fetch --all --prune --quiet 2>/dev/null; then
+        errors+=("$NAME (fetch failed)")
+        continue
+    fi
+
+    CURRENT=$(git -C "$DEST" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    DIRTY=$(git -C "$DEST" status --porcelain 2>/dev/null | head -n1)
+
+    reasons=()
+    [[ -n "$DIRTY" ]] && reasons+=("dirty")
+    if [[ -z "$DEFAULT_BRANCH" ]]; then
+        reasons+=("no default branch")
+    elif [[ "$CURRENT" != "$DEFAULT_BRANCH" ]]; then
+        reasons+=("on $CURRENT")
+    fi
+
+    if (( ${#reasons[@]} == 0 )); then
+        REMOTE_REF="origin/$DEFAULT_BRANCH"
+        if ! git -C "$DEST" rev-parse --verify --quiet "$REMOTE_REF" >/dev/null; then
+            fetched_only+=("$NAME (no $REMOTE_REF)")
+        elif git -C "$DEST" merge-base --is-ancestor HEAD "$REMOTE_REF"; then
+            if git -C "$DEST" diff --quiet HEAD "$REMOTE_REF"; then
+                fetched_only+=("$NAME (up to date)")
+            else
+                git -C "$DEST" merge --ff-only --quiet "$REMOTE_REF"
+                pulled+=("$NAME")
+            fi
+        else
+            fetched_only+=("$NAME (diverged)")
+        fi
+    else
+        fetched_only+=("$NAME ($(IFS=,; echo "${reasons[*]}"))")
+    fi
+done < <(jq -c '.[]' <<<"$REPOS")
+
+echo
+echo "=== summary ==="
+echo "cloned:          ${#cloned[@]}"
+for r in "${cloned[@]}"; do echo "  + $r"; done
+echo "fast-forwarded:  ${#pulled[@]}"
+for r in "${pulled[@]}"; do echo "  ↑ $r"; done
+echo "fetched only:    ${#fetched_only[@]}"
+for r in "${fetched_only[@]}"; do echo "  · $r"; done
+echo "skipped inactive: $skipped_inactive"
+if (( ${#skipped_other[@]} )); then
+    echo "skipped other:   ${#skipped_other[@]}"
+    for r in "${skipped_other[@]}"; do echo "  ! $r"; done
+fi
+if (( ${#errors[@]} )); then
+    echo "errors:          ${#errors[@]}"
+    for r in "${errors[@]}"; do echo "  x $r"; done
+    exit 1
+fi
