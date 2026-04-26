@@ -1,5 +1,3 @@
-theme = "catppuccin_macchiato"
-
 [editor]
 bufferline = "multiple"
 scroll-lines = 1
