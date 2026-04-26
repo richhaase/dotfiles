@@ -158,3 +158,10 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
 
 # Load syntax highlighting last, per plugin guidance
 plugin-load zsh-users/zsh-syntax-highlighting
+
+# bun completions
+[ -s "/Users/rdh/.bun/_bun" ] && source "/Users/rdh/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
