@@ -40,7 +40,6 @@ packages:
         - markdown
         - marksman
         - node
-        - ollama
         - prettier
         - procs
         - pyright
