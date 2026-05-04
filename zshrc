@@ -115,6 +115,7 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' 'r:|[._-]=** r:|=**'
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[fnm] )) && eval "$(fnm env --use-on-cd)"
 (( $+commands[atuin] )) && eval "$(atuin init zsh)"
+(( $+commands[atuin] )) && eval "$(atuin init zsh)"
 
 # ============================================================================
 # Custom Configurations
