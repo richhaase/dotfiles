@@ -63,8 +63,6 @@ packages:
         - xh
         - yaml-language-server
         - zoxide
-    cargo:
-        - taplo-cli
     pnpm:
         - '@astrojs/language-server'
         - eslint
