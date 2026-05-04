@@ -4,7 +4,6 @@ packages:
         - acr
         - actionlint
         - agent-browser
-        - atuin
         - awscli
         - bash-language-server
         - bat
