@@ -76,6 +76,7 @@ plugins=(
   romkatv/zsh-defer
   zsh-users/zsh-completions
   zsh-users/zsh-autosuggestions
+  Aloxaf/fzf-tab
 )
 
 plugin-load $plugins
@@ -107,6 +108,11 @@ zstyle ':completion:*' group-name ''
 zstyle ':completion:*:descriptions' format '%F{yellow}%d%f'
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' 'r:|[._-]=** r:|=**'
 
+# fzf-tab configuration (previews + group switching)
+zstyle ':fzf-tab:*' switch-group ',' '.'
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -lah --color=always --icons=always "$realpath" 2>/dev/null | head -200'
+zstyle ':fzf-tab:complete:*:argument-rest' fzf-preview '[ -d "$realpath" ] && eza --tree --color=always --icons=always "$realpath" | head -200 || (bat --color=always --style=header,grid --line-range :200 "$realpath" 2>/dev/null || file --brief "$realpath")'
+
 # ============================================================================
 # Tool Initializations
 # ============================================================================
@@ -114,6 +120,20 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' 'r:|[._-]=** r:|=**'
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[fnm] )) && eval "$(fnm env --use-on-cd)"
+
+# ============================================================================
+# FZF Configuration
+# ============================================================================
+
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
+export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=header,grid --line-range :300 {}'"
+export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -50'"
+
+(( $+commands[fzf] )) && source <(fzf --zsh)
+
+# Initialize Atuin AFTER fzf so Ctrl+R uses Atuin instead of fzf
 (( $+commands[atuin] )) && eval "$(atuin init zsh)"
 
 # ============================================================================
