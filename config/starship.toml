@@ -1,23 +1,7 @@
-format = "$os$username$hostname$directory$git_branch$git_state$git_status$direnv$python$nodejs$rust$golang$fill$status$cmd_duration$jobs$shlvl$battery$time\n$character"
+format = "$username$hostname$directory$git_branch$git_state$git_status$direnv$fill$status$cmd_duration$shlvl\n$character"
 add_newline = true
 scan_timeout = 50
 command_timeout = 500
-
-[os]
-format = "[$symbol]($style) "
-style = "bold white"
-disabled = false
-
-[os.symbols]
-Macos = ""
-Linux = ""
-Windows = ""
-Ubuntu = ""
-Debian = ""
-Fedora = ""
-Arch = ""
-Alpine = ""
-NixOS = ""
 
 [username]
 format = "[$user]($style)"
@@ -82,32 +66,6 @@ format = "[⛶ direnv]($style) "
 style = "bold cyan"
 disabled = false
 
-[python]
-format = "[$symbol($virtualenv )]($style)"
-style = "bold green"
-symbol = " "
-pyenv_version_name = false
-disabled = false
-
-[nodejs]
-format = "[$symbol$version]($style) "
-style = "bold green"
-symbol = " "
-detect_files = ["package.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "package-lock.json"]
-disabled = false
-
-[rust]
-format = "[$symbol$version]($style) "
-style = "bold red"
-symbol = " "
-disabled = false
-
-[golang]
-format = "[$symbol$version]($style) "
-style = "bold cyan"
-symbol = " "
-disabled = false
-
 [status]
 format = "[✗ $status]($style) "
 style = "bold red"
@@ -121,35 +79,6 @@ min_time = 1500
 format = "[⏱ $duration]($style) "
 style = "dim cyan"
 show_milliseconds = false
-
-[jobs]
-format = "[✦ $number]($style) "
-style = "bold magenta"
-number_threshold = 1
-symbol_threshold = 1
-disabled = false
-
-[battery]
-format = "[$symbol$percentage]($style) "
-disabled = false
-
-[[battery.display]]
-threshold = 30
-style = "bold red"
-
-[[battery.display]]
-threshold = 60
-style = "bold yellow"
-
-[[battery.display]]
-threshold = 100
-style = "dim green"
-
-[time]
-format = "[$time]($style)"
-style = "dim white"
-disabled = false
-time_format = "%H:%M"
 
 # keep prompt snappy
 [package]

@@ -23,7 +23,6 @@ packages:
         - fd
         - fnm
         - font-jetbrains-mono-nerd-font
-        - fzf
         - gcc
         - gemini-cli
         - gh
@@ -41,7 +40,6 @@ packages:
         - markdown
         - marksman
         - node
-        - ollama
         - pnpm
         - prettier
         - procs
