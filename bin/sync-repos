@@ -1,147 +1,223 @@
 #!/usr/bin/env bash
-# sync-repos — clone/update all of the user's GitHub repos with recent activity.
+# sync-repos — clone or fast-forward GitHub repos with recent activity.
 #
-# Usage: sync-repos [--days N] [--src-dir PATH]
+# Usage: sync-repos [--days N] [--src-dir PATH] [--jobs N]
 #   --days N       Activity window in days (default: 45)
 #   --src-dir PATH Target parent dir for clones (default: ~/src)
+#   --jobs N       Parallel clone/fetch workers (default: 8)
 
 set -euo pipefail
 
 DAYS=45
 SRC_DIR="$HOME/src"
+JOBS=8
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --days)
-            DAYS="$2"
-            shift 2
-            ;;
-        --src-dir)
-            SRC_DIR="$2"
-            shift 2
-            ;;
-        -h|--help)
-            sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
-            exit 0
-            ;;
-        *)
-            echo "sync-repos: unknown argument: $1" >&2
-            exit 2
-            ;;
-    esac
+  case "$1" in
+    --days)    DAYS="$2";    shift 2 ;;
+    --src-dir) SRC_DIR="$2"; shift 2 ;;
+    --jobs)    JOBS="$2";    shift 2 ;;
+    -h|--help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)         echo "sync-repos: unknown argument: $1" >&2; exit 2 ;;
+  esac
 done
 
 if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); then
-    echo "sync-repos: --days must be a positive integer" >&2
-    exit 2
+  echo "sync-repos: --days must be a positive integer" >&2; exit 2
+fi
+if ! [[ "$JOBS" =~ ^[0-9]+$ ]] || (( JOBS < 1 )); then
+  echo "sync-repos: --jobs must be a positive integer" >&2; exit 2
 fi
 
 for cmd in gh jq git; do
-    command -v "$cmd" >/dev/null || { echo "sync-repos: missing dependency: $cmd" >&2; exit 1; }
+  command -v "$cmd" >/dev/null \
+    || { echo "sync-repos: missing dependency: $cmd" >&2; exit 1; }
 done
 
-CUTOFF=$(date -u -v-"${DAYS}"d +"%Y-%m-%dT%H:%M:%SZ")
+if [[ -t 1 ]] && [[ -z "${NO_COLOR:-}" ]]; then
+  c_b=$'\e[1m'; c_d=$'\e[2m'; c_off=$'\e[0m'
+  c_red=$'\e[31m'; c_grn=$'\e[32m'; c_ylw=$'\e[33m'; c_blu=$'\e[34m'
+else
+  c_b=; c_d=; c_off=; c_red=; c_grn=; c_ylw=; c_blu=
+fi
+
+start=$(date +%s)
+cutoff=$(date -u -v-"${DAYS}"d +"%Y-%m-%dT%H:%M:%SZ")
 mkdir -p "$SRC_DIR"
 
-LOGIN=$(gh api user --jq .login)
-echo "sync-repos: user=$LOGIN window=${DAYS}d cutoff=$CUTOFF src=$SRC_DIR"
-echo
+login=$(gh api user --jq .login)
 
-REPOS=$(gh repo list "$LOGIN" --no-archived --limit 500 \
-    --json name,nameWithOwner,pushedAt,defaultBranchRef)
+rows=()
+while IFS= read -r line; do
+  rows+=("$line")
+done < <(
+  gh repo list "$login" --no-archived --limit 500 \
+    --json name,nameWithOwner,pushedAt,defaultBranchRef,sshUrl \
+    --jq '.[] | [.name, .nameWithOwner, .pushedAt,
+                 (.defaultBranchRef.name // ""), .sshUrl] | @tsv'
+)
+total=${#rows[@]}
 
-cloned=()
-pulled=()
-fetched_only=()
-skipped_inactive=0
-skipped_other=()
-errors=()
+printf '%ssync-repos%s  %suser%s=%s  %swindow%s=%dd  %srepos%s=%d  %sjobs%s=%d  %ssrc%s=%s\n\n' \
+  "$c_b" "$c_off" \
+  "$c_d" "$c_off" "$login" \
+  "$c_d" "$c_off" "$DAYS" \
+  "$c_d" "$c_off" "$total" \
+  "$c_d" "$c_off" "$JOBS" \
+  "$c_d" "$c_off" "$SRC_DIR"
 
-while read -r repo; do
-    NAME=$(jq -r .name <<<"$repo")
-    FULL=$(jq -r .nameWithOwner <<<"$repo")
-    PUSHED=$(jq -r .pushedAt <<<"$repo")
-    DEFAULT_BRANCH=$(jq -r '.defaultBranchRef.name // ""' <<<"$repo")
+# Pad the name column to the longest name we'll print.
+maxlen=10
+for row in "${rows[@]}"; do
+  n=${row%%$'\t'*}
+  (( ${#n} > maxlen )) && maxlen=${#n}
+done
 
-    # Activity check: push time OR most recent event
-    if [[ "$PUSHED" > "$CUTOFF" ]]; then
-        :
+tmpdir=$(mktemp -d -t sync-repos.XXXXXX)
+trap 'rm -rf "$tmpdir"' EXIT
+
+# FIFO-based counting semaphore: portable across bash 3.2+ (no `wait -n`).
+fifo="$tmpdir/sem"
+mkfifo "$fifo"
+exec 9<>"$fifo"
+for ((i=0; i<JOBS; i++)); do echo >&9; done
+
+# Atomic single-line status print. printf of <PIPE_BUF bytes is atomic in
+# POSIX, so concurrent workers won't tear each other's lines.
+emit() {
+  local icon=$1 color=$2 name=$3 detail=$4
+  printf '  %s%s%s  %-*s  %s%s%s\n' \
+    "$color" "$icon" "$c_off" "$maxlen" "$name" \
+    "$c_d" "$detail" "$c_off"
+}
+
+process_repo() {
+  local name=$1 full=$2 pushed=$3 default=$4 sshurl=$5
+  local result="$tmpdir/$name.result"
+  local dest="$SRC_DIR/$name"
+
+  if ! [[ "$pushed" > "$cutoff" ]]; then
+    local last
+    last=$(gh api "/repos/$full/events" --jq '.[0].created_at // empty' \
+            2>/dev/null || true)
+    if [[ -z "$last" ]] || ! [[ "$last" > "$cutoff" ]]; then
+      printf 'skipinactive\t%s\t\n' "$name" > "$result"
+      return 0
+    fi
+  fi
+
+  if [[ ! -e "$dest" ]]; then
+    if git clone --quiet "$sshurl" "$dest" 2>/dev/null; then
+      printf 'clone\t%s\t\n' "$name" > "$result"
+      emit "+" "$c_grn" "$name" "cloned"
     else
-        LAST_EVENT=$(gh api "/repos/$FULL/events" --jq '.[0].created_at // empty' 2>/dev/null || true)
-        if [[ -z "$LAST_EVENT" ]] || ! [[ "$LAST_EVENT" > "$CUTOFF" ]]; then
-            skipped_inactive=$((skipped_inactive + 1))
-            continue
-        fi
+      printf 'error\t%s\tclone failed\n' "$name" > "$result"
+      emit "✗" "$c_red" "$name" "clone failed"
     fi
+    return 0
+  fi
 
-    DEST="$SRC_DIR/$NAME"
+  if [[ ! -d "$dest/.git" ]]; then
+    printf 'skipother\t%s\tnot a git repo\n' "$name" > "$result"
+    emit "!" "$c_ylw" "$name" "not a git repo"
+    return 0
+  fi
 
-    if [[ ! -e "$DEST" ]]; then
-        echo "clone  $FULL -> $DEST"
-        if gh repo clone "$FULL" "$DEST" -- --quiet; then
-            cloned+=("$NAME")
-        else
-            errors+=("$NAME (clone failed)")
-        fi
-        continue
-    fi
+  if ! git -C "$dest" fetch --all --prune --quiet 2>/dev/null; then
+    printf 'error\t%s\tfetch failed\n' "$name" > "$result"
+    emit "✗" "$c_red" "$name" "fetch failed"
+    return 0
+  fi
 
-    if [[ ! -d "$DEST/.git" ]]; then
-        skipped_other+=("$NAME (exists but not a git repo)")
-        continue
-    fi
+  local current dirty
+  current=$(git -C "$dest" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+  dirty=$(git -C "$dest" status --porcelain 2>/dev/null | head -n1)
 
-    echo "fetch  $FULL"
-    if ! git -C "$DEST" fetch --all --prune --quiet 2>/dev/null; then
-        errors+=("$NAME (fetch failed)")
-        continue
-    fi
+  local reasons=()
+  [[ -n "$dirty" ]] && reasons+=("dirty")
+  if [[ -z "$default" ]]; then
+    reasons+=("no default branch")
+  elif [[ "$current" != "$default" ]]; then
+    reasons+=("on $current")
+  fi
 
-    CURRENT=$(git -C "$DEST" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-    DIRTY=$(git -C "$DEST" status --porcelain 2>/dev/null | head -n1)
+  if (( ${#reasons[@]} > 0 )); then
+    local detail; detail=$(IFS=,; echo "${reasons[*]}")
+    printf 'fetch\t%s\t%s\n' "$name" "$detail" > "$result"
+    emit "·" "$c_ylw" "$name" "$detail"
+    return 0
+  fi
 
-    reasons=()
-    [[ -n "$DIRTY" ]] && reasons+=("dirty")
-    if [[ -z "$DEFAULT_BRANCH" ]]; then
-        reasons+=("no default branch")
-    elif [[ "$CURRENT" != "$DEFAULT_BRANCH" ]]; then
-        reasons+=("on $CURRENT")
-    fi
-
-    if (( ${#reasons[@]} == 0 )); then
-        REMOTE_REF="origin/$DEFAULT_BRANCH"
-        if ! git -C "$DEST" rev-parse --verify --quiet "$REMOTE_REF" >/dev/null; then
-            fetched_only+=("$NAME (no $REMOTE_REF)")
-        elif git -C "$DEST" merge-base --is-ancestor HEAD "$REMOTE_REF"; then
-            if git -C "$DEST" diff --quiet HEAD "$REMOTE_REF"; then
-                fetched_only+=("$NAME (up to date)")
-            else
-                git -C "$DEST" merge --ff-only --quiet "$REMOTE_REF"
-                pulled+=("$NAME")
-            fi
-        else
-            fetched_only+=("$NAME (diverged)")
-        fi
+  local rref="origin/$default"
+  if ! git -C "$dest" rev-parse --verify --quiet "$rref" >/dev/null; then
+    printf 'fetch\t%s\tno %s\n' "$name" "$rref" > "$result"
+    emit "·" "$c_ylw" "$name" "no $rref"
+  elif git -C "$dest" merge-base --is-ancestor HEAD "$rref"; then
+    if git -C "$dest" diff --quiet HEAD "$rref"; then
+      printf 'uptodate\t%s\t\n' "$name" > "$result"
+      emit "·" "$c_d" "$name" "up to date"
     else
-        fetched_only+=("$NAME ($(IFS=,; echo "${reasons[*]}"))")
+      local nc; nc=$(git -C "$dest" rev-list --count "HEAD..$rref")
+      git -C "$dest" merge --ff-only --quiet "$rref"
+      printf 'pull\t%s\t%s\n' "$name" "$nc" > "$result"
+      local plural=s; [[ "$nc" == "1" ]] && plural=
+      emit "↑" "$c_blu" "$name" "fast-forwarded ${nc} commit${plural}"
     fi
-done < <(jq -c '.[]' <<<"$REPOS")
+  else
+    printf 'fetch\t%s\tdiverged\n' "$name" > "$result"
+    emit "·" "$c_ylw" "$name" "diverged"
+  fi
+}
 
-echo
-echo "=== summary ==="
-echo "cloned:          ${#cloned[@]}"
-for r in "${cloned[@]}"; do echo "  + $r"; done
-echo "fast-forwarded:  ${#pulled[@]}"
-for r in "${pulled[@]}"; do echo "  ↑ $r"; done
-echo "fetched only:    ${#fetched_only[@]}"
-for r in "${fetched_only[@]}"; do echo "  · $r"; done
-echo "skipped inactive: $skipped_inactive"
-if (( ${#skipped_other[@]} )); then
-    echo "skipped other:   ${#skipped_other[@]}"
-    for r in "${skipped_other[@]}"; do echo "  ! $r"; done
+for row in "${rows[@]}"; do
+  IFS=$'\t' read -r name full pushed default sshurl <<< "$row"
+  read -r -u 9 _
+  (
+    process_repo "$name" "$full" "$pushed" "$default" "$sshurl"
+    echo >&9
+  ) &
+done
+wait
+exec 9>&-
+
+n_clone=0; n_pull=0; n_uptodate=0; n_fetch=0
+n_skipa=0; n_skipo=0; n_err=0
+errs=()
+for f in "$tmpdir"/*.result; do
+  [[ -e "$f" ]] || continue
+  IFS=$'\t' read -r kind name detail < "$f" || continue
+  case "$kind" in
+    clone)        n_clone=$((n_clone+1)) ;;
+    pull)         n_pull=$((n_pull+1)) ;;
+    uptodate)     n_uptodate=$((n_uptodate+1)) ;;
+    fetch)        n_fetch=$((n_fetch+1)) ;;
+    skipinactive) n_skipa=$((n_skipa+1)) ;;
+    skipother)    n_skipo=$((n_skipo+1)) ;;
+    error)        n_err=$((n_err+1));
+                  errs+=("$name${detail:+ ($detail)}") ;;
+  esac
+done
+
+elapsed=$(( $(date +%s) - start ))
+n_unchanged=$((n_uptodate + n_fetch))
+n_skipped=$((n_skipa + n_skipo))
+
+printf '\n%s── summary ──%s  %d repos · %ds\n' \
+  "$c_d" "$c_off" "$total" "$elapsed"
+printf '  %s%d cloned%s · %s%d fast-forwarded%s · %s%d unchanged%s · %s%d skipped%s' \
+  "$c_grn" "$n_clone"     "$c_off" \
+  "$c_blu" "$n_pull"      "$c_off" \
+  "$c_d"   "$n_unchanged" "$c_off" \
+  "$c_ylw" "$n_skipped"   "$c_off"
+if (( n_err > 0 )); then
+  printf ' · %s%d errors%s' "$c_red" "$n_err" "$c_off"
 fi
-if (( ${#errors[@]} )); then
-    echo "errors:          ${#errors[@]}"
-    for r in "${errors[@]}"; do echo "  x $r"; done
-    exit 1
+printf '\n'
+
+if (( n_err > 0 )); then
+  printf '\n%serrors:%s\n' "$c_red" "$c_off"
+  for e in "${errs[@]}"; do
+    printf '  %s✗%s %s\n' "$c_red" "$c_off" "$e"
+  done
+  exit 1
 fi
