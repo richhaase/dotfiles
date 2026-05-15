@@ -61,5 +61,4 @@ packages:
         - yaml-language-server
         - zoxide
     pnpm:
-        - '@astrojs/language-server'
         - eslint
