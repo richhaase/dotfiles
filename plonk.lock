@@ -60,5 +60,3 @@ packages:
         - xh
         - yaml-language-server
         - zoxide
-    pnpm:
-        - eslint
