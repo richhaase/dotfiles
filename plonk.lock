@@ -10,7 +10,6 @@ packages:
         - black
         - btop
         - ccusage
-        - circumflex
         - codex
         - coreutils
         - curl
