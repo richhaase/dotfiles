@@ -39,6 +39,41 @@ if [ -n "$branch" ]; then
   out+=" \033[1;35m \033[0m\033[1;35m${branch}\033[0m"
 fi
 
+# Git working-tree status (Starship-style): staged/modified/untracked/conflicts + ahead/behind.
+# One porcelain call; --no-optional-locks avoids fighting a concurrent git for the index lock.
+# Only non-zero counts render, so a clean+synced tree shows just the branch. Silent outside a repo.
+if [ -n "$branch" ]; then
+  gstat=$(git -C "$cwd" --no-optional-locks status --porcelain=v1 --branch 2>/dev/null)
+  if [ -n "$gstat" ]; then
+    g_staged=0; g_mod=0; g_untracked=0; g_conflict=0; g_ahead=0; g_behind=0
+    while IFS= read -r gl; do
+      [ -z "$gl" ] && continue
+      if [ "${gl:0:2}" = "##" ]; then
+        [[ "$gl" =~ ahead\ ([0-9]+) ]] && g_ahead="${BASH_REMATCH[1]}"
+        [[ "$gl" =~ behind\ ([0-9]+) ]] && g_behind="${BASH_REMATCH[1]}"
+        continue
+      fi
+      gx="${gl:0:1}"; gy="${gl:1:1}"
+      if [ "${gl:0:2}" = "??" ]; then
+        g_untracked=$((g_untracked+1))
+      elif [ "$gx" = "U" ] || [ "$gy" = "U" ] || [ "${gl:0:2}" = "DD" ] || [ "${gl:0:2}" = "AA" ]; then
+        g_conflict=$((g_conflict+1))
+      else
+        [ "$gx" != " " ] && g_staged=$((g_staged+1))
+        [ "$gy" != " " ] && g_mod=$((g_mod+1))
+      fi
+    done <<< "$gstat"
+    gseg=""
+    (( g_conflict  > 0 )) && gseg+=" \033[1;31m=${g_conflict}\033[0m"   # conflicts (red)
+    (( g_staged    > 0 )) && gseg+=" \033[1;32m+${g_staged}\033[0m"     # staged (green)
+    (( g_mod       > 0 )) && gseg+=" \033[1;33m!${g_mod}\033[0m"        # modified (yellow)
+    (( g_untracked > 0 )) && gseg+=" \033[2;37m?${g_untracked}\033[0m"  # untracked (dim)
+    (( g_ahead     > 0 )) && gseg+=" \033[1;36m⇡${g_ahead}\033[0m"      # ahead (cyan)
+    (( g_behind    > 0 )) && gseg+=" \033[1;36m⇣${g_behind}\033[0m"     # behind (cyan)
+    out+="$gseg"
+  fi
+fi
+
 # Model (dim white)
 if [ -n "$model" ]; then
   out+=" \033[2;37m${model}\033[0m"
