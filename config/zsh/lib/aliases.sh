@@ -29,23 +29,3 @@ alias gundo='git reset HEAD~1 --mixed'
 alias gconflicts='git diff --name-only --diff-filter=U'
 alias gsup='git submodule update'
 alias grv='git remote --verbose'
-alias wt='wt.py'
-
-# File manager integration - open yazi and cd to selected directory
-y() {
-	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
-	yazi "$@" --cwd-file="$tmp"
-	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
-		builtin cd -- "$cwd"
-	fi
-	rm -f -- "$tmp"
-}
-
-# Git worktree picker
-cdwt() {
-  local wt_path
-  wt_path="$(wt pick)"
-  if [ -n "$wt_path" ]; then
-    cd "$wt_path"
-  fi
-}

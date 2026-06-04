@@ -33,7 +33,6 @@ packages:
         - jq
         - kitty
         - lazygit
-        - markdown
         - node
         - pnpm
         - prettier
@@ -42,7 +41,6 @@ packages:
         - python@3.14
         - ripgrep
         - ruff
-        - scc
         - sd
         - shellcheck
         - shfmt
