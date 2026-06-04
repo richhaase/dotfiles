@@ -6,7 +6,6 @@ packages:
         - atuin
         - awscli
         - bat
-        - black
         - btop
         - ccusage
         - codex
