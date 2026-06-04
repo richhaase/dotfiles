@@ -5,7 +5,6 @@ packages:
         - agent-browser
         - atuin
         - awscli
-        - bash-language-server
         - bat
         - black
         - btop
@@ -22,7 +21,6 @@ packages:
         - fnm
         - font-jetbrains-mono-nerd-font
         - gcc
-        - gemini-cli
         - gh
         - git
         - git-delta
@@ -36,7 +34,6 @@ packages:
         - kitty
         - lazygit
         - markdown
-        - marksman
         - node
         - pnpm
         - prettier
@@ -50,13 +47,9 @@ packages:
         - shellcheck
         - shfmt
         - starship
-        - terraform-ls
-        - tmux
         - tokei
         - typescript-language-server
         - uv
-        - vscode-langservers-extracted
         - wget
         - xh
-        - yaml-language-server
         - zoxide

@@ -23,39 +23,20 @@ command = "rust-analyzer"
 command = "typescript-language-server"
 args = ["--stdio"]
 
-# --- Markdown ---
-[language-server.marksman]
-command = "marksman"
 
 # --- Astro ---
 [language-server.astro-ls]
 command = "astro-ls"
 args = ["--stdio"]
 
-# --- Terraform / HCL ---
-[language-server.terraform-ls]
-command = "terraform-ls"
-args = ["serve"]
 
-# --- YAML ---
-[language-server.yaml-language-server]
-command = "yaml-language-server"
-args = ["--stdio"]
 
 # --- TOML ---
 [language-server.taplo]
 command = "taplo"
 args = ["lsp", "stdio"]
 
-# --- JSON ---
-[language-server.vscode-json-language-server]
-command = "vscode-json-language-server"
-args = ["--stdio"]
 
-# --- Bash ---
-[language-server.bash-language-server]
-command = "bash-language-server"
-args = ["start"]
 
 #############################
 # Python
@@ -148,7 +129,6 @@ args = ["--stdin-filepath", "file.js"]
 name = "markdown"
 file-types = ["md", "markdown"]
 roots = [".git"]
-language-servers = ["marksman"]
 auto-format = true
 
 [language.formatter]
@@ -177,7 +157,6 @@ name = "hcl"
 language-id = "terraform"
 file-types = ["tf", "tfvars"]
 roots = ["terraform.tf", "terraform.tfvars", ".terraform", ".git"]
-language-servers = ["terraform-ls"]
 auto-format = true
 
 [language.formatter]
@@ -191,7 +170,6 @@ args = ["fmt", "-"]
 name = "yaml"
 file-types = ["yaml", "yml"]
 roots = [".git"]
-language-servers = ["yaml-language-server"]
 auto-format = true
 
 [language.formatter]
@@ -219,7 +197,6 @@ args = ["fmt", "-"]
 name = "json"
 file-types = ["json", "jsonc"]
 roots = [".git"]
-language-servers = ["vscode-json-language-server"]
 auto-format = true
 
 [language.formatter]
@@ -241,7 +218,6 @@ file-types = [
   ".zprofile",
 ]
 roots = [".git"]
-language-servers = ["bash-language-server"]
 auto-format = false
 
 [language.formatter]
