@@ -1,147 +1,268 @@
 #!/usr/bin/env bash
-# sync-repos — clone/update all of the user's GitHub repos with recent activity.
-#
-# Usage: sync-repos [--days N] [--src-dir PATH]
-#   --days N       Activity window in days (default: 45)
-#   --src-dir PATH Target parent dir for clones (default: ~/src)
-
 set -euo pipefail
 
+OWNER=""
+TARGET_DIR="$HOME/src"
 DAYS=45
-SRC_DIR="$HOME/src"
+DRY_RUN=false
+CLEANUP=false
+EVENTS_FALLBACK=true
+EXCLUDES_FILE=""
+EXCLUDES=()
+
+usage() {
+  cat <<EOF
+Usage: sync-repos [OPTIONS]
+
+Clone and fast-forward recently active GitHub repos for a user or org.
+Dirty worktrees, non-default branches, and diverged histories are reported
+but never touched.
+
+Options:
+  -o, --owner OWNER        GitHub user or org (default: authenticated gh user)
+  -t, --target DIR         Parent directory for clones (default: ~/src)
+  -d, --days N             Activity window in days (default: 45)
+  -e, --exclude PATTERN    Skip repos matching glob PATTERN (repeatable)
+      --excludes-file FILE Read exclude patterns from FILE, one per line
+                           (blank lines and #-comments ignored)
+  -c, --cleanup            Remove clean clones of repos inactive beyond the window
+  -n, --dry-run            Show what would happen without changing anything
+      --no-events          Judge activity by pushes only (skip events-API fallback)
+  -h, --help               Show this help
+EOF
+}
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --days)
-            DAYS="$2"
-            shift 2
-            ;;
-        --src-dir)
-            SRC_DIR="$2"
-            shift 2
-            ;;
-        -h|--help)
-            sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
-            exit 0
-            ;;
-        *)
-            echo "sync-repos: unknown argument: $1" >&2
-            exit 2
-            ;;
-    esac
+  case "$1" in
+    -o|--owner) OWNER="$2"; shift 2 ;;
+    -t|--target) TARGET_DIR="$2"; shift 2 ;;
+    -d|--days) DAYS="$2"; shift 2 ;;
+    -e|--exclude) EXCLUDES+=("$2"); shift 2 ;;
+    --excludes-file) EXCLUDES_FILE="$2"; shift 2 ;;
+    -c|--cleanup) CLEANUP=true; shift ;;
+    -n|--dry-run) DRY_RUN=true; shift ;;
+    --no-events) EVENTS_FALLBACK=false; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "sync-repos: unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
 done
 
 if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); then
-    echo "sync-repos: --days must be a positive integer" >&2
-    exit 2
+  echo "sync-repos: --days must be a positive integer" >&2
+  exit 2
 fi
 
 for cmd in gh jq git; do
-    command -v "$cmd" >/dev/null || { echo "sync-repos: missing dependency: $cmd" >&2; exit 1; }
+  command -v "$cmd" >/dev/null || { echo "sync-repos: missing dependency: $cmd" >&2; exit 1; }
 done
 
-CUTOFF=$(date -u -v-"${DAYS}"d +"%Y-%m-%dT%H:%M:%SZ")
-mkdir -p "$SRC_DIR"
+if [[ -n "$EXCLUDES_FILE" ]]; then
+  if [[ ! -f "$EXCLUDES_FILE" ]]; then
+    echo "sync-repos: excludes file not found: $EXCLUDES_FILE" >&2
+    exit 2
+  fi
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    EXCLUDES+=("$line")
+  done < "$EXCLUDES_FILE"
+fi
 
-LOGIN=$(gh api user --jq .login)
-echo "sync-repos: user=$LOGIN window=${DAYS}d cutoff=$CUTOFF src=$SRC_DIR"
-echo
+is_excluded() {
+  local name="$1" pat
+  for pat in ${EXCLUDES[@]+"${EXCLUDES[@]}"}; do
+    [[ "$name" == $pat ]] && return 0
+  done
+  return 1
+}
 
-REPOS=$(gh repo list "$LOGIN" --no-archived --limit 500 \
-    --json name,nameWithOwner,pushedAt,defaultBranchRef)
+is_dirty() {
+  [[ -n "$(git -C "$1" status --porcelain 2>/dev/null)" ]]
+}
+
+if [[ -z "$OWNER" ]]; then
+  OWNER=$(gh api user --jq .login)
+fi
+
+CUTOFF=$(date -u -v-"${DAYS}"d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+  || date -u -d "${DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)
+
+mkdir -p "$TARGET_DIR"
+
+EXCL_DESC="${EXCLUDES[*]-}"
+echo "owner:    $OWNER"
+echo "target:   $TARGET_DIR"
+echo "window:   ${DAYS}d (since $CUTOFF)"
+echo "excludes: ${EXCL_DESC:-(none)}"
+echo "events:   $EVENTS_FALLBACK"
+echo "cleanup:  $CLEANUP"
+echo "dry run:  $DRY_RUN"
+echo ""
+
+REPOS=$(gh repo list "$OWNER" --no-archived --limit 500 \
+  --json name,nameWithOwner,pushedAt,defaultBranchRef)
 
 cloned=()
-pulled=()
-fetched_only=()
-skipped_inactive=0
-skipped_other=()
+updated=()
+skipped=()
 errors=()
+inactive=()
+removed=()
+uptodate=0
+excluded=0
 
-while read -r repo; do
-    NAME=$(jq -r .name <<<"$repo")
-    FULL=$(jq -r .nameWithOwner <<<"$repo")
-    PUSHED=$(jq -r .pushedAt <<<"$repo")
-    DEFAULT_BRANCH=$(jq -r '.defaultBranchRef.name // ""' <<<"$repo")
+while IFS= read -r repo; do
+  NAME=$(jq -r .name <<<"$repo")
+  FULL=$(jq -r .nameWithOwner <<<"$repo")
+  PUSHED=$(jq -r .pushedAt <<<"$repo")
+  BRANCH=$(jq -r '.defaultBranchRef.name // ""' <<<"$repo")
 
-    # Activity check: push time OR most recent event
-    if [[ "$PUSHED" > "$CUTOFF" ]]; then
-        :
+  if is_excluded "$NAME"; then
+    excluded=$((excluded + 1))
+    continue
+  fi
+
+  active=false
+  if [[ "$PUSHED" > "$CUTOFF" ]]; then
+    active=true
+  elif $EVENTS_FALLBACK; then
+    LAST_EVENT=$(gh api "repos/$FULL/events" --jq '.[0].created_at // empty' 2>/dev/null || true)
+    [[ -n "$LAST_EVENT" && "$LAST_EVENT" > "$CUTOFF" ]] && active=true
+  fi
+  if ! $active; then
+    inactive+=("$NAME")
+    continue
+  fi
+
+  DEST="$TARGET_DIR/$NAME"
+
+  if [[ ! -e "$DEST" ]]; then
+    if $DRY_RUN; then
+      echo "  → $NAME (would clone)"
+      cloned+=("$NAME")
+    elif gh repo clone "$FULL" "$DEST" -- --quiet; then
+      echo "  → $NAME (cloned)"
+      cloned+=("$NAME")
     else
-        LAST_EVENT=$(gh api "/repos/$FULL/events" --jq '.[0].created_at // empty' 2>/dev/null || true)
-        if [[ -z "$LAST_EVENT" ]] || ! [[ "$LAST_EVENT" > "$CUTOFF" ]]; then
-            skipped_inactive=$((skipped_inactive + 1))
-            continue
-        fi
+      echo "  x $NAME (clone failed)"
+      errors+=("$NAME clone failed")
     fi
+    continue
+  fi
 
-    DEST="$SRC_DIR/$NAME"
+  if [[ ! -d "$DEST/.git" ]]; then
+    echo "  ! $NAME (exists but not a git repo)"
+    skipped+=("$NAME exists but not a git repo")
+    continue
+  fi
 
-    if [[ ! -e "$DEST" ]]; then
-        echo "clone  $FULL -> $DEST"
-        if gh repo clone "$FULL" "$DEST" -- --quiet; then
-            cloned+=("$NAME")
-        else
-            errors+=("$NAME (clone failed)")
-        fi
-        continue
-    fi
-
-    if [[ ! -d "$DEST/.git" ]]; then
-        skipped_other+=("$NAME (exists but not a git repo)")
-        continue
-    fi
-
-    echo "fetch  $FULL"
-    if ! git -C "$DEST" fetch --all --prune --quiet 2>/dev/null; then
-        errors+=("$NAME (fetch failed)")
-        continue
-    fi
-
-    CURRENT=$(git -C "$DEST" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-    DIRTY=$(git -C "$DEST" status --porcelain 2>/dev/null | head -n1)
-
-    reasons=()
-    [[ -n "$DIRTY" ]] && reasons+=("dirty")
-    if [[ -z "$DEFAULT_BRANCH" ]]; then
-        reasons+=("no default branch")
-    elif [[ "$CURRENT" != "$DEFAULT_BRANCH" ]]; then
-        reasons+=("on $CURRENT")
-    fi
-
-    if (( ${#reasons[@]} == 0 )); then
-        REMOTE_REF="origin/$DEFAULT_BRANCH"
-        if ! git -C "$DEST" rev-parse --verify --quiet "$REMOTE_REF" >/dev/null; then
-            fetched_only+=("$NAME (no $REMOTE_REF)")
-        elif git -C "$DEST" merge-base --is-ancestor HEAD "$REMOTE_REF"; then
-            if git -C "$DEST" diff --quiet HEAD "$REMOTE_REF"; then
-                fetched_only+=("$NAME (up to date)")
-            else
-                git -C "$DEST" merge --ff-only --quiet "$REMOTE_REF"
-                pulled+=("$NAME")
-            fi
-        else
-            fetched_only+=("$NAME (diverged)")
-        fi
+  if $DRY_RUN; then
+    CURRENT=$(git -C "$DEST" branch --show-current 2>/dev/null || true)
+    if is_dirty "$DEST"; then
+      echo "  ~ $NAME (dirty working tree — would fetch only)"
+      skipped+=("$NAME dirty")
+    elif [[ -z "$BRANCH" ]]; then
+      echo "  ~ $NAME (no default branch — would fetch only)"
+      skipped+=("$NAME no default branch")
+    elif [[ "$CURRENT" != "$BRANCH" ]]; then
+      echo "  ~ $NAME (on ${CURRENT:-detached}, not $BRANCH — would fetch only)"
+      skipped+=("$NAME on ${CURRENT:-detached}")
     else
-        fetched_only+=("$NAME ($(IFS=,; echo "${reasons[*]}"))")
+      echo "  ✓ $NAME (would fetch and update $BRANCH)"
+      updated+=("$NAME")
     fi
+    continue
+  fi
+
+  if ! git -C "$DEST" fetch --all --prune --quiet 2>/dev/null; then
+    echo "  x $NAME (fetch failed)"
+    errors+=("$NAME fetch failed")
+    continue
+  fi
+
+  if is_dirty "$DEST"; then
+    echo "  ~ $NAME (dirty working tree — fetched only)"
+    skipped+=("$NAME dirty")
+    continue
+  fi
+
+  CURRENT=$(git -C "$DEST" branch --show-current 2>/dev/null || true)
+  if [[ -z "$BRANCH" ]]; then
+    echo "  ~ $NAME (no default branch — fetched only)"
+    skipped+=("$NAME no default branch")
+    continue
+  fi
+  if [[ "$CURRENT" != "$BRANCH" ]]; then
+    echo "  ~ $NAME (on ${CURRENT:-detached}, not $BRANCH — fetched only)"
+    skipped+=("$NAME on ${CURRENT:-detached}")
+    continue
+  fi
+
+  REMOTE="origin/$BRANCH"
+  if ! git -C "$DEST" rev-parse --verify --quiet "$REMOTE" >/dev/null; then
+    echo "  ~ $NAME (no $REMOTE — fetched only)"
+    skipped+=("$NAME no $REMOTE")
+  elif [[ "$(git -C "$DEST" rev-parse HEAD)" == "$(git -C "$DEST" rev-parse "$REMOTE")" ]]; then
+    echo "  ✓ $NAME (up to date)"
+    uptodate=$((uptodate + 1))
+  elif git -C "$DEST" merge-base --is-ancestor HEAD "$REMOTE" 2>/dev/null; then
+    if git -C "$DEST" merge --ff-only --quiet "$REMOTE" 2>/dev/null; then
+      echo "  ↑ $NAME (fast-forwarded $BRANCH)"
+      updated+=("$NAME")
+    else
+      echo "  x $NAME (fast-forward failed)"
+      errors+=("$NAME fast-forward failed")
+    fi
+  else
+    echo "  ~ $NAME (diverged from $REMOTE — fetched only)"
+    skipped+=("$NAME diverged")
+  fi
 done < <(jq -c '.[]' <<<"$REPOS")
 
-echo
+if $CLEANUP; then
+  echo ""
+  echo "cleanup (inactive beyond ${DAYS}d):"
+  if (( ${#inactive[@]} )); then
+    for NAME in "${inactive[@]}"; do
+      DEST="$TARGET_DIR/$NAME"
+      [[ -d "$DEST/.git" ]] || continue
+      if is_dirty "$DEST"; then
+        echo "  ! $NAME (inactive but has uncommitted or untracked changes — keeping)"
+        skipped+=("$NAME inactive but dirty")
+        continue
+      fi
+      if $DRY_RUN; then
+        echo "  ✗ $NAME (would remove)"
+      else
+        echo "  ✗ $NAME (removed)"
+        rm -rf "$DEST"
+      fi
+      removed+=("$NAME")
+    done
+  fi
+  if (( ${#removed[@]} == 0 )); then
+    echo "  (nothing to remove)"
+  fi
+fi
+
+echo ""
 echo "=== summary ==="
 echo "cloned:          ${#cloned[@]}"
-for r in "${cloned[@]}"; do echo "  + $r"; done
-echo "fast-forwarded:  ${#pulled[@]}"
-for r in "${pulled[@]}"; do echo "  ↑ $r"; done
-echo "fetched only:    ${#fetched_only[@]}"
-for r in "${fetched_only[@]}"; do echo "  · $r"; done
-echo "skipped inactive: $skipped_inactive"
-if (( ${#skipped_other[@]} )); then
-    echo "skipped other:   ${#skipped_other[@]}"
-    for r in "${skipped_other[@]}"; do echo "  ! $r"; done
+if (( ${#cloned[@]} )); then for r in "${cloned[@]}"; do echo "  + $r"; done; fi
+echo "fast-forwarded:  ${#updated[@]}"
+if (( ${#updated[@]} )); then for r in "${updated[@]}"; do echo "  ↑ $r"; done; fi
+echo "up to date:      $uptodate"
+echo "skipped:         ${#skipped[@]}"
+if (( ${#skipped[@]} )); then for r in "${skipped[@]}"; do echo "  ~ $r"; done; fi
+echo "inactive:        ${#inactive[@]}"
+echo "excluded:        $excluded"
+if $CLEANUP; then
+  echo "removed:         ${#removed[@]}"
+  if (( ${#removed[@]} )); then for r in "${removed[@]}"; do echo "  ✗ $r"; done; fi
 fi
 if (( ${#errors[@]} )); then
-    echo "errors:          ${#errors[@]}"
-    for r in "${errors[@]}"; do echo "  x $r"; done
-    exit 1
+  echo "errors:          ${#errors[@]}"
+  for r in "${errors[@]}"; do echo "  x $r"; done
+  exit 1
 fi
