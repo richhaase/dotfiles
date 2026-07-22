@@ -400,9 +400,9 @@ if $CLEANUP; then
         continue
       fi
       if $DRY_RUN; then
-        echo "  ✗ $NAME (would remove)"
+        echo "  - $NAME (would remove)"
       else
-        echo "  ✗ $NAME (removed)"
+        echo "  - $NAME (removed)"
         rm -rf "$DEST"
       fi
       removed+=("$NAME")
@@ -426,7 +426,7 @@ echo "inactive:        ${#inactive[@]}"
 echo "excluded:        $excluded"
 if $CLEANUP; then
   echo "removed:         ${#removed[@]}"
-  if (( ${#removed[@]} )); then for r in "${removed[@]}"; do echo "  ✗ $r"; done; fi
+  if (( ${#removed[@]} )); then for r in "${removed[@]}"; do echo "  - $r"; done; fi
 fi
 if (( ${#errors[@]} )); then
   echo "errors:          ${#errors[@]}"
