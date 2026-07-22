@@ -18,6 +18,8 @@ usage() {
   cat <<EOF
 Usage: sync-repos [DIR] [OPTIONS]
        sync-repos add DIR [OPTIONS]
+       sync-repos list
+       sync-repos remove DIR
 
 Clone and fast-forward recently active GitHub repos for a user or org.
 Dirty worktrees, non-default branches, and diverged histories are reported
@@ -27,8 +29,9 @@ With DIR, settings for that directory are loaded from the config file and any
 flags act as overrides. Register a directory with 'sync-repos add'. Without
 DIR, flags and built-in defaults apply.
 
-'add' registers or replaces a sync target in the config file. The config is
-plain JSON and safe to edit by hand: $CONFIG_FILE
+'add' registers or replaces a sync target, 'list' shows all configured
+targets, and 'remove' deletes one. The config is plain JSON and safe to edit
+by hand: $CONFIG_FILE
 (override the path with SYNC_REPOS_CONFIG)
 
 Options:
@@ -49,12 +52,15 @@ Examples:
   sync-repos add ~/dev --owner teamsense --no-events -e 'prototype-*'
   sync-repos ~/dev
   sync-repos ~/src -n
+  sync-repos list
+  sync-repos remove ~/dev
 EOF
 }
 
-if [[ $# -gt 0 && "$1" == "add" ]]; then
-  MODE="add"
-  shift
+if [[ $# -gt 0 ]]; then
+  case "$1" in
+    add|list|remove) MODE="$1"; shift ;;
+  esac
 fi
 
 while [[ $# -gt 0 ]]; do
@@ -155,6 +161,45 @@ if [[ "$MODE" == "add" ]]; then
 
   echo "registered target in $CONFIG_FILE:"
   jq --argjson entry "$ENTRY" -n '$entry'
+  exit 0
+fi
+
+if [[ "$MODE" == "list" ]]; then
+  if [[ -n "$DIR_ARG" ]]; then
+    echo "sync-repos: list takes no arguments" >&2
+    exit 2
+  fi
+  if [[ ! -f "$CONFIG_FILE" ]] || [[ $(jq '(.targets // []) | length' "$CONFIG_FILE") -eq 0 ]]; then
+    echo "no configured targets in $CONFIG_FILE"
+    exit 0
+  fi
+  jq -r '(.targets // [])[] |
+    "\(.dir)\n  owner: \(.owner)   days: \(.days)   events: \(.events)   excludes: \(if (.excludes | length) == 0 then "(none)" else (.excludes | join(", ")) end)"' \
+    "$CONFIG_FILE"
+  exit 0
+fi
+
+if [[ "$MODE" == "remove" ]]; then
+  if [[ -z "$DIR_ARG" ]]; then
+    echo "sync-repos: remove requires a directory" >&2
+    exit 2
+  fi
+  TARGET_DIR=$(normalize_dir "$DIR_ARG")
+  ENTRY=""
+  if [[ -f "$CONFIG_FILE" ]]; then
+    ENTRY=$(jq -c --arg dir "$TARGET_DIR" \
+      'first((.targets // [])[] | select(.dir == $dir)) // empty' "$CONFIG_FILE")
+  fi
+  if [[ -z "$ENTRY" ]]; then
+    echo "sync-repos: no configured target for $TARGET_DIR" >&2
+    exit 2
+  fi
+  TMP=$(mktemp "${TMPDIR:-/tmp}/sync-repos.XXXXXX")
+  jq --arg dir "$TARGET_DIR" \
+    '.targets = [(.targets // [])[] | select(.dir != $dir)]' \
+    "$CONFIG_FILE" > "$TMP"
+  mv "$TMP" "$CONFIG_FILE"
+  echo "removed target $TARGET_DIR from $CONFIG_FILE"
   exit 0
 fi
 
@@ -261,10 +306,10 @@ while IFS= read -r repo; do
 
   if [[ ! -e "$DEST" ]]; then
     if $DRY_RUN; then
-      echo "  → $NAME (would clone)"
+      echo "  + $NAME (would clone)"
       cloned+=("$NAME")
     elif gh repo clone "$FULL" "$DEST" -- --quiet; then
-      echo "  → $NAME (cloned)"
+      echo "  + $NAME (cloned)"
       cloned+=("$NAME")
     else
       echo "  x $NAME (clone failed)"
@@ -291,7 +336,7 @@ while IFS= read -r repo; do
       echo "  ~ $NAME (on ${CURRENT:-detached}, not $BRANCH — would fetch only)"
       skipped+=("$NAME on ${CURRENT:-detached}")
     else
-      echo "  ✓ $NAME (would fetch and update $BRANCH)"
+      echo "  ↓ $NAME (would fetch and update $BRANCH)"
       updated+=("$NAME")
     fi
     continue
@@ -330,7 +375,7 @@ while IFS= read -r repo; do
     uptodate=$((uptodate + 1))
   elif git -C "$DEST" merge-base --is-ancestor HEAD "$REMOTE" 2>/dev/null; then
     if git -C "$DEST" merge --ff-only --quiet "$REMOTE" 2>/dev/null; then
-      echo "  ↑ $NAME (fast-forwarded $BRANCH)"
+      echo "  ↓ $NAME (fast-forwarded $BRANCH)"
       updated+=("$NAME")
     else
       echo "  x $NAME (fast-forward failed)"
@@ -373,7 +418,7 @@ echo "=== summary ==="
 echo "cloned:          ${#cloned[@]}"
 if (( ${#cloned[@]} )); then for r in "${cloned[@]}"; do echo "  + $r"; done; fi
 echo "fast-forwarded:  ${#updated[@]}"
-if (( ${#updated[@]} )); then for r in "${updated[@]}"; do echo "  ↑ $r"; done; fi
+if (( ${#updated[@]} )); then for r in "${updated[@]}"; do echo "  ↓ $r"; done; fi
 echo "up to date:      $uptodate"
 echo "skipped:         ${#skipped[@]}"
 if (( ${#skipped[@]} )); then for r in "${skipped[@]}"; do echo "  ~ $r"; done; fi
