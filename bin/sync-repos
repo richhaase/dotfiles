@@ -1,22 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+CONFIG_FILE="${SYNC_REPOS_CONFIG:-$HOME/.config/sync-repos/config.json}"
+
+MODE="sync"
+DIR_ARG=""
 OWNER=""
-TARGET_DIR="$HOME/src"
-DAYS=45
+TARGET_FLAG=""
+DAYS=""
+EVENTS=""
 DRY_RUN=false
 CLEANUP=false
-EVENTS_FALLBACK=true
 EXCLUDES_FILE=""
 EXCLUDES=()
 
 usage() {
   cat <<EOF
-Usage: sync-repos [OPTIONS]
+Usage: sync-repos [DIR] [OPTIONS]
+       sync-repos add DIR [OPTIONS]
 
 Clone and fast-forward recently active GitHub repos for a user or org.
 Dirty worktrees, non-default branches, and diverged histories are reported
 but never touched.
+
+With DIR, settings for that directory are loaded from the config file and any
+flags act as overrides. Register a directory with 'sync-repos add'. Without
+DIR, flags and built-in defaults apply.
+
+'add' registers or replaces a sync target in the config file. The config is
+plain JSON and safe to edit by hand: $CONFIG_FILE
+(override the path with SYNC_REPOS_CONFIG)
 
 Options:
   -o, --owner OWNER        GitHub user or org (default: authenticated gh user)
@@ -25,40 +38,72 @@ Options:
   -e, --exclude PATTERN    Skip repos matching glob PATTERN (repeatable)
       --excludes-file FILE Read exclude patterns from FILE, one per line
                            (blank lines and #-comments ignored)
+      --events             Use the events-API activity fallback
+      --no-events          Judge activity by pushes only
   -c, --cleanup            Remove clean clones of repos inactive beyond the window
   -n, --dry-run            Show what would happen without changing anything
-      --no-events          Judge activity by pushes only (skip events-API fallback)
   -h, --help               Show this help
+
+Examples:
+  sync-repos add ~/src
+  sync-repos add ~/dev --owner teamsense --no-events -e 'prototype-*'
+  sync-repos ~/dev
+  sync-repos ~/src -n
 EOF
 }
+
+if [[ $# -gt 0 && "$1" == "add" ]]; then
+  MODE="add"
+  shift
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -o|--owner) OWNER="$2"; shift 2 ;;
-    -t|--target) TARGET_DIR="$2"; shift 2 ;;
+    -t|--target) TARGET_FLAG="$2"; shift 2 ;;
     -d|--days) DAYS="$2"; shift 2 ;;
     -e|--exclude) EXCLUDES+=("$2"); shift 2 ;;
     --excludes-file) EXCLUDES_FILE="$2"; shift 2 ;;
+    --events) EVENTS=true; shift ;;
+    --no-events) EVENTS=false; shift ;;
     -c|--cleanup) CLEANUP=true; shift ;;
     -n|--dry-run) DRY_RUN=true; shift ;;
-    --no-events) EVENTS_FALLBACK=false; shift ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "sync-repos: unknown argument: $1" >&2; usage >&2; exit 2 ;;
+    -*)
+      echo "sync-repos: unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [[ -n "$DIR_ARG" ]]; then
+        echo "sync-repos: unexpected extra argument: $1" >&2
+        exit 2
+      fi
+      DIR_ARG="$1"
+      shift
+      ;;
   esac
 done
-
-if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); then
-  echo "sync-repos: --days must be a positive integer" >&2
-  exit 2
-fi
 
 for cmd in gh jq git; do
   command -v "$cmd" >/dev/null || { echo "sync-repos: missing dependency: $cmd" >&2; exit 1; }
 done
 
-if [[ -n "$EXCLUDES_FILE" ]]; then
-  if [[ ! -f "$EXCLUDES_FILE" ]]; then
-    echo "sync-repos: excludes file not found: $EXCLUDES_FILE" >&2
+normalize_dir() {
+  local d="$1"
+  d="${d%/}"
+  case "$d" in
+    "~") d="$HOME" ;;
+    "~/"*) d="$HOME/${d#\~/}" ;;
+  esac
+  [[ "$d" == /* ]] || d="$PWD/$d"
+  printf '%s\n' "$d"
+}
+
+load_excludes_file() {
+  local file="$1" line
+  if [[ ! -f "$file" ]]; then
+    echo "sync-repos: excludes file not found: $file" >&2
     exit 2
   fi
   while IFS= read -r line; do
@@ -66,7 +111,88 @@ if [[ -n "$EXCLUDES_FILE" ]]; then
     line="${line%"${line##*[![:space:]]}"}"
     [[ -z "$line" || "$line" == \#* ]] && continue
     EXCLUDES+=("$line")
-  done < "$EXCLUDES_FILE"
+  done < "$file"
+}
+
+if [[ -n "$EXCLUDES_FILE" ]]; then
+  load_excludes_file "$EXCLUDES_FILE"
+fi
+
+if [[ "$MODE" == "add" ]]; then
+  if [[ -z "$DIR_ARG" ]]; then
+    echo "sync-repos: add requires a directory" >&2
+    exit 2
+  fi
+  if $CLEANUP || $DRY_RUN || [[ -n "$TARGET_FLAG" ]]; then
+    echo "sync-repos: add only accepts --owner, --days, --events/--no-events, -e, --excludes-file" >&2
+    exit 2
+  fi
+  TARGET_DIR=$(normalize_dir "$DIR_ARG")
+  [[ -n "$OWNER" ]] || OWNER=$(gh api user --jq .login)
+  [[ -n "$DAYS" ]] || DAYS=45
+  [[ -n "$EVENTS" ]] || EVENTS=true
+  if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); then
+    echo "sync-repos: --days must be a positive integer" >&2
+    exit 2
+  fi
+
+  mkdir -p "$(dirname "$CONFIG_FILE")"
+  [[ -f "$CONFIG_FILE" ]] || echo '{"targets": []}' > "$CONFIG_FILE"
+
+  ENTRY=$(jq -n \
+    --arg dir "$TARGET_DIR" \
+    --arg owner "$OWNER" \
+    --argjson days "$DAYS" \
+    --argjson events "$EVENTS" \
+    '{dir: $dir, owner: $owner, days: $days, events: $events, excludes: $ARGS.positional}' \
+    --args ${EXCLUDES[@]+"${EXCLUDES[@]}"})
+
+  TMP=$(mktemp "${TMPDIR:-/tmp}/sync-repos.XXXXXX")
+  jq --argjson entry "$ENTRY" \
+    '.targets = ([(.targets // [])[] | select(.dir != $entry.dir)] + [$entry])' \
+    "$CONFIG_FILE" > "$TMP"
+  mv "$TMP" "$CONFIG_FILE"
+
+  echo "registered target in $CONFIG_FILE:"
+  jq --argjson entry "$ENTRY" -n '$entry'
+  exit 0
+fi
+
+if [[ -n "$DIR_ARG" && -n "$TARGET_FLAG" ]]; then
+  echo "sync-repos: pass a directory or -t/--target, not both" >&2
+  exit 2
+fi
+
+if [[ -n "$DIR_ARG" ]]; then
+  TARGET_DIR=$(normalize_dir "$DIR_ARG")
+  ENTRY=""
+  if [[ -f "$CONFIG_FILE" ]]; then
+    ENTRY=$(jq -c --arg dir "$TARGET_DIR" \
+      'first((.targets // [])[] | select(.dir == $dir)) // empty' "$CONFIG_FILE")
+  fi
+  if [[ -z "$ENTRY" ]]; then
+    echo "sync-repos: no configured target for $TARGET_DIR" >&2
+    echo "register it with: sync-repos add $TARGET_DIR [OPTIONS]" >&2
+    echo "or sync ad hoc with: sync-repos -t $TARGET_DIR [OPTIONS]" >&2
+    exit 2
+  fi
+  [[ -n "$OWNER" ]] || OWNER=$(jq -r .owner <<<"$ENTRY")
+  [[ -n "$DAYS" ]] || DAYS=$(jq -r .days <<<"$ENTRY")
+  [[ -n "$EVENTS" ]] || EVENTS=$(jq -r .events <<<"$ENTRY")
+  while IFS= read -r pat; do
+    EXCLUDES+=("$pat")
+  done < <(jq -r '.excludes[]?' <<<"$ENTRY")
+else
+  TARGET_DIR="${TARGET_FLAG:-$HOME/src}"
+  TARGET_DIR=$(normalize_dir "$TARGET_DIR")
+  [[ -n "$OWNER" ]] || OWNER=$(gh api user --jq .login)
+  [[ -n "$DAYS" ]] || DAYS=45
+  [[ -n "$EVENTS" ]] || EVENTS=true
+fi
+
+if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); then
+  echo "sync-repos: --days must be a positive integer" >&2
+  exit 2
 fi
 
 is_excluded() {
@@ -81,10 +207,6 @@ is_dirty() {
   [[ -n "$(git -C "$1" status --porcelain 2>/dev/null)" ]]
 }
 
-if [[ -z "$OWNER" ]]; then
-  OWNER=$(gh api user --jq .login)
-fi
-
 CUTOFF=$(date -u -v-"${DAYS}"d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
   || date -u -d "${DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)
 
@@ -95,7 +217,7 @@ echo "owner:    $OWNER"
 echo "target:   $TARGET_DIR"
 echo "window:   ${DAYS}d (since $CUTOFF)"
 echo "excludes: ${EXCL_DESC:-(none)}"
-echo "events:   $EVENTS_FALLBACK"
+echo "events:   $EVENTS"
 echo "cleanup:  $CLEANUP"
 echo "dry run:  $DRY_RUN"
 echo ""
@@ -126,7 +248,7 @@ while IFS= read -r repo; do
   active=false
   if [[ "$PUSHED" > "$CUTOFF" ]]; then
     active=true
-  elif $EVENTS_FALLBACK; then
+  elif [[ "$EVENTS" == "true" ]]; then
     LAST_EVENT=$(gh api "repos/$FULL/events" --jq '.[0].created_at // empty' 2>/dev/null || true)
     [[ -n "$LAST_EVENT" && "$LAST_EVENT" > "$CUTOFF" ]] && active=true
   fi
