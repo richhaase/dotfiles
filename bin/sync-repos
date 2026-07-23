@@ -18,6 +18,7 @@ EXCLUDES=()
 usage() {
   cat <<EOF
 Usage: sync-repos [DIR] [OPTIONS]
+       sync-repos all [OPTIONS]
        sync-repos add DIR [OPTIONS]
        sync-repos list
        sync-repos remove DIR
@@ -30,7 +31,8 @@ With DIR, settings for that directory are loaded from the config file and any
 flags act as overrides. Register a directory with 'sync-repos add'. Without
 DIR, flags and built-in defaults apply.
 
-'add' registers or replaces a sync target, 'list' shows all configured
+'all' syncs every configured target in config order, applying any flags to
+each. 'add' registers or replaces a sync target, 'list' shows all configured
 targets, and 'remove' deletes one. The config is plain JSON and safe to edit
 by hand: $CONFIG_FILE
 (override the path with SYNC_REPOS_CONFIG)
@@ -57,12 +59,13 @@ Examples:
   sync-repos ~/src -n
   sync-repos list
   sync-repos remove ~/dev
+  sync-repos all -n
 EOF
 }
 
 if [[ $# -gt 0 ]]; then
   case "$1" in
-    add|list|remove) MODE="$1"; shift ;;
+    add|list|remove|all) MODE="$1"; shift ;;
   esac
 fi
 
@@ -205,6 +208,35 @@ if [[ "$MODE" == "remove" ]]; then
   mv "$TMP" "$CONFIG_FILE"
   echo "removed target $TARGET_DIR from $CONFIG_FILE"
   exit 0
+fi
+
+if [[ "$MODE" == "all" ]]; then
+  if [[ -n "$DIR_ARG" || -n "$TARGET_FLAG" ]]; then
+    echo "sync-repos: all takes no directory" >&2
+    exit 2
+  fi
+  if [[ ! -f "$CONFIG_FILE" ]] || [[ $(jq '(.targets // []) | length' "$CONFIG_FILE") -eq 0 ]]; then
+    echo "sync-repos: no configured targets in $CONFIG_FILE" >&2
+    exit 2
+  fi
+  PASS=()
+  [[ -n "$OWNER" ]] && PASS+=(-o "$OWNER")
+  [[ -n "$DAYS" ]] && PASS+=(-d "$DAYS")
+  [[ "$EVENTS" == "true" ]] && PASS+=(--events)
+  [[ "$EVENTS" == "false" ]] && PASS+=(--no-events)
+  $FORCE && PASS+=(-f)
+  $CLEANUP && PASS+=(-c)
+  $DRY_RUN && PASS+=(-n)
+  for pat in ${EXCLUDES[@]+"${EXCLUDES[@]}"}; do
+    PASS+=(-e "$pat")
+  done
+  overall=0
+  while IFS= read -r dir; do
+    echo "=== $dir ==="
+    "$0" "$dir" ${PASS[@]+"${PASS[@]}"} || overall=1
+    echo ""
+  done < <(jq -r '(.targets // [])[].dir' "$CONFIG_FILE")
+  exit $overall
 fi
 
 if [[ -n "$DIR_ARG" && -n "$TARGET_FLAG" ]]; then
