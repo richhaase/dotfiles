@@ -11,6 +11,7 @@ DAYS=""
 EVENTS=""
 DRY_RUN=false
 CLEANUP=false
+FORCE=false
 EXCLUDES_FILE=""
 EXCLUDES=()
 
@@ -23,7 +24,7 @@ Usage: sync-repos [DIR] [OPTIONS]
 
 Clone and fast-forward recently active GitHub repos for a user or org.
 Dirty worktrees, non-default branches, and diverged histories are reported
-but never touched.
+but never touched, unless -f/--force is given.
 
 With DIR, settings for that directory are loaded from the config file and any
 flags act as overrides. Register a directory with 'sync-repos add'. Without
@@ -43,6 +44,8 @@ Options:
                            (blank lines and #-comments ignored)
       --events             Use the events-API activity fallback
       --no-events          Judge activity by pushes only
+  -f, --force              Discard local changes and check out the default
+                           branch, hard-resetting it to origin (destructive)
   -c, --cleanup            Remove clean clones of repos inactive beyond the window
   -n, --dry-run            Show what would happen without changing anything
   -h, --help               Show this help
@@ -72,6 +75,7 @@ while [[ $# -gt 0 ]]; do
     --excludes-file) EXCLUDES_FILE="$2"; shift 2 ;;
     --events) EVENTS=true; shift ;;
     --no-events) EVENTS=false; shift ;;
+    -f|--force) FORCE=true; shift ;;
     -c|--cleanup) CLEANUP=true; shift ;;
     -n|--dry-run) DRY_RUN=true; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -129,7 +133,7 @@ if [[ "$MODE" == "add" ]]; then
     echo "sync-repos: add requires a directory" >&2
     exit 2
   fi
-  if $CLEANUP || $DRY_RUN || [[ -n "$TARGET_FLAG" ]]; then
+  if $CLEANUP || $DRY_RUN || $FORCE || [[ -n "$TARGET_FLAG" ]]; then
     echo "sync-repos: add only accepts --owner, --days, --events/--no-events, -e, --excludes-file" >&2
     exit 2
   fi
@@ -263,6 +267,7 @@ echo "target:   $TARGET_DIR"
 echo "window:   ${DAYS}d (since $CUTOFF)"
 echo "excludes: ${EXCL_DESC:-(none)}"
 echo "events:   $EVENTS"
+echo "force:    $FORCE"
 echo "cleanup:  $CLEANUP"
 echo "dry run:  $DRY_RUN"
 echo ""
@@ -276,6 +281,7 @@ skipped=()
 errors=()
 inactive=()
 removed=()
+forced=()
 uptodate=0
 excluded=0
 
@@ -326,6 +332,25 @@ while IFS= read -r repo; do
 
   if $DRY_RUN; then
     CURRENT=$(git -C "$DEST" branch --show-current 2>/dev/null || true)
+    if $FORCE; then
+      if [[ -z "$BRANCH" ]]; then
+        echo "  ~ $NAME (no default branch — would fetch only)"
+        skipped+=("$NAME no default branch")
+        continue
+      fi
+      reasons=()
+      is_dirty "$DEST" && reasons+=("dirty")
+      [[ "$CURRENT" != "$BRANCH" ]] && reasons+=("on ${CURRENT:-detached}")
+      if (( ${#reasons[@]} )); then
+        DETAIL=$(printf '%s, ' "${reasons[@]}"); DETAIL=${DETAIL%, }
+        echo "  ↓ $NAME (would force $BRANCH to origin/$BRANCH — $DETAIL)"
+        forced+=("$NAME ($DETAIL)")
+      else
+        echo "  ↓ $NAME (would fetch and update $BRANCH)"
+        updated+=("$NAME")
+      fi
+      continue
+    fi
     if is_dirty "$DEST"; then
       echo "  ~ $NAME (dirty working tree — would fetch only)"
       skipped+=("$NAME dirty")
@@ -345,6 +370,48 @@ while IFS= read -r repo; do
   if ! git -C "$DEST" fetch --all --prune --quiet 2>/dev/null; then
     echo "  x $NAME (fetch failed)"
     errors+=("$NAME fetch failed")
+    continue
+  fi
+
+  if $FORCE; then
+    if [[ -z "$BRANCH" ]]; then
+      echo "  ~ $NAME (no default branch — fetched only)"
+      skipped+=("$NAME no default branch")
+      continue
+    fi
+    REMOTE="origin/$BRANCH"
+    if ! git -C "$DEST" rev-parse --verify --quiet "$REMOTE" >/dev/null; then
+      echo "  ~ $NAME (no $REMOTE — fetched only)"
+      skipped+=("$NAME no $REMOTE")
+      continue
+    fi
+    CURRENT=$(git -C "$DEST" branch --show-current 2>/dev/null || true)
+    reasons=()
+    is_dirty "$DEST" && reasons+=("was dirty")
+    [[ "$CURRENT" != "$BRANCH" ]] && reasons+=("was on ${CURRENT:-detached}")
+    if (( ${#reasons[@]} == 0 )); then
+      if [[ "$(git -C "$DEST" rev-parse HEAD)" == "$(git -C "$DEST" rev-parse "$REMOTE")" ]]; then
+        echo "  ✓ $NAME (up to date)"
+        uptodate=$((uptodate + 1))
+        continue
+      fi
+      if ! git -C "$DEST" merge-base --is-ancestor HEAD "$REMOTE" 2>/dev/null; then
+        reasons+=("was diverged")
+      fi
+    fi
+    if git -C "$DEST" checkout -q -f -B "$BRANCH" "$REMOTE" 2>/dev/null; then
+      if (( ${#reasons[@]} )); then
+        DETAIL=$(printf '%s, ' "${reasons[@]}"); DETAIL=${DETAIL%, }
+        echo "  ↓ $NAME (forced $BRANCH to $REMOTE — $DETAIL)"
+        forced+=("$NAME ($DETAIL)")
+      else
+        echo "  ↓ $NAME (fast-forwarded $BRANCH)"
+        updated+=("$NAME")
+      fi
+    else
+      echo "  x $NAME (force checkout failed)"
+      errors+=("$NAME force checkout failed")
+    fi
     continue
   fi
 
@@ -419,6 +486,10 @@ echo "cloned:          ${#cloned[@]}"
 if (( ${#cloned[@]} )); then for r in "${cloned[@]}"; do echo "  + $r"; done; fi
 echo "fast-forwarded:  ${#updated[@]}"
 if (( ${#updated[@]} )); then for r in "${updated[@]}"; do echo "  ↓ $r"; done; fi
+if $FORCE; then
+  echo "forced:          ${#forced[@]}"
+  if (( ${#forced[@]} )); then for r in "${forced[@]}"; do echo "  ↓ $r"; done; fi
+fi
 echo "up to date:      $uptodate"
 echo "skipped:         ${#skipped[@]}"
 if (( ${#skipped[@]} )); then for r in "${skipped[@]}"; do echo "  ~ $r"; done; fi
