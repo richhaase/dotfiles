@@ -11,7 +11,6 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 
 export EDITOR=hx
 export LANG=en_US.UTF-8
-export PLONK_DIR=~/src/dotfiles
 
 # Plugin directory
 ZPLUGINDIR="$HOME/.config/zsh/plugins"
