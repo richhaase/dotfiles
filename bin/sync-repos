@@ -28,8 +28,9 @@ Dirty worktrees, non-default branches, and diverged histories are reported
 but never touched, unless -f/--force is given.
 
 With DIR, settings for that directory are loaded from the config file and any
-flags act as overrides. Register a directory with 'sync-repos add'. Without
-DIR, flags and built-in defaults apply.
+flags act as overrides. Register a directory with 'sync-repos add'. To sync a
+directory without registering it, pass -t/--target. Bare sync-repos shows
+this help.
 
 'all' syncs every configured target in config order, applying any flags to
 each. 'add' registers or replaces a sync target, 'list' shows all configured
@@ -39,7 +40,7 @@ by hand: $CONFIG_FILE
 
 Options:
   -o, --owner OWNER        GitHub user or org (default: authenticated gh user)
-  -t, --target DIR         Parent directory for clones (default: ~/src)
+  -t, --target DIR         Parent directory for clones (ad hoc, no config lookup)
   -d, --days N             Activity window in days (default: 45)
   -e, --exclude PATTERN    Skip repos matching glob PATTERN (repeatable)
       --excludes-file FILE Read exclude patterns from FILE, one per line
@@ -264,8 +265,11 @@ if [[ -n "$DIR_ARG" ]]; then
     EXCLUDES+=("$pat")
   done < <(jq -r '.excludes[]?' <<<"$ENTRY")
 else
-  TARGET_DIR="${TARGET_FLAG:-$HOME/src}"
-  TARGET_DIR=$(normalize_dir "$TARGET_DIR")
+  if [[ -z "$TARGET_FLAG" ]]; then
+    usage
+    exit 2
+  fi
+  TARGET_DIR=$(normalize_dir "$TARGET_FLAG")
   [[ -n "$OWNER" ]] || OWNER=$(gh api user --jq .login)
   [[ -n "$DAYS" ]] || DAYS=45
   [[ -n "$EVENTS" ]] || EVENTS=true
