@@ -35,11 +35,6 @@ path=("${HOME}/.bin" "${HOME}/.pixi/bin" "${HOME}/.local/bin" $path)
 export PNPM_HOME="$HOME/Library/pnpm"
 [[ -d "$PNPM_HOME" ]] && path+=("$PNPM_HOME")
 
-# Bun
-export BUN_INSTALL="$HOME/.bun"
-[[ -d "$BUN_INSTALL/bin" ]] && path+=("$BUN_INSTALL/bin")
-[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
-
 # ============================================================================
 # Shell Options
 # ============================================================================
