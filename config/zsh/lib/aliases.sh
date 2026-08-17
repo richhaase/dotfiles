@@ -5,6 +5,7 @@
 # System
 alias b="bat"
 alias refresh='exec zsh'
+alias update='brew update && brew upgrade -y'
 
 # Files
 alias ll="eza -la --icons --group-directories-first"
