@@ -1,0 +1,334 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Find and optionally remove merged or stale Git worktrees.
+
+CONFIG_FILE="${SYNC_REPOS_CONFIG:-$HOME/.config/sync-repos/config.json}"
+
+DIR_ARG=""
+TARGET_FLAG=""
+DAYS=""
+DRY_RUN=false
+
+usage() {
+  cat <<EOF
+Usage: clean-repos [DIR] [OPTIONS]
+       clean-repos -t DIR [OPTIONS]
+
+Find merged and stale linked worktrees. With no directory, scan every target
+configured for sync-repos. With DIR, scan that configured target. Use
+-t/--target for an ad hoc directory that is not in the sync-repos config.
+
+The primary worktree and dirty or locked linked worktrees are never removed.
+A clean linked worktree is eligible when its HEAD is merged into the local
+default-branch ref, or when its HEAD commit is older than the activity window.
+Detached worktrees are eligible only when HEAD is reachable from a named ref.
+Branches are never deleted. This command does not fetch from remotes.
+
+Eligible worktrees are removed by default. Pass -n/--dry-run to report what
+would be removed and pruned without changing anything.
+
+Options:
+  -t, --target DIR   Scan an ad hoc parent directory
+  -d, --days N       Stale threshold in days (default: target setting or 45)
+  -n, --dry-run      Report without changing anything
+  -h, --help         Show this help
+
+Examples:
+  clean-repos
+  clean-repos ~/src
+  clean-repos ~/src --dry-run
+  clean-repos -t ~/dev --days 30
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target)
+      [[ $# -ge 2 ]] || { echo "clean-repos: $1 requires a directory" >&2; exit 2; }
+      TARGET_FLAG="$2"
+      shift 2
+      ;;
+    -d|--days)
+      [[ $# -ge 2 ]] || { echo "clean-repos: $1 requires a number" >&2; exit 2; }
+      DAYS="$2"
+      shift 2
+      ;;
+    -n|--dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*)
+      echo "clean-repos: unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [[ -n "$DIR_ARG" ]]; then
+        echo "clean-repos: unexpected extra argument: $1" >&2
+        exit 2
+      fi
+      DIR_ARG="$1"
+      shift
+      ;;
+  esac
+done
+
+command -v git >/dev/null || { echo "clean-repos: missing dependency: git" >&2; exit 1; }
+
+if [[ -n "$DIR_ARG" && -n "$TARGET_FLAG" ]]; then
+  echo "clean-repos: pass a directory or -t/--target, not both" >&2
+  exit 2
+fi
+
+if [[ -n "$DAYS" ]] && { ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); }; then
+  echo "clean-repos: --days must be a positive integer" >&2
+  exit 2
+fi
+
+normalize_dir() {
+  local dir="$1"
+  dir="${dir%/}"
+  case "$dir" in
+    "~") dir="$HOME" ;;
+    \~/*) dir="$HOME/${dir#\~/}" ;;
+  esac
+  [[ "$dir" == /* ]] || dir="$PWD/$dir"
+  printf '%s\n' "$dir"
+}
+
+cutoff_epoch() {
+  local days="$1"
+  date -v-"${days}"d +%s 2>/dev/null || date -d "${days} days ago" +%s
+}
+
+default_ref_for() {
+  local repo="$1" ref branch
+  ref=$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)
+  if [[ -n "$ref" ]] && git -C "$repo" rev-parse --verify --quiet "$ref" >/dev/null; then
+    printf '%s\n' "$ref"
+    return
+  fi
+  for branch in main master; do
+    if git -C "$repo" rev-parse --verify --quiet "refs/heads/$branch" >/dev/null; then
+      printf 'refs/heads/%s\n' "$branch"
+      return
+    fi
+  done
+  branch=$(git -C "$repo" branch --show-current 2>/dev/null || true)
+  if [[ -n "$branch" ]]; then
+    printf 'refs/heads/%s\n' "$branch"
+  fi
+}
+
+head_has_named_ref() {
+  local repo="$1" head="$2"
+  [[ -n "$(git -C "$repo" for-each-ref --count=1 --contains "$head" --format='%(refname)' 2>/dev/null)" ]]
+}
+
+repo_keys=()
+seen_repo() {
+  local key="$1" existing
+  for existing in ${repo_keys[@]+"${repo_keys[@]}"}; do
+    [[ "$existing" == "$key" ]] && return 0
+  done
+  repo_keys+=("$key")
+  return 1
+}
+
+eligible=0
+removed=0
+kept=0
+errors=0
+repos=0
+prunable=0
+
+inspect_repo() {
+  local candidate="$1" days="$2" first_line main key default_ref cutoff
+  first_line=$(git -C "$candidate" worktree list --porcelain 2>/dev/null | head -n 1 || true)
+  [[ "$first_line" == worktree\ * ]] || return
+  main=${first_line#worktree }
+  key="$main"
+  seen_repo "$key" && return
+  repos=$((repos + 1))
+  cutoff=$(cutoff_epoch "$days")
+  default_ref=$(default_ref_for "$main")
+
+  echo "repo: $main"
+  echo "  default: ${default_ref:-(unknown)}"
+
+  local path="" head="" branch="" detached=false locked=false prune_entry=false line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      if [[ -n "$path" ]]; then
+        inspect_worktree_record "$main" "$default_ref" "$cutoff" "$path" "$head" "$branch" "$detached" "$locked" "$prune_entry"
+      fi
+      path=""; head=""; branch=""; detached=false; locked=false; prune_entry=false
+      continue
+    fi
+    case "$line" in
+      worktree\ *) path=${line#worktree } ;;
+      HEAD\ *) head=${line#HEAD } ;;
+      branch\ *) branch=${line#branch refs/heads/} ;;
+      detached) detached=true ;;
+      locked*) locked=true ;;
+      prunable*) prune_entry=true ;;
+    esac
+  done < <(git -C "$main" worktree list --porcelain)
+  if [[ -n "$path" ]]; then
+    inspect_worktree_record "$main" "$default_ref" "$cutoff" "$path" "$head" "$branch" "$detached" "$locked" "$prune_entry"
+  fi
+
+  if ! $DRY_RUN; then
+    if ! git -C "$main" worktree prune; then
+      echo "  x failed to prune worktree metadata"
+      errors=$((errors + 1))
+    fi
+  fi
+  echo ""
+}
+
+inspect_worktree_record() {
+  local main="$1" default_ref="$2" cutoff="$3" path="$4" head="$5" branch="$6"
+  local detached="$7" locked="$8" prune_entry="$9"
+  local label commit_epoch reason="" reachable=true
+
+  if [[ "$path" == "$main" ]]; then
+    echo "  = $path (primary; keep)"
+    kept=$((kept + 1))
+    return
+  fi
+  label=${branch:-detached}
+
+  if $prune_entry; then
+    if $DRY_RUN; then
+      echo "  - $path ($label; stale metadata; would prune)"
+    else
+      echo "  - $path ($label; stale metadata; pruning)"
+    fi
+    prunable=$((prunable + 1))
+    return
+  fi
+  if $locked; then
+    echo "  ! $path ($label; locked; keep)"
+    kept=$((kept + 1))
+    return
+  fi
+  if [[ ! -d "$path" ]]; then
+    echo "  ! $path ($label; missing but not prunable; keep)"
+    kept=$((kept + 1))
+    return
+  fi
+  if [[ -n "$(git -C "$path" status --porcelain 2>/dev/null)" ]]; then
+    echo "  ! $path ($label; dirty; keep)"
+    kept=$((kept + 1))
+    return
+  fi
+
+  if $detached && ! head_has_named_ref "$main" "$head"; then
+    reachable=false
+  fi
+  if ! $reachable; then
+    echo "  ! $path (detached; HEAD not reachable from a named ref; keep)"
+    kept=$((kept + 1))
+    return
+  fi
+
+  if [[ -n "$default_ref" ]] && git -C "$main" merge-base --is-ancestor "$head" "$default_ref" 2>/dev/null; then
+    reason="merged into $default_ref"
+  else
+    commit_epoch=$(git -C "$main" show -s --format=%ct "$head" 2>/dev/null || true)
+    if [[ "$commit_epoch" =~ ^[0-9]+$ ]] && (( commit_epoch < cutoff )); then
+      reason="stale"
+    fi
+  fi
+
+  if [[ -z "$reason" ]]; then
+    echo "  · $path ($label; active and unmerged; keep)"
+    kept=$((kept + 1))
+    return
+  fi
+
+  eligible=$((eligible + 1))
+  if $DRY_RUN; then
+    echo "  - $path ($label; $reason; would remove)"
+    return
+  fi
+  if git -C "$main" worktree remove "$path"; then
+    echo "  - $path ($label; $reason; removed)"
+    removed=$((removed + 1))
+  else
+    echo "  x $path ($label; $reason; removal failed)"
+    errors=$((errors + 1))
+  fi
+}
+
+scan_target() {
+  local target="$1" days="$2" candidate found=false
+  target=$(normalize_dir "$target")
+  if [[ ! -d "$target" ]]; then
+    echo "clean-repos: target not found: $target" >&2
+    errors=$((errors + 1))
+    return
+  fi
+  echo "=== $target ==="
+  while IFS= read -r -d '' candidate; do
+    if git -C "$candidate" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      found=true
+      inspect_repo "$candidate" "$days"
+    fi
+  done < <(find "$target" -mindepth 1 -maxdepth 1 -type d -print0)
+  $found || echo "(no Git repositories found)"
+}
+
+targets=()
+target_days=()
+
+if [[ -n "$TARGET_FLAG" ]]; then
+  targets+=("$(normalize_dir "$TARGET_FLAG")")
+  target_days+=("${DAYS:-45}")
+else
+  command -v jq >/dev/null || { echo "clean-repos: missing dependency: jq" >&2; exit 1; }
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "clean-repos: sync-repos config not found: $CONFIG_FILE" >&2
+    exit 2
+  fi
+  if [[ -n "$DIR_ARG" ]]; then
+    wanted=$(normalize_dir "$DIR_ARG")
+    entry=$(jq -c --arg dir "$wanted" 'first((.targets // [])[] | select(.dir == $dir)) // empty' "$CONFIG_FILE")
+    if [[ -z "$entry" ]]; then
+      echo "clean-repos: no configured target for $wanted" >&2
+      echo "scan it ad hoc with: clean-repos -t $wanted" >&2
+      exit 2
+    fi
+    targets+=("$wanted")
+    configured_days=$(jq -r '.days // 45' <<<"$entry")
+    target_days+=("${DAYS:-$configured_days}")
+  else
+    while IFS=$'\t' read -r dir configured_days; do
+      [[ -n "$dir" ]] || continue
+      targets+=("$dir")
+      target_days+=("${DAYS:-$configured_days}")
+    done < <(jq -r '(.targets // [])[] | [.dir, (.days // 45)] | @tsv' "$CONFIG_FILE")
+    if (( ${#targets[@]} == 0 )); then
+      echo "clean-repos: no configured targets in $CONFIG_FILE" >&2
+      exit 2
+    fi
+  fi
+fi
+
+echo "mode:     $(if $DRY_RUN; then echo dry-run; else echo cleanup; fi)"
+echo "config:   $CONFIG_FILE"
+echo ""
+
+for i in "${!targets[@]}"; do
+  scan_target "${targets[$i]}" "${target_days[$i]}"
+done
+
+echo "=== summary ==="
+echo "repositories: $repos"
+echo "eligible:     $eligible"
+echo "removed:      $removed"
+echo "kept:         $kept"
+echo "prunable:     $prunable"
+echo "errors:       $errors"
+
+(( errors == 0 ))
