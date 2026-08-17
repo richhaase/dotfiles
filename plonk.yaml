@@ -44,3 +44,8 @@ ignore_patterns:
     - pi/agent/worker
     - '*.log'
 
+dotfiles:
+  rules:
+    - name: pi/agent/auth.json.tmpl
+      mode: "0600"
+
