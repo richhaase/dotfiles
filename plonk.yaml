@@ -37,3 +37,10 @@ ignore_patterns:
     - '*_token'
     - '*.pem'
     - '*.key'
+    # pi agent runtime/cache: never deploy local model caches, session history,
+    # worker runtime dirs, or logs
+    - pi/agent/models-store.json
+    - pi/agent/sessions
+    - pi/agent/worker
+    - '*.log'
+
