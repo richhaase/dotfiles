@@ -1,23 +1,7 @@
-format = "$os$username$hostname$directory$git_branch$git_state$git_status$direnv$python$nodejs$rust$golang$fill$status$cmd_duration$jobs$shlvl$battery$time\n$character"
+format = "$username$hostname$directory$git_branch$git_state$git_status$direnv$python$nodejs$rust$golang$fill$status$cmd_duration$jobs$shlvl$battery$time\n$character"
 add_newline = true
 scan_timeout = 50
 command_timeout = 500
-
-[os]
-format = "[$symbol]($style) "
-style = "bold white"
-disabled = false
-
-[os.symbols]
-Macos = ""
-Linux = ""
-Windows = ""
-Ubuntu = ""
-Debian = ""
-Fedora = ""
-Arch = ""
-Alpine = ""
-NixOS = ""
 
 [username]
 format = "[$user]($style)"
@@ -29,7 +13,7 @@ show_always = false
 format = "[@$hostname]($style) "
 style = "bold green"
 ssh_only = true
-ssh_symbol = " "
+ssh_symbol = ""
 
 [shlvl]
 format = "[↕$shlvl]($style) "
@@ -41,7 +25,6 @@ disabled = false
 style = "bold blue"
 truncation_length = 5
 truncate_to_repo = false
-read_only = " 󰌾"
 
 [fill]
 symbol = " "
@@ -49,7 +32,7 @@ symbol = " "
 [git_branch]
 format = "on [$symbol$branch]($style) "
 style = "bold purple"
-symbol = " "
+symbol = ""
 
 [git_commit]
 format = "[\\($hash$tag\\)]($style) "
@@ -85,27 +68,27 @@ disabled = false
 [python]
 format = "[$symbol($virtualenv )]($style)"
 style = "bold green"
-symbol = " "
+symbol = ""
 pyenv_version_name = false
 disabled = false
 
 [nodejs]
 format = "[$symbol$version]($style) "
 style = "bold green"
-symbol = " "
+symbol = ""
 detect_files = ["package.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "package-lock.json"]
 disabled = false
 
 [rust]
 format = "[$symbol$version]($style) "
 style = "bold red"
-symbol = " "
+symbol = ""
 disabled = false
 
 [golang]
 format = "[$symbol$version]($style) "
 style = "bold cyan"
-symbol = " "
+symbol = ""
 disabled = false
 
 [status]
@@ -131,6 +114,11 @@ disabled = false
 
 [battery]
 format = "[$symbol$percentage]($style) "
+full_symbol = "• "
+charging_symbol = "⇡ "
+discharging_symbol = "⇣ "
+unknown_symbol = "? "
+empty_symbol = "! "
 disabled = false
 
 [[battery.display]]
