@@ -20,10 +20,11 @@ configured for sync-repos. With DIR, scan that configured target. Use
 -t/--target for an ad hoc directory that is not in the sync-repos config.
 
 The primary worktree and dirty or locked linked worktrees are never removed.
-A clean linked worktree is eligible when its HEAD is merged into the local
-default-branch ref, or when its HEAD commit is older than the activity window.
-Detached worktrees are eligible only when HEAD is reachable from a named ref.
-Branches are never deleted. This command does not fetch from remotes.
+A clean linked worktree is eligible when its GitHub PR is merged, its HEAD is
+merged into the local default-branch ref, or its HEAD commit is older than the
+activity window. Detached worktrees without a merged GitHub PR are eligible
+only when HEAD is reachable from a named ref. Branches are never deleted. This
+command does not fetch from remotes.
 
 Eligible worktrees are removed by default. Pass -n/--dry-run to report what
 would be removed and pruned without changing anything.
@@ -124,6 +125,43 @@ head_has_named_ref() {
   [[ -n "$(git -C "$repo" for-each-ref --count=1 --contains "$head" --format='%(refname)' 2>/dev/null)" ]]
 }
 
+github_repo_for() {
+  local repo="$1" url slug
+  url=$(git -C "$repo" remote get-url origin 2>/dev/null || true)
+  case "$url" in
+    git@github.com:*) slug=${url#git@github.com:} ;;
+    ssh://git@github.com/*) slug=${url#ssh://git@github.com/} ;;
+    https://github.com/*) slug=${url#https://github.com/} ;;
+    http://github.com/*) slug=${url#http://github.com/} ;;
+    *) return 1 ;;
+  esac
+  slug=${slug#/}
+  slug=${slug%.git}
+  [[ "$slug" == */* ]] || return 1
+  printf '%s\n' "$slug"
+}
+
+merged_pr_number_for() {
+  local main="$1" head="$2" branch="$3" slug number
+  command -v gh >/dev/null 2>&1 || return 1
+  slug=$(github_repo_for "$main") || return 1
+  number=$(
+    gh api -H 'Accept: application/vnd.github+json' \
+      "repos/$slug/commits/$head/pulls" \
+      --jq 'map(select(.merged_at != null)) | sort_by(.merged_at) | last | .number // empty' \
+      2>/dev/null || true
+  )
+  if [[ -z "$number" && -n "$branch" ]]; then
+    number=$(
+      gh pr list --repo "$slug" --head "$branch" --state merged --limit 1 \
+        --json number,headRefOid \
+        --jq ".[] | select(.headRefOid == \"$head\") | .number" 2>/dev/null || true
+    )
+  fi
+  [[ "$number" =~ ^[0-9]+$ ]] || return 1
+  printf '%s\n' "$number"
+}
+
 repo_keys=()
 seen_repo() {
   local key="$1" existing
@@ -189,7 +227,7 @@ inspect_repo() {
 inspect_worktree_record() {
   local main="$1" default_ref="$2" cutoff="$3" path="$4" head="$5" branch="$6"
   local detached="$7" locked="$8" prune_entry="$9"
-  local label commit_epoch reason="" reachable=true
+  local label commit_epoch reason="" reachable=true merged_pr_number=""
 
   if [[ "$path" == "$main" ]]; then
     echo "  = $path (primary; keep)"
@@ -223,21 +261,26 @@ inspect_worktree_record() {
     return
   fi
 
-  if $detached && ! head_has_named_ref "$main" "$head"; then
-    reachable=false
-  fi
-  if ! $reachable; then
-    echo "  ! $path (detached; HEAD not reachable from a named ref; keep)"
-    kept=$((kept + 1))
-    return
-  fi
-
-  if [[ -n "$default_ref" ]] && git -C "$main" merge-base --is-ancestor "$head" "$default_ref" 2>/dev/null; then
-    reason="merged into $default_ref"
+  merged_pr_number=$(merged_pr_number_for "$main" "$head" "$branch" || true)
+  if [[ -n "$merged_pr_number" ]]; then
+    reason="GitHub PR #$merged_pr_number merged"
   else
-    commit_epoch=$(git -C "$main" show -s --format=%ct "$head" 2>/dev/null || true)
-    if [[ "$commit_epoch" =~ ^[0-9]+$ ]] && (( commit_epoch < cutoff )); then
-      reason="stale"
+    if $detached && ! head_has_named_ref "$main" "$head"; then
+      reachable=false
+    fi
+    if ! $reachable; then
+      echo "  ! $path (detached; HEAD not reachable from a named ref; keep)"
+      kept=$((kept + 1))
+      return
+    fi
+
+    if [[ -n "$default_ref" ]] && git -C "$main" merge-base --is-ancestor "$head" "$default_ref" 2>/dev/null; then
+      reason="merged into $default_ref"
+    else
+      commit_epoch=$(git -C "$main" show -s --format=%ct "$head" 2>/dev/null || true)
+      if [[ "$commit_epoch" =~ ^[0-9]+$ ]] && (( commit_epoch < cutoff )); then
+        reason="stale"
+      fi
     fi
   fi
 
