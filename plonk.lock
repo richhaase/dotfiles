@@ -42,7 +42,6 @@ packages:
         - shellcheck
         - shfmt
         - starship
-        - tokei
         - typescript-language-server
         - uv
         - wget
