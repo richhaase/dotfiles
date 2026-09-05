@@ -20,11 +20,12 @@ configured for sync-repos. With DIR, scan that configured target. Use
 -t/--target for an ad hoc directory that is not in the sync-repos config.
 
 The primary worktree and dirty or locked linked worktrees are never removed.
-A clean linked worktree is eligible when its GitHub PR is merged, its HEAD is
-merged into the local default-branch ref, or its HEAD commit is older than the
-activity window. Detached worktrees without a merged GitHub PR are eligible
-only when HEAD is reachable from a named ref. Branches are never deleted. This
-command does not fetch from remotes.
+A clean linked worktree is eligible when its GitHub PR is merged or closed, its
+HEAD is merged into the local default-branch ref, or its HEAD commit is older
+than the activity window. An open GitHub PR always keeps its worktree. Detached
+worktrees without a finished GitHub PR are eligible only when HEAD is reachable
+from a named ref. Branches are never deleted. This command does not fetch from
+remotes.
 
 Eligible worktrees are removed by default. Pass -n/--dry-run to report what
 would be removed and pruned without changing anything.
@@ -141,25 +142,67 @@ github_repo_for() {
   printf '%s\n' "$slug"
 }
 
-merged_pr_number_for() {
-  local main="$1" head="$2" branch="$3" slug number
+github_pr_for_branch() {
+  local slug="$1" branch="$2"
+  gh pr list --repo "$slug" --head "$branch" --state all --limit 100 \
+    --json number,state,mergedAt \
+    --jq '(((map(select(.state == "OPEN")) | first) // (sort_by(.number) | last)) // empty) | [.number, (if .mergedAt != null then "MERGED" else .state end)] | @tsv' \
+    2>/dev/null || true
+}
+
+github_pr_for_commit() {
+  local slug="$1" head="$2"
+  gh api -H 'Accept: application/vnd.github+json' \
+    "repos/$slug/commits/$head/pulls" \
+    --jq '(((map(select(.state == "open")) | first) // (map(select(.merged_at != null)) | sort_by(.merged_at) | last) // (sort_by(.closed_at) | last)) // empty) | [.number, (if .state == "open" then "OPEN" elif .merged_at != null then "MERGED" else "CLOSED" end)] | @tsv' \
+    2>/dev/null || true
+}
+
+github_pr_for_number() {
+  local slug="$1" number="$2"
+  gh pr view "$number" --repo "$slug" --json number,state,mergedAt \
+    --jq '[.number, (if .mergedAt != null then "MERGED" else .state end)] | @tsv' \
+    2>/dev/null || true
+}
+
+pr_numbers_for_worktree() {
+  local main="$1" head="$2" path="$3" text match number ref
+  local numbers=()
+  text=${path##*/}
+  while [[ "$text" =~ (^|[^[:alnum:]])pr[-_]?([0-9]+)($|[^0-9]) ]]; do
+    match=${BASH_REMATCH[0]}
+    number=${BASH_REMATCH[2]}
+    numbers+=("$number")
+    text=${text#*"$match"}
+  done
+  while IFS= read -r ref; do
+    if [[ "$ref" =~ (^|/)pr/([0-9]+)$ ]]; then
+      numbers+=("${BASH_REMATCH[2]}")
+    fi
+  done < <(git -C "$main" for-each-ref --contains "$head" --format='%(refname)' 2>/dev/null)
+  printf '%s\n' ${numbers[@]+"${numbers[@]}"} | awk 'NF && !seen[$0]++'
+}
+
+github_pr_for() {
+  local main="$1" head="$2" branch="$3" path="$4" slug result number state terminal_result=""
   command -v gh >/dev/null 2>&1 || return 1
   slug=$(github_repo_for "$main") || return 1
-  number=$(
-    gh api -H 'Accept: application/vnd.github+json' \
-      "repos/$slug/commits/$head/pulls" \
-      --jq 'map(select(.merged_at != null)) | sort_by(.merged_at) | last | .number // empty' \
-      2>/dev/null || true
-  )
-  if [[ -z "$number" && -n "$branch" ]]; then
-    number=$(
-      gh pr list --repo "$slug" --head "$branch" --state merged --limit 1 \
-        --json number,headRefOid \
-        --jq ".[] | select(.headRefOid == \"$head\") | .number" 2>/dev/null || true
-    )
+  if [[ -n "$branch" ]]; then
+    result=$(github_pr_for_branch "$slug" "$branch")
+    [[ -n "$result" ]] && { printf '%s\n' "$result"; return; }
   fi
-  [[ "$number" =~ ^[0-9]+$ ]] || return 1
-  printf '%s\n' "$number"
+  result=$(github_pr_for_commit "$slug" "$head")
+  [[ -n "$result" ]] && { printf '%s\n' "$result"; return; }
+  while IFS= read -r number; do
+    [[ "$number" =~ ^[0-9]+$ ]] || continue
+    result=$(github_pr_for_number "$slug" "$number")
+    [[ -n "$result" ]] || continue
+    IFS=$'\t' read -r _ state <<<"$result"
+    [[ "$state" == "OPEN" ]] && { printf '%s\n' "$result"; return; }
+    [[ -n "$terminal_result" ]] || terminal_result="$result"
+  done < <(pr_numbers_for_worktree "$main" "$head" "$path")
+  [[ -n "$terminal_result" ]] && { printf '%s\n' "$terminal_result"; return; }
+  return 1
 }
 
 repo_keys=()
@@ -227,7 +270,7 @@ inspect_repo() {
 inspect_worktree_record() {
   local main="$1" default_ref="$2" cutoff="$3" path="$4" head="$5" branch="$6"
   local detached="$7" locked="$8" prune_entry="$9"
-  local label commit_epoch reason="" reachable=true merged_pr_number=""
+  local label commit_epoch reason="" reachable=true github_pr="" pr_number="" pr_state=""
 
   if [[ "$path" == "$main" ]]; then
     echo "  = $path (primary; keep)"
@@ -261,9 +304,18 @@ inspect_worktree_record() {
     return
   fi
 
-  merged_pr_number=$(merged_pr_number_for "$main" "$head" "$branch" || true)
-  if [[ -n "$merged_pr_number" ]]; then
-    reason="GitHub PR #$merged_pr_number merged"
+  github_pr=$(github_pr_for "$main" "$head" "$branch" "$path" || true)
+  if [[ -n "$github_pr" ]]; then
+    IFS=$'\t' read -r pr_number pr_state <<<"$github_pr"
+  fi
+  if [[ "$pr_state" == "OPEN" ]]; then
+    echo "  · $path ($label; GitHub PR #$pr_number open; keep)"
+    kept=$((kept + 1))
+    return
+  elif [[ "$pr_state" == "MERGED" ]]; then
+    reason="GitHub PR #$pr_number merged"
+  elif [[ "$pr_state" == "CLOSED" ]]; then
+    reason="GitHub PR #$pr_number closed"
   else
     if $detached && ! head_has_named_ref "$main" "$head"; then
       reachable=false
