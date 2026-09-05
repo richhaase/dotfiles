@@ -39,7 +39,6 @@ packages:
         - python@3.14
         - ripgrep
         - ruff
-        - sd
         - shellcheck
         - shfmt
         - starship
