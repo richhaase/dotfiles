@@ -14,6 +14,7 @@ CLEANUP=false
 FORCE=false
 EXCLUDES_FILE=""
 EXCLUDES=()
+INCLUDES=()
 
 usage() {
   cat <<EOF
@@ -37,6 +38,10 @@ each. 'add' registers or replaces a sync target, 'list' shows all configured
 targets, and 'remove' deletes one. The config is plain JSON and safe to edit
 by hand: $CONFIG_FILE
 (override the path with SYNC_REPOS_CONFIG)
+
+A target's optional includes array limits syncing and cleanup to matching repo
+names (shell globs supported). Missing or empty includes allows all repos.
+Excludes take precedence over includes.
 
 Options:
   -o, --owner OWNER        GitHub user or org (default: authenticated gh user)
@@ -182,7 +187,7 @@ if [[ "$MODE" == "list" ]]; then
     exit 0
   fi
   jq -r '(.targets // [])[] |
-    "\(.dir)\n  owner: \(.owner)   days: \(.days)   events: \(.events)   excludes: \(if (.excludes | length) == 0 then "(none)" else (.excludes | join(", ")) end)"' \
+    "\(.dir)\n  owner: \(.owner)   days: \(.days)   events: \(.events)   includes: \(if ((.includes // []) | length) == 0 then "(all)" else (.includes | join(", ")) end)   excludes: \(if (.excludes | length) == 0 then "(none)" else (.excludes | join(", ")) end)"' \
     "$CONFIG_FILE"
   exit 0
 fi
@@ -261,6 +266,13 @@ if [[ -n "$DIR_ARG" ]]; then
   [[ -n "$OWNER" ]] || OWNER=$(jq -r .owner <<<"$ENTRY")
   [[ -n "$DAYS" ]] || DAYS=$(jq -r .days <<<"$ENTRY")
   [[ -n "$EVENTS" ]] || EVENTS=$(jq -r .events <<<"$ENTRY")
+  if ! jq -e '.includes | if . == null then true elif type == "array" then all(.[]; type == "string" and length > 0 and (test("[\r\n]") | not)) else false end' <<<"$ENTRY" >/dev/null; then
+    echo "sync-repos: includes must be an array of non-empty single-line strings" >&2
+    exit 2
+  fi
+  while IFS= read -r pat; do
+    INCLUDES+=("$pat")
+  done < <(jq -r '(.includes // [])[]' <<<"$ENTRY")
   while IFS= read -r pat; do
     EXCLUDES+=("$pat")
   done < <(jq -r '.excludes[]?' <<<"$ENTRY")
@@ -280,6 +292,15 @@ if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); then
   exit 2
 fi
 
+is_included() {
+  local name="$1" pat
+  (( ${#INCLUDES[@]} == 0 )) && return 0
+  for pat in ${INCLUDES[@]+"${INCLUDES[@]}"}; do
+    [[ "$name" == $pat ]] && return 0
+  done
+  return 1
+}
+
 is_excluded() {
   local name="$1" pat
   for pat in ${EXCLUDES[@]+"${EXCLUDES[@]}"}; do
@@ -298,9 +319,11 @@ CUTOFF=$(date -u -v-"${DAYS}"d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
 mkdir -p "$TARGET_DIR"
 
 EXCL_DESC="${EXCLUDES[*]-}"
+INCL_DESC="${INCLUDES[*]-}"
 echo "owner:    $OWNER"
 echo "target:   $TARGET_DIR"
 echo "window:   ${DAYS}d (since $CUTOFF)"
+echo "includes: ${INCL_DESC:-(all)}"
 echo "excludes: ${EXCL_DESC:-(none)}"
 echo "events:   $EVENTS"
 echo "force:    $FORCE"
@@ -320,12 +343,18 @@ removed=()
 forced=()
 uptodate=0
 excluded=0
+not_included=0
 
 while IFS= read -r repo; do
   NAME=$(jq -r .name <<<"$repo")
   FULL=$(jq -r .nameWithOwner <<<"$repo")
   PUSHED=$(jq -r .pushedAt <<<"$repo")
   BRANCH=$(jq -r '.defaultBranchRef.name // ""' <<<"$repo")
+
+  if ! is_included "$NAME"; then
+    not_included=$((not_included + 1))
+    continue
+  fi
 
   if is_excluded "$NAME"; then
     excluded=$((excluded + 1))
@@ -531,6 +560,7 @@ echo "skipped:         ${#skipped[@]}"
 if (( ${#skipped[@]} )); then for r in "${skipped[@]}"; do echo "  ~ $r"; done; fi
 echo "inactive:        ${#inactive[@]}"
 echo "excluded:        $excluded"
+echo "not included:    $not_included"
 if $CLEANUP; then
   echo "removed:         ${#removed[@]}"
   if (( ${#removed[@]} )); then for r in "${removed[@]}"; do echo "  - $r"; done; fi
