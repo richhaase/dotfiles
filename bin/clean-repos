@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Find and optionally remove merged or stale Git worktrees.
-
 CONFIG_FILE="${SYNC_REPOS_CONFIG:-$HOME/.config/sync-repos/config.json}"
 
 DIR_ARG=""
@@ -15,32 +13,24 @@ usage() {
 Usage: clean-repos [DIR] [OPTIONS]
        clean-repos -t DIR [OPTIONS]
 
-Find merged and stale linked worktrees. With no directory, scan every target
-configured for sync-repos. With DIR, scan that configured target. Use
--t/--target for an ad hoc directory that is not in the sync-repos config.
+Remove linked worktrees unless there is positive evidence they are in flight.
+With no directory, scan every sync-repos target. DIR selects a configured
+parent; -t/--target scans an ad hoc parent.
 
-The primary worktree and dirty or locked linked worktrees are never removed.
-A clean linked worktree is eligible when its GitHub PR is merged or closed, its
-HEAD is merged into the local default-branch ref, or its HEAD commit is older
-than the activity window. An open GitHub PR always keeps its worktree. Detached
-worktrees without a finished GitHub PR are eligible only when HEAD is reachable
-from a named ref. Branches are never deleted. This command does not fetch from
-remotes.
+Keep primary checkouts, explicitly locked worktrees, worktrees used as a
+running process's working directory, and worktrees associated with open
+GitHub PRs. Dirty files, local commits, and recent commits do not protect a
+worktree. Removal is forced and discards uncommitted and untracked files.
+Branches are never deleted. No remote fetch is performed.
 
-Eligible worktrees are removed by default. Pass -n/--dry-run to report what
-would be removed and pruned without changing anything.
+GitHub lookup failures abort cleanup before any removal. Dry-run reports the
+same decisions without changing files. Only registered worktrees are scanned.
 
 Options:
   -t, --target DIR   Scan an ad hoc parent directory
-  -d, --days N       Stale threshold in days (default: target setting or 45)
+  -d, --days N       Accepted for compatibility; no longer affects retention
   -n, --dry-run      Report without changing anything
   -h, --help         Show this help
-
-Examples:
-  clean-repos
-  clean-repos ~/src
-  clean-repos ~/src --dry-run
-  clean-repos -t ~/dev --days 30
 EOF
 }
 
@@ -74,6 +64,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+export GIT_OPTIONAL_LOCKS=0
+command -v lsof >/dev/null || { echo "clean-repos: missing dependency: lsof" >&2; exit 1; }
 command -v git >/dev/null || { echo "clean-repos: missing dependency: git" >&2; exit 1; }
 
 if [[ -n "$DIR_ARG" && -n "$TARGET_FLAG" ]]; then
@@ -97,35 +89,6 @@ normalize_dir() {
   printf '%s\n' "$dir"
 }
 
-cutoff_epoch() {
-  local days="$1"
-  date -v-"${days}"d +%s 2>/dev/null || date -d "${days} days ago" +%s
-}
-
-default_ref_for() {
-  local repo="$1" ref branch
-  ref=$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)
-  if [[ -n "$ref" ]] && git -C "$repo" rev-parse --verify --quiet "$ref" >/dev/null; then
-    printf '%s\n' "$ref"
-    return
-  fi
-  for branch in main master; do
-    if git -C "$repo" rev-parse --verify --quiet "refs/heads/$branch" >/dev/null; then
-      printf 'refs/heads/%s\n' "$branch"
-      return
-    fi
-  done
-  branch=$(git -C "$repo" branch --show-current 2>/dev/null || true)
-  if [[ -n "$branch" ]]; then
-    printf 'refs/heads/%s\n' "$branch"
-  fi
-}
-
-head_has_named_ref() {
-  local repo="$1" head="$2"
-  [[ -n "$(git -C "$repo" for-each-ref --count=1 --contains "$head" --format='%(refname)' 2>/dev/null)" ]]
-}
-
 github_repo_for() {
   local repo="$1" url slug
   url=$(git -C "$repo" remote get-url origin 2>/dev/null || true)
@@ -147,7 +110,7 @@ github_pr_for_branch() {
   gh pr list --repo "$slug" --head "$branch" --state all --limit 100 \
     --json number,state,mergedAt \
     --jq '(((map(select(.state == "OPEN")) | first) // (sort_by(.number) | last)) // empty) | [.number, (if .mergedAt != null then "MERGED" else .state end)] | @tsv' \
-    2>/dev/null || true
+    2>/dev/null || printf '%s\n' '__LOOKUP_ERROR__'
 }
 
 github_pr_for_commit() {
@@ -155,14 +118,14 @@ github_pr_for_commit() {
   gh api -H 'Accept: application/vnd.github+json' \
     "repos/$slug/commits/$head/pulls" \
     --jq '(((map(select(.state == "open")) | first) // (map(select(.merged_at != null)) | sort_by(.merged_at) | last) // (sort_by(.closed_at) | last)) // empty) | [.number, (if .state == "open" then "OPEN" elif .merged_at != null then "MERGED" else "CLOSED" end)] | @tsv' \
-    2>/dev/null || true
+    2>/dev/null || printf '%s\n' '__LOOKUP_ERROR__'
 }
 
 github_pr_for_number() {
   local slug="$1" number="$2"
   gh pr view "$number" --repo "$slug" --json number,state,mergedAt \
     --jq '[.number, (if .mergedAt != null then "MERGED" else .state end)] | @tsv' \
-    2>/dev/null || true
+    2>/dev/null || printf '%s\n' '__LOOKUP_ERROR__'
 }
 
 pr_numbers_for_worktree() {
@@ -185,11 +148,12 @@ pr_numbers_for_worktree() {
 
 github_pr_for() {
   local main="$1" head="$2" branch="$3" path="$4" slug result number state terminal_result=""
-  command -v gh >/dev/null 2>&1 || return 1
   slug=$(github_repo_for "$main") || return 1
+  command -v gh >/dev/null 2>&1 || { printf '%s\n' '__LOOKUP_ERROR__'; return; }
   if [[ -n "$branch" ]]; then
     result=$(github_pr_for_branch "$slug" "$branch")
-    [[ -n "$result" ]] && { printf '%s\n' "$result"; return; }
+    printf '%s\n' "$result"
+    return
   fi
   result=$(github_pr_for_commit "$slug" "$head")
   [[ -n "$result" ]] && { printf '%s\n' "$result"; return; }
@@ -197,6 +161,7 @@ github_pr_for() {
     [[ "$number" =~ ^[0-9]+$ ]] || continue
     result=$(github_pr_for_number "$slug" "$number")
     [[ -n "$result" ]] || continue
+    [[ "$result" != __LOOKUP_ERROR__ ]] || { printf '%s\n' "$result"; return; }
     IFS=$'\t' read -r _ state <<<"$result"
     [[ "$state" == "OPEN" ]] && { printf '%s\n' "$result"; return; }
     [[ -n "$terminal_result" ]] || terminal_result="$result"
@@ -205,6 +170,23 @@ github_pr_for() {
   return 1
 }
 
+process_cwds=()
+while IFS= read -r line; do
+  [[ "$line" == n/* ]] && process_cwds+=("${line#n}")
+done < <(lsof -n -w -d cwd -Fn 2>/dev/null || true)
+process_cwds+=("$PWD")
+
+worktree_in_use() {
+  local path="$1" cwd
+  for cwd in "${process_cwds[@]}"; do
+    [[ "$cwd" == "$path" || "$cwd" == "$path/"* ]] && return 0
+  done
+  return 1
+}
+
+removal_mains=()
+removal_paths=()
+prune_mains=()
 repo_keys=()
 seen_repo() {
   local key="$1" existing
@@ -223,137 +205,83 @@ repos=0
 prunable=0
 
 inspect_repo() {
-  local candidate="$1" days="$2" first_line main key default_ref cutoff
+  local candidate="$1" first_line main key
   first_line=$(git -C "$candidate" worktree list --porcelain 2>/dev/null | head -n 1 || true)
   [[ "$first_line" == worktree\ * ]] || return
   main=${first_line#worktree }
   key="$main"
   seen_repo "$key" && return
   repos=$((repos + 1))
-  cutoff=$(cutoff_epoch "$days")
-  default_ref=$(default_ref_for "$main")
 
   echo "repo: $main"
-  echo "  default: ${default_ref:-(unknown)}"
 
-  local path="" head="" branch="" detached=false locked=false prune_entry=false line
+  local path="" head="" branch="" locked=false prune_entry=false line
   while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ -z "$line" ]]; then
       if [[ -n "$path" ]]; then
-        inspect_worktree_record "$main" "$default_ref" "$cutoff" "$path" "$head" "$branch" "$detached" "$locked" "$prune_entry"
+        inspect_worktree_record "$main" "$path" "$head" "$branch" "$locked" "$prune_entry"
       fi
-      path=""; head=""; branch=""; detached=false; locked=false; prune_entry=false
+      path=""; head=""; branch=""; locked=false; prune_entry=false
       continue
     fi
     case "$line" in
       worktree\ *) path=${line#worktree } ;;
       HEAD\ *) head=${line#HEAD } ;;
       branch\ *) branch=${line#branch refs/heads/} ;;
-      detached) detached=true ;;
       locked*) locked=true ;;
       prunable*) prune_entry=true ;;
     esac
   done < <(git -C "$main" worktree list --porcelain)
   if [[ -n "$path" ]]; then
-    inspect_worktree_record "$main" "$default_ref" "$cutoff" "$path" "$head" "$branch" "$detached" "$locked" "$prune_entry"
+    inspect_worktree_record "$main" "$path" "$head" "$branch" "$locked" "$prune_entry"
   fi
 
-  if ! $DRY_RUN; then
-    if ! git -C "$main" worktree prune; then
-      echo "  x failed to prune worktree metadata"
-      errors=$((errors + 1))
-    fi
-  fi
+  prune_mains+=("$main")
   echo ""
 }
 
 inspect_worktree_record() {
-  local main="$1" default_ref="$2" cutoff="$3" path="$4" head="$5" branch="$6"
-  local detached="$7" locked="$8" prune_entry="$9"
-  local label commit_epoch reason="" reachable=true github_pr="" pr_number="" pr_state=""
-
+  local main="$1" path="$2" head="$3" branch="$4" locked="$5" prune_entry="$6"
+  local label github_pr pr_number pr_state reason
   if [[ "$path" == "$main" ]]; then
     echo "  = $path (primary; keep)"
     kept=$((kept + 1))
     return
   fi
   label=${branch:-detached}
-
+  if $locked || worktree_in_use "$path"; then
+    echo "  ! $path ($label; locked or in use; keep)"
+    kept=$((kept + 1))
+    return
+  fi
   if $prune_entry; then
-    if $DRY_RUN; then
-      echo "  - $path ($label; stale metadata; would prune)"
-    else
-      echo "  - $path ($label; stale metadata; pruning)"
-    fi
+    echo "  - $path ($label; stale metadata; would prune)"
     prunable=$((prunable + 1))
     return
   fi
-  if $locked; then
-    echo "  ! $path ($label; locked; keep)"
-    kept=$((kept + 1))
-    return
-  fi
   if [[ ! -d "$path" ]]; then
-    echo "  ! $path ($label; missing but not prunable; keep)"
-    kept=$((kept + 1))
+    echo "  x $path ($label; missing but not prunable)"
+    errors=$((errors + 1))
     return
   fi
-  if [[ -n "$(git -C "$path" status --porcelain 2>/dev/null)" ]]; then
-    echo "  ! $path ($label; dirty; keep)"
-    kept=$((kept + 1))
-    return
-  fi
-
   github_pr=$(github_pr_for "$main" "$head" "$branch" "$path" || true)
-  if [[ -n "$github_pr" ]]; then
-    IFS=$'\t' read -r pr_number pr_state <<<"$github_pr"
+  if [[ "$github_pr" == *'__LOOKUP_ERROR__'* ]]; then
+    echo "  x $path ($label; GitHub lookup failed; abort cleanup)"
+    errors=$((errors + 1))
+    return
   fi
-  if [[ "$pr_state" == "OPEN" ]]; then
+  IFS=$'\t' read -r pr_number pr_state <<<"$github_pr"
+  if [[ "$pr_state" == OPEN ]]; then
     echo "  · $path ($label; GitHub PR #$pr_number open; keep)"
     kept=$((kept + 1))
     return
-  elif [[ "$pr_state" == "MERGED" ]]; then
-    reason="GitHub PR #$pr_number merged"
-  elif [[ "$pr_state" == "CLOSED" ]]; then
-    reason="GitHub PR #$pr_number closed"
-  else
-    if $detached && ! head_has_named_ref "$main" "$head"; then
-      reachable=false
-    fi
-    if ! $reachable; then
-      echo "  ! $path (detached; HEAD not reachable from a named ref; keep)"
-      kept=$((kept + 1))
-      return
-    fi
-
-    if [[ -n "$default_ref" ]] && git -C "$main" merge-base --is-ancestor "$head" "$default_ref" 2>/dev/null; then
-      reason="merged into $default_ref"
-    else
-      commit_epoch=$(git -C "$main" show -s --format=%ct "$head" 2>/dev/null || true)
-      if [[ "$commit_epoch" =~ ^[0-9]+$ ]] && (( commit_epoch < cutoff )); then
-        reason="stale"
-      fi
-    fi
   fi
-
-  if [[ -z "$reason" ]]; then
-    echo "  · $path ($label; active and unmerged; keep)"
-    kept=$((kept + 1))
-    return
-  fi
-
+  reason="no evidence of in-flight work"
+  [[ -z "$pr_state" ]] || reason="GitHub PR #$pr_number $pr_state"
+  echo "  - $path ($label; $reason; would force-remove including dirty files)"
   eligible=$((eligible + 1))
-  if $DRY_RUN; then
-    echo "  - $path ($label; $reason; would remove)"
-    return
-  fi
-  if git -C "$main" worktree remove "$path"; then
-    echo "  - $path ($label; $reason; removed)"
-    removed=$((removed + 1))
-  else
-    echo "  x $path ($label; $reason; removal failed)"
-    errors=$((errors + 1))
-  fi
+  removal_mains+=("$main")
+  removal_paths+=("$path")
 }
 
 scan_target() {
@@ -417,6 +345,33 @@ echo ""
 for i in "${!targets[@]}"; do
   scan_target "${targets[$i]}" "${target_days[$i]}"
 done
+
+if ! $DRY_RUN && (( errors == 0 )); then
+  for i in "${!removal_paths[@]}"; do
+    path=${removal_paths[$i]}
+    main=${removal_mains[$i]}
+    if lsof -n -w -d cwd -Fn 2>/dev/null | awk -v p="$path" '
+      substr($0, 1, 1) == "n" && (substr($0, 2) == p || index(substr($0, 2), p "/") == 1) {found=1}
+      END {exit !found}
+    '; then
+      echo "kept: $path (became in use during scan)"
+      kept=$((kept + 1))
+      continue
+    fi
+    if git -C "$main" worktree remove --force "$path"; then
+      echo "removed: $path"
+      removed=$((removed + 1))
+    else
+      echo "failed: $path" >&2
+      errors=$((errors + 1))
+    fi
+  done
+  for main in ${prune_mains[@]+"${prune_mains[@]}"}; do
+    git -C "$main" worktree prune || errors=$((errors + 1))
+  done
+elif ! $DRY_RUN; then
+  echo "Cleanup aborted: inventory errors; nothing removed." >&2
+fi
 
 echo "=== summary ==="
 echo "repositories: $repos"
