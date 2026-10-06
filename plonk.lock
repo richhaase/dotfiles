@@ -2,6 +2,7 @@ version: 3
 packages:
     brew:
         - acr
+        - agent-browser
         - atuin
         - awscli
         - bat
