@@ -30,6 +30,7 @@ packages:
         - helix
         - jq
         - kitty
+        - lazydocker
         - lazygit
         - node
         - pnpm
