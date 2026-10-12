@@ -32,6 +32,7 @@ packages:
         - kitty
         - lazydocker
         - lazygit
+        - mole
         - node
         - pnpm
         - prettier
