@@ -7,29 +7,68 @@ DIR_ARG=""
 TARGET_FLAG=""
 DAYS=""
 DRY_RUN=false
+FORCE=false
+COLOR=auto
+NOW=$(date +%s)
 
 usage() {
   cat <<EOF
 Usage: clean-repos [DIR] [OPTIONS]
        clean-repos -t DIR [OPTIONS]
 
-Remove linked worktrees unless there is positive evidence they are in flight.
+Remove clean linked worktrees after their PR closes or merges, or after inactivity.
 With no directory, scan every sync-repos target. DIR selects a configured
 parent; -t/--target scans an ad hoc parent.
 
 Keep primary checkouts, explicitly locked worktrees, worktrees used as a
 running process's working directory, and worktrees associated with open
-GitHub PRs. Dirty files, local commits, and recent commits do not protect a
-worktree. Removal is forced and discards uncommitted and untracked files.
-Branches are never deleted. No remote fetch is performed.
+GitHub PRs in both modes.
 
-GitHub lookup failures abort cleanup before any removal. Dry-run reports the
-same decisions without changing files. Only registered worktrees are scanned.
+By default, also keep worktrees with tracked changes, non-ignored untracked
+files, unknown ignored files, or active Git operations.
+
+Ignored dependency environments, common build/test/lint caches, and standard
+build-output directories do not protect a worktree. Examples: node_modules,
+.venv, __pycache__, .pytest_cache, .turbo, dist, build, target, and coverage.
+Ignored compiled files beside a tracked source file are also disposable:
+.js from .ts/.tsx/.po, .mjs from .mts, .cjs from .cts, .mo from .po,
+and .pyc/.pyo from .py. Tracked or non-ignored files always protect worktrees,
+even under these names. Unknown ignored files (including local configuration)
+and nested Git checkouts remain protected. No repository-specific rules apply.
+
+Closed or merged PRs permit immediate cleanup when their head contains the
+worktree's HEAD, including squash merges and deleted remote branches. A HEAD
+already in origin's default branch also qualifies after PR completion.
+Commits beyond that PR and the default branch remain protected.
+
+Without a completed PR, require HEAD in local remote-tracking refs and no HEAD
+reflog activity for 5 days (override with --days). This measures local checkout,
+commit, and reset activity; the commit's original date is not local activity.
+The sync-repos configuration supplies targets only; its days setting is unrelated.
+Missing activity evidence keeps a worktree. Removal does not use --force,
+and stale worktree metadata is retained. Any ignored artifacts in an eligible
+worktree are removed along with that worktree.
+
+With -f/--force, use the aggressive policy: dirty files, local commits, and
+recent activity do not protect a worktree. Removal forcibly discards
+uncommitted, untracked, and ignored files; stale metadata is pruned.
+Branches are never deleted in either mode. No remote fetch is performed;
+fallback commit checks use the remote-tracking refs already on disk.
+
+Worktrees are processed immediately, with one result per worktree. Lookup or
+inspection failures skip that worktree; other worktrees are still processed.
+Any failure returns a nonzero exit status. Dry-run shows the same decisions
+without changing files. Only registered worktrees are scanned.
+
+Terminal output uses color; pipes, TERM=dumb, and NO_COLOR disable it by default.
 
 Options:
   -t, --target DIR   Scan an ad hoc parent directory
-  -d, --days N       Accepted for compatibility; no longer affects retention
+  -d, --days N       Retain activity without a completed PR for N days (default: 5)
+                    Positive integer, up to 9 digits; ignored with --force
+  -f, --force        Use aggressive cleanup, including dirty worktrees
   -n, --dry-run      Report without changing anything
+  --color MODE      Color: auto (default), always, or never
   -h, --help         Show this help
 EOF
 }
@@ -46,7 +85,14 @@ while [[ $# -gt 0 ]]; do
       DAYS="$2"
       shift 2
       ;;
+    --color)
+      [[ $# -ge 2 ]] || { echo "clean-repos: --color requires a mode" >&2; exit 2; }
+      COLOR="$2"
+      shift 2
+      ;;
+    --color=*) COLOR=${1#--color=}; shift ;;
     -n|--dry-run) DRY_RUN=true; shift ;;
+    -f|--force) FORCE=true; shift ;;
     -h|--help) usage; exit 0 ;;
     -*)
       echo "clean-repos: unknown argument: $1" >&2
@@ -64,6 +110,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+case "$COLOR" in
+  auto|always|never) ;;
+  *) echo "clean-repos: --color must be auto, always, or never" >&2; exit 2 ;;
+esac
+
+BOLD="" DIM="" GREEN="" YELLOW="" RED="" CYAN="" RESET=""
+if [[ "$COLOR" == always ]] || { [[ "$COLOR" == auto && -t 1 && -z "${NO_COLOR:-}" && "${TERM:-}" != dumb ]]; }; then
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  GREEN=$'\033[32m'
+  YELLOW=$'\033[33m'
+  RED=$'\033[31m'
+  CYAN=$'\033[36m'
+  RESET=$'\033[0m'
+fi
+
 export GIT_OPTIONAL_LOCKS=0
 command -v lsof >/dev/null || { echo "clean-repos: missing dependency: lsof" >&2; exit 1; }
 command -v git >/dev/null || { echo "clean-repos: missing dependency: git" >&2; exit 1; }
@@ -73,8 +135,12 @@ if [[ -n "$DIR_ARG" && -n "$TARGET_FLAG" ]]; then
   exit 2
 fi
 
-if [[ -n "$DAYS" ]] && { ! [[ "$DAYS" =~ ^[0-9]+$ ]] || (( DAYS < 1 )); }; then
-  echo "clean-repos: --days must be a positive integer" >&2
+valid_days() {
+  [[ "$1" =~ ^[0-9]{1,9}$ ]] && (( 10#$1 > 0 ))
+}
+
+if [[ -n "$DAYS" ]] && ! valid_days "$DAYS"; then
+  echo "clean-repos: --days must be a positive integer of at most 9 digits" >&2
   exit 2
 fi
 
@@ -125,6 +191,14 @@ github_pr_for_number() {
   local slug="$1" number="$2"
   gh pr view "$number" --repo "$slug" --json number,state,mergedAt \
     --jq '[.number, (if .mergedAt != null then "MERGED" else .state end)] | @tsv' \
+    2>/dev/null || printf '%s\n' '__LOOKUP_ERROR__'
+}
+
+github_pr_completion() {
+  local main="$1" number="$2" slug
+  slug=$(github_repo_for "$main") || { printf '%s\n' '__LOOKUP_ERROR__'; return; }
+  gh pr view "$number" --repo "$slug" --json state,headRefOid \
+    --jq '[.state, .headRefOid] | @tsv' \
     2>/dev/null || printf '%s\n' '__LOOKUP_ERROR__'
 }
 
@@ -184,9 +258,138 @@ worktree_in_use() {
   return 1
 }
 
-removal_mains=()
-removal_paths=()
-prune_mains=()
+ignored_artifact() {
+  local path="$1" entry="${2%/}" directory source stem
+  local extensions=()
+  directory="$entry"
+  if [[ ! -L "$path/$entry" && ! -d "$path/$entry" ]]; then
+    directory=${entry%/*}
+    [[ "$directory" != "$entry" ]] || directory=""
+  fi
+  case "/$directory/" in
+    */node_modules/*|*/.pnpm-store/*|*/.yarn/cache/*|*/.yarn/unplugged/*|\
+    */.venv/*|*/venv/*|*/__pycache__/*|*/.pytest_cache/*|*/.mypy_cache/*|\
+    */.ruff_cache/*|*/.tox/*|*/.nox/*|*/.hypothesis/*|\
+    */.turbo/*|*/.next/*|*/.nuxt/*|*/.svelte-kit/*|*/.angular/cache/*|\
+    */.parcel-cache/*|*/.vite/*|*/.jest-cache/*|*/.nyc_output/*|\
+    */.gradle/*|*/dist/*|*/build/*|*/target/*|*/_build/*|*/coverage/*|*/htmlcov/*)
+      return 0 ;;
+  esac
+  [[ ! -d "$path/$entry" ]] || return 1
+  case "${entry##*/}" in
+    .eslintcache|.stylelintcache|.coverage|.coverage.*|*.tsbuildinfo|.tsbuildinfo.*)
+      return 0 ;;
+  esac
+  stem=${entry%.*}
+  case "$entry" in
+    *.js) extensions=(ts tsx po) ;;
+    *.mjs) extensions=(mts) ;;
+    *.cjs) extensions=(cts) ;;
+    *.mo) extensions=(po) ;;
+    *.pyc|*.pyo) extensions=(py) ;;
+  esac
+  for source in ${extensions[@]+"${extensions[@]}"}; do
+    source="$stem.$source"
+    if [[ -f "$path/$source" ]] && git --literal-pathspecs -C "$path" ls-files --error-unmatch -- "$source" >/dev/null 2>&1; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+worktree_files_keep_reason() {
+  local path="$1" record status="" entry nested
+  local records=()
+  while IFS= read -r -d '' record; do
+    if [[ -z "$record" ]]; then
+      IFS= read -r -d '' status || status=""
+      break
+    fi
+    records+=("$record")
+  done < <(
+    if git -C "$path" status --porcelain=v1 -z --untracked-files=all --ignored=matching --ignore-submodules=none 2>/dev/null; then
+      printf '\0success\0'
+    else
+      printf '\0failure\0'
+    fi
+  )
+  [[ "$status" == success ]] || {
+    echo "cannot inspect worktree status"; return 1;
+  }
+  for record in ${records[@]+"${records[@]}"}; do
+    if [[ "$record" != '!! '* ]]; then
+      echo "tracked changes or non-ignored untracked files"; return;
+    fi
+  done
+  for record in ${records[@]+"${records[@]}"}; do
+    entry=${record#'!! '}
+    if ! ignored_artifact "$path" "$entry"; then
+      echo "ignored files outside common generated artifacts"; return;
+    fi
+    if [[ ! -L "$path/${entry%/}" && -d "$path/$entry" ]]; then
+      nested=$(find "$path/$entry" -name .git -print -quit 2>/dev/null) || {
+        echo "cannot inspect ignored artifact directory"; return 1;
+      }
+      if [[ -n "$nested" ]]; then
+        echo "nested repository inside ignored artifacts"; return;
+      fi
+    fi
+  done
+}
+
+conservative_keep_reason() {
+  local path="$1" days="$2" completed_head="${3:-}" expected_head="${4:-}"
+  local reason current_head refs reflog git_path operation cutoff
+  reason=$(worktree_files_keep_reason "$path") || { echo "$reason"; return 1; }
+  if [[ -n "$reason" ]]; then
+    echo "$reason"; return;
+  fi
+  for operation in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-merge rebase-apply sequencer BISECT_START; do
+    git_path=$(git -C "$path" rev-parse --git-path "$operation" 2>/dev/null) || {
+      echo "cannot inspect Git operation state"; return 1;
+    }
+    [[ "$git_path" == /* ]] || git_path="$path/$git_path"
+    if [[ -e "$git_path" ]]; then
+      echo "Git operation in progress"; return;
+    fi
+  done
+  current_head=$(git -C "$path" rev-parse --verify HEAD 2>/dev/null) || {
+    echo "cannot inspect HEAD"; return 1;
+  }
+  if [[ -n "$expected_head" && "$current_head" != "$expected_head" ]]; then
+    echo "HEAD changed during scan"; return;
+  fi
+  if [[ -n "$completed_head" ]]; then
+    if [[ "$current_head" == "$completed_head" ]] || git -C "$path" merge-base --is-ancestor "$current_head" "$completed_head" 2>/dev/null; then
+      return 0
+    fi
+    echo "HEAD not covered by completed PR"; return;
+  fi
+  refs=$(git -C "$path" for-each-ref --contains "$current_head" --format='%(refname)' refs/remotes/ 2>/dev/null) || {
+    echo "cannot inspect remote-tracking refs"; return 1;
+  }
+  if [[ -z "$refs" ]]; then
+    echo "HEAD absent from local remote-tracking refs"; return;
+  fi
+  git_path=$(git -C "$path" rev-parse --git-path logs/HEAD 2>/dev/null) || {
+    echo "cannot locate HEAD reflog"; return 1;
+  }
+  [[ "$git_path" == /* ]] || git_path="$path/$git_path"
+  if [[ ! -s "$git_path" ]]; then
+    echo "HEAD activity unavailable"; return;
+  fi
+  reflog=$(git -C "$path" reflog show -1 --format=%gD --date=unix HEAD 2>/dev/null) || {
+    echo "cannot inspect HEAD reflog"; return 1;
+  }
+  if ! [[ "$reflog" =~ ^HEAD@\{([0-9]+)\}$ ]]; then
+    echo "HEAD activity unavailable"; return;
+  fi
+  cutoff=$((NOW - 10#$days * 86400))
+  if (( BASH_REMATCH[1] >= cutoff )); then
+    echo "local HEAD activity within $days days"; return;
+  fi
+}
+
 repo_keys=()
 seen_repo() {
   local key="$1" existing
@@ -197,29 +400,87 @@ seen_repo() {
   return 1
 }
 
-eligible=0
+short_path() {
+  case "$1" in
+    "$HOME"/*) printf '%s/%s' '~' "${1#"$HOME/"}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+report_result() {
+  local outcome="$1" label="$2" reason="$3" status color
+  case "$outcome" in
+    remove)
+      status=REMOVED; $DRY_RUN && status=REMOVE
+      color="$GREEN"
+      removed=$((removed + 1)); repo_removed=$((repo_removed + 1))
+      ;;
+    keep)
+      status=KEPT; $DRY_RUN && status=KEEP
+      color="$YELLOW"
+      kept=$((kept + 1)); repo_kept=$((repo_kept + 1))
+      ;;
+    prune)
+      status=PRUNED; $DRY_RUN && status=PRUNE
+      color="$GREEN"
+      pruned=$((pruned + 1)); repo_pruned=$((repo_pruned + 1))
+      ;;
+    error)
+      status=ERROR; color="$RED"
+      errors=$((errors + 1)); repo_errors=$((repo_errors + 1))
+      ;;
+  esac
+  reason=${reason//$'\n'/; }
+  printf '  %s%-7s%s %s  %s%s%s\n' "$color" "$status" "$RESET" "$label" "$DIM" "$reason" "$RESET"
+}
+
+report_totals() {
+  local count_removed="$1" count_kept="$2" count_pruned="$3" count_errors="$4" removal_label=removed prune_label=pruned error_label=errors
+  if $DRY_RUN; then removal_label='to remove'; prune_label='to prune'; fi
+  printf '%s%s %s%s · %s%s kept%s' "$GREEN" "$count_removed" "$removal_label" "$RESET" "$YELLOW" "$count_kept" "$RESET"
+  if (( count_pruned > 0 )); then
+    printf ' · %s%s %s%s' "$GREEN" "$count_pruned" "$prune_label" "$RESET"
+  fi
+  if (( count_errors > 0 )); then
+    (( count_errors != 1 )) || error_label=error
+    printf ' · %s%s %s%s' "$RED" "$count_errors" "$error_label" "$RESET"
+  fi
+  printf '\n'
+}
+
 removed=0
 kept=0
+pruned=0
 errors=0
 repos=0
-prunable=0
+primary=0
 
 inspect_repo() {
-  local candidate="$1" first_line main key
-  first_line=$(git -C "$candidate" worktree list --porcelain 2>/dev/null | head -n 1 || true)
+  local candidate="$1" days="$2" listing first_line main
+  listing=$(git -C "$candidate" worktree list --porcelain 2>/dev/null) || {
+    printf '%sERROR%s %s: cannot list worktrees\n' "$RED" "$RESET" "$(short_path "$candidate")"
+    errors=$((errors + 1))
+    return
+  }
+  first_line=${listing%%$'\n'*}
   [[ "$first_line" == worktree\ * ]] || return
   main=${first_line#worktree }
-  key="$main"
-  seen_repo "$key" && return
+  seen_repo "$main" && return
   repos=$((repos + 1))
+  primary=$((primary + 1))
+  if [[ "$listing" != *$'\n\nworktree '* ]]; then
+    quiet_repos=$((quiet_repos + 1))
+    return
+  fi
 
-  echo "repo: $main"
-
+  printf '\n%s%s%s  %s%s%s\n' "$BOLD" "${main##*/}" "$RESET" "$DIM" "$(short_path "$main")" "$RESET"
+  local repo_removed=0 repo_kept=0 repo_pruned=0 repo_errors=0
+  local prune_paths=() prune_labels=()
   local path="" head="" branch="" locked=false prune_entry=false line
   while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ -z "$line" ]]; then
-      if [[ -n "$path" ]]; then
-        inspect_worktree_record "$main" "$path" "$head" "$branch" "$locked" "$prune_entry"
+      if [[ -n "$path" && "$path" != "$main" ]]; then
+        inspect_worktree_record "$main" "$path" "$head" "$branch" "$locked" "$prune_entry" "$days"
       fi
       path=""; head=""; branch=""; locked=false; prune_entry=false
       continue
@@ -231,75 +492,177 @@ inspect_repo() {
       locked*) locked=true ;;
       prunable*) prune_entry=true ;;
     esac
-  done < <(git -C "$main" worktree list --porcelain)
-  if [[ -n "$path" ]]; then
-    inspect_worktree_record "$main" "$path" "$head" "$branch" "$locked" "$prune_entry"
+  done <<<"$listing"
+  if [[ -n "$path" && "$path" != "$main" ]]; then
+    inspect_worktree_record "$main" "$path" "$head" "$branch" "$locked" "$prune_entry" "$days"
   fi
 
-  prune_mains+=("$main")
-  echo ""
+  if ! $DRY_RUN && (( ${#prune_paths[@]} > 0 )); then
+    local prune_error remaining index
+    if prune_error=$(git -C "$main" worktree prune 2>&1); then
+      if remaining=$(git -C "$main" worktree list --porcelain 2>/dev/null); then
+        for index in "${!prune_paths[@]}"; do
+          if [[ $'\n'"$remaining"$'\n' == *$'\nworktree '"${prune_paths[$index]}"$'\n'* ]]; then
+            report_result keep "${prune_labels[$index]}" 'stale registration retained'
+          else
+            report_result prune "${prune_labels[$index]}" 'stale registration'
+          fi
+        done
+      else
+        for index in "${!prune_paths[@]}"; do
+          report_result error "${prune_labels[$index]}" 'cannot verify pruning result'
+        done
+      fi
+    else
+      for index in "${!prune_paths[@]}"; do
+        report_result error "${prune_labels[$index]}" "$prune_error"
+      done
+    fi
+  fi
+  printf '  '
+  report_totals "$repo_removed" "$repo_kept" "$repo_pruned" "$repo_errors"
+}
+
+remove_worktree() {
+  local main="$1" path="$2" label="$3" days="$4" completed_head="$5" head="$6" reason="$7" changed error
+  if $DRY_RUN; then
+    report_result remove "$label" "$reason"
+    return
+  fi
+  if lsof -n -w -d cwd -Fn 2>/dev/null | awk -v p="$path" '
+    substr($0, 1, 1) == "n" && (substr($0, 2) == p || index(substr($0, 2), p "/") == 1) {found=1}
+    END {exit !found}
+  '; then
+    report_result keep "$label" 'became in use during checks'
+    return
+  fi
+  local remove_options=()
+  if $FORCE; then
+    remove_options+=(--force)
+  else
+    if ! changed=$(conservative_keep_reason "$path" "$days" "$completed_head" "$head"); then
+      report_result error "$label" "$changed"
+      return
+    fi
+    if [[ -n "$changed" ]]; then
+      report_result keep "$label" "$changed; changed during checks"
+      return
+    fi
+  fi
+  if error=$(git -C "$main" worktree remove ${remove_options[@]+"${remove_options[@]}"} "$path" 2>&1); then
+    report_result remove "$label" "$reason"
+  else
+    report_result error "$label" "$error"
+  fi
 }
 
 inspect_worktree_record() {
-  local main="$1" path="$2" head="$3" branch="$4" locked="$5" prune_entry="$6"
-  local label github_pr pr_number pr_state reason
-  if [[ "$path" == "$main" ]]; then
-    echo "  = $path (primary; keep)"
-    kept=$((kept + 1))
-    return
-  fi
-  label=${branch:-detached}
+  local main="$1" path="$2" head="$3" branch="$4" locked="$5" prune_entry="$6" days="$7"
+  local label github_pr pr_number pr_state reason completion completed_head=""
+  local default_ref default_head completion_scope="completed PR"
+  label=${branch:-${path##*/}}
   if $locked || worktree_in_use "$path"; then
-    echo "  ! $path ($label; locked or in use; keep)"
-    kept=$((kept + 1))
+    report_result keep "$label" 'locked or in use'
     return
   fi
   if $prune_entry; then
-    echo "  - $path ($label; stale metadata; would prune)"
-    prunable=$((prunable + 1))
+    if $FORCE; then
+      if $DRY_RUN; then
+        report_result prune "$label" 'stale registration'
+      else
+        prune_paths+=("$path")
+        prune_labels+=("$label")
+      fi
+    else
+      report_result keep "$label" 'stale registration; use --force to prune'
+    fi
     return
   fi
   if [[ ! -d "$path" ]]; then
-    echo "  x $path ($label; missing but not prunable)"
-    errors=$((errors + 1))
+    report_result error "$label" 'missing but not prunable'
     return
   fi
   github_pr=$(github_pr_for "$main" "$head" "$branch" "$path" || true)
   if [[ "$github_pr" == *'__LOOKUP_ERROR__'* ]]; then
-    echo "  x $path ($label; GitHub lookup failed; abort cleanup)"
-    errors=$((errors + 1))
+    report_result error "$label" 'GitHub lookup failed'
     return
   fi
   IFS=$'\t' read -r pr_number pr_state <<<"$github_pr"
   if [[ "$pr_state" == OPEN ]]; then
-    echo "  · $path ($label; GitHub PR #$pr_number open; keep)"
-    kept=$((kept + 1))
+    report_result keep "$label" "PR #$pr_number open"
     return
   fi
-  reason="no evidence of in-flight work"
-  [[ -z "$pr_state" ]] || reason="GitHub PR #$pr_number $pr_state"
-  echo "  - $path ($label; $reason; would force-remove including dirty files)"
-  eligible=$((eligible + 1))
-  removal_mains+=("$main")
-  removal_paths+=("$path")
+  if $FORCE; then
+    reason="forced; no open PR"
+    [[ -z "$pr_state" ]] || reason="forced; PR #$pr_number $(printf '%s' "$pr_state" | tr '[:upper:]' '[:lower:]')"
+  else
+    if [[ "$pr_state" == MERGED || "$pr_state" == CLOSED ]]; then
+      completion=$(github_pr_completion "$main" "$pr_number")
+      IFS=$'\t' read -r pr_state completed_head <<<"$completion"
+      if [[ "$pr_state" == OPEN ]]; then
+        report_result keep "$label" "PR #$pr_number open"
+        return
+      fi
+      if [[ "$completion" == *'__LOOKUP_ERROR__'* || ! "$pr_state" =~ ^(MERGED|CLOSED)$ || ! "$completed_head" =~ ^[0-9a-f]{40}$ ]]; then
+        report_result error "$label" 'GitHub completion lookup failed'
+        return
+      fi
+      if ! git -C "$path" merge-base --is-ancestor "$head" "$completed_head" 2>/dev/null; then
+        default_ref=$(git -C "$path" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null || true)
+        if [[ "$default_ref" == refs/remotes/origin/* ]]; then
+          default_head=$(git -C "$path" rev-parse --verify "$default_ref^{commit}" 2>/dev/null || true)
+          if [[ -n "$default_head" ]] && git -C "$path" merge-base --is-ancestor "$head" "$default_head" 2>/dev/null; then
+            completed_head="$default_head"
+            completion_scope="published default branch"
+          fi
+        fi
+      fi
+    fi
+    if ! reason=$(conservative_keep_reason "$path" "$days" "$completed_head" "$head"); then
+      report_result error "$label" "$reason"
+      return
+    fi
+    if [[ -n "$reason" ]]; then
+      report_result keep "$label" "$reason"
+      return
+    fi
+    if [[ -n "$completed_head" ]]; then
+      reason="PR #$pr_number $(printf '%s' "$pr_state" | tr '[:upper:]' '[:lower:]')"
+      [[ "$completion_scope" != 'published default branch' ]] || reason="$reason; HEAD in default branch"
+    else
+      reason="published HEAD; inactive for $days days"
+    fi
+  fi
+  remove_worktree "$main" "$path" "$label" "$days" "$completed_head" "$head" "$reason"
 }
 
 scan_target() {
-  local target="$1" days="$2" candidate found=false
+  local target="$1" days="$2" candidate found=false quiet_repos=0 quiet_label=repositories
   target=$(normalize_dir "$target")
-  if [[ ! -d "$target" ]]; then
-    echo "clean-repos: target not found: $target" >&2
+  if ! $FORCE && ! valid_days "$days"; then
+    printf '%sERROR%s invalid retention days for %s: %s\n' "$RED" "$RESET" "$(short_path "$target")" "$days"
     errors=$((errors + 1))
     return
   fi
-  echo "=== $target ==="
+  if [[ ! -d "$target" ]]; then
+    printf '%sERROR%s target not found: %s\n' "$RED" "$RESET" "$(short_path "$target")"
+    errors=$((errors + 1))
+    return
+  fi
+  printf '\n%s%s%s\n' "$CYAN" "$(short_path "$target")" "$RESET"
   while IFS= read -r -d '' candidate; do
     if git -C "$candidate" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       found=true
       inspect_repo "$candidate" "$days"
     fi
   done < <(find "$target" -mindepth 1 -maxdepth 1 -type d -print0)
-  $found || echo "(no Git repositories found)"
+  if (( quiet_repos > 0 )); then
+    (( quiet_repos != 1 )) || quiet_label=repository
+    printf '\n  %s%s %s without linked worktrees%s\n' "$DIM" "$quiet_repos" "$quiet_label" "$RESET"
+  fi
+  if ! $found; then
+    printf '  %sNo Git repositories found%s\n' "$DIM" "$RESET"
+  fi
 }
 
 targets=()
@@ -307,7 +670,7 @@ target_days=()
 
 if [[ -n "$TARGET_FLAG" ]]; then
   targets+=("$(normalize_dir "$TARGET_FLAG")")
-  target_days+=("${DAYS:-45}")
+  target_days+=("${DAYS:-5}")
 else
   command -v jq >/dev/null || { echo "clean-repos: missing dependency: jq" >&2; exit 1; }
   if [[ ! -f "$CONFIG_FILE" ]]; then
@@ -323,14 +686,13 @@ else
       exit 2
     fi
     targets+=("$wanted")
-    configured_days=$(jq -r '.days // 45' <<<"$entry")
-    target_days+=("${DAYS:-$configured_days}")
+    target_days+=("${DAYS:-5}")
   else
-    while IFS=$'\t' read -r dir configured_days; do
+    while IFS= read -r dir; do
       [[ -n "$dir" ]] || continue
       targets+=("$dir")
-      target_days+=("${DAYS:-$configured_days}")
-    done < <(jq -r '(.targets // [])[] | [.dir, (.days // 45)] | @tsv' "$CONFIG_FILE")
+      target_days+=("${DAYS:-5}")
+    done < <(jq -r '(.targets // [])[] | .dir' "$CONFIG_FILE")
     if (( ${#targets[@]} == 0 )); then
       echo "clean-repos: no configured targets in $CONFIG_FILE" >&2
       exit 2
@@ -338,47 +700,22 @@ else
   fi
 fi
 
-echo "mode:     $(if $DRY_RUN; then echo dry-run; else echo cleanup; fi)"
-echo "config:   $CONFIG_FILE"
-echo ""
+mode=cleanup
+$DRY_RUN && mode='DRY RUN · no changes'
+policy=standard
+$FORCE && policy=aggressive
+printf '%sclean-repos%s · %s · %s\n' "$BOLD" "$RESET" "$mode" "$policy"
 
 for i in "${!targets[@]}"; do
   scan_target "${targets[$i]}" "${target_days[$i]}"
 done
 
-if ! $DRY_RUN && (( errors == 0 )); then
-  for i in "${!removal_paths[@]}"; do
-    path=${removal_paths[$i]}
-    main=${removal_mains[$i]}
-    if lsof -n -w -d cwd -Fn 2>/dev/null | awk -v p="$path" '
-      substr($0, 1, 1) == "n" && (substr($0, 2) == p || index(substr($0, 2), p "/") == 1) {found=1}
-      END {exit !found}
-    '; then
-      echo "kept: $path (became in use during scan)"
-      kept=$((kept + 1))
-      continue
-    fi
-    if git -C "$main" worktree remove --force "$path"; then
-      echo "removed: $path"
-      removed=$((removed + 1))
-    else
-      echo "failed: $path" >&2
-      errors=$((errors + 1))
-    fi
-  done
-  for main in ${prune_mains[@]+"${prune_mains[@]}"}; do
-    git -C "$main" worktree prune || errors=$((errors + 1))
-  done
-elif ! $DRY_RUN; then
-  echo "Cleanup aborted: inventory errors; nothing removed." >&2
-fi
-
-echo "=== summary ==="
-echo "repositories: $repos"
-echo "eligible:     $eligible"
-echo "removed:      $removed"
-echo "kept:         $kept"
-echo "prunable:     $prunable"
-echo "errors:       $errors"
+printf '\n%sTotal%s  ' "$BOLD" "$RESET"
+report_totals "$removed" "$kept" "$pruned" "$errors"
+repo_label=repositories
+primary_label=checkouts
+(( repos != 1 )) || repo_label=repository
+(( primary != 1 )) || primary_label=checkout
+printf '%s%s %s · %s primary %s preserved%s\n' "$DIM" "$repos" "$repo_label" "$primary" "$primary_label" "$RESET"
 
 (( errors == 0 ))
