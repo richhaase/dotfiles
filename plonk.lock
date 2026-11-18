@@ -6,7 +6,6 @@ packages:
         - atuin
         - awscli
         - bat
-        - bigboard
         - btop
         - ccusage
         - codex
